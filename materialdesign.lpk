@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="4">
+    <Name Value="materialdesign"/>
+    <Author Value=""/>
+    <Version Major="1" Minor="0" Release="0" Build="0"/>
+    <Description Value="Material Design components for Lazarus (fork with ClearButton, DateEdit, ComboEdit, CheckComboEdit)"/>
+    <License Value="LGPL v3"/>
+    <Files Count="4">
+      <Item1>
+        <Filename Value="bcmaterialedit.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="BCMaterialEdit"/>
+      </Item1>
+      <Item2>
+        <Filename Value="BCMaterialDateEdit.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="BCMaterialDateEdit"/>
+      </Item2>
+      <Item3>
+        <Filename Value="BCMaterialComboEdit.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="BCMaterialComboEdit"/>
+      </Item3>
+      <Item4>
+        <Filename Value="BCMaterialCheckComboEdit.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="BCMaterialCheckComboEdit"/>
+      </Item4>
+    </Files>
+    <RequiredPkgs Count="3">
+      <Item1>
+        <PackageName Value="BGRABitmapPack"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="IDEIntf"/>
+      </Item2>
+      <Item3>
+        <PackageName Value="LCL"/>
+      </Item3>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>

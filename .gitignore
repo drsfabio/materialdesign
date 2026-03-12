@@ -1,0 +1,16 @@
+# Lazarus / Free Pascal compiled output
+*.ppu
+*.o
+*.a
+*.or
+*.rst
+*.compiled
+*.bak
+
+# Lazarus backup files
+*.lps
+backup/
+
+# OS
+Thumbs.db
+.DS_Store
