@@ -8,8 +8,8 @@ unit materialdesign;
 interface
 
 uses
-  FRMaterialTheme, FRMaterialEdit, FRMaterialDateEdit, FRMaterialComboEdit, 
-  FRMaterialCheckComboEdit;
+  FRMaterialTheme, FRMaterialEdit, FRMaterialDateEdit, FRMaterialComboEdit,
+  FRMaterialCheckComboEdit, FRMaterialMaskEdit;
 
 implementation
 

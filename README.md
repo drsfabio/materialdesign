@@ -16,6 +16,7 @@ Este pacote fornece quatro controles de entrada no estilo Material Design que en
 | Componente | Encapsula | Uso |
 |---|---|---|
 | `TFRMaterialEdit` | `TEdit` | Campo de texto simples |
+| `TFRMaterialMaskEdit` | `TMaskEdit` | Campo com máscara (CPF, CNPJ, telefone, CEP…) |
 | `TFRMaterialComboEdit` | `TComboBox` | Lista suspensa / combo editável |
 | `TFRMaterialCheckComboEdit` | `TCheckListBox` (popup) | Seleção múltipla com checkboxes |
 | `TFRMaterialDateEdit` | `TDateEdit` | Seletor de data com calendário popup |
@@ -56,7 +57,7 @@ Caso o BGRABitmapPack ainda não esteja disponível no seu IDE, instale-o primei
 
 2. **Compilar**  
    Na janela do Editor de Pacotes, clique em **Compilar**.  
-   As quatro units (`FRMaterialEdit`, `FRMaterialComboEdit`, `FRMaterialCheckComboEdit`, `FRMaterialDateEdit`) devem compilar sem erros.
+   As cinco units (`FRMaterialEdit`, `FRMaterialMaskEdit`, `FRMaterialComboEdit`, `FRMaterialCheckComboEdit`, `FRMaterialDateEdit`) devem compilar sem erros.
 
 3. **Instalar**  
    Ainda no Editor de Pacotes, clique em **Usar → Instalar**.  
@@ -66,6 +67,7 @@ Caso o BGRABitmapPack ainda não esteja disponível no seu IDE, instale-o primei
    Após o IDE reiniciar, abra a **Paleta de Componentes** e procure pela aba **Material Design**.  
    Você deverá ver:
    - `TFRMaterialEdit`
+   - `TFRMaterialMaskEdit`
    - `TFRMaterialComboEdit`
    - `TFRMaterialCheckComboEdit`
    - `TFRMaterialDateEdit`
@@ -81,6 +83,7 @@ Se preferir não instalar na paleta do IDE, adicione o pacote como dependência 
 ```pascal
 uses
   FRMaterialEdit,
+  FRMaterialMaskEdit,
   FRMaterialComboEdit,
   FRMaterialCheckComboEdit,
   FRMaterialDateEdit;
@@ -276,9 +279,74 @@ FRMaterialDateEdit1.ShowClearButton := True;
 
 ---
 
+## TFRMaterialMaskEdit
+
+Campo de texto com máscara de entrada no estilo Material Design. Encapsula o `TMaskEdit` da LCL.
+
+### Propriedades específicas
+
+| Propriedade | Tipo | Padrão | Descrição |
+|---|---|---|---|
+| `EditMask` | `string` | `''` | Máscara de entrada no formato Delphi/Lazarus |
+| `MaskedText` | `string` | — | Texto **com** os literais da máscara (somente leitura) |
+| `Text` | `TCaption` | `''` | Texto **sem** os literais (somente os caracteres digitados) |
+
+As demais propriedades (`Caption`, `AccentColor`, `DisabledColor`, `Variant`, `BorderRadius`, `ShowClearButton`, `CharCase`, `MaxLength`, `AutoSelect`, `ReadOnly`, etc.) são idênticas às de `TFRMaterialEdit`.
+
+### Sintaxe da EditMask
+
+Formato: `<máscara>;<useLiteral>;<blankChar>`
+
+| Caractere | Significado |
+|---|---|
+| `0` | Dígito obrigatório (0–9) |
+| `9` | Dígito ou espaço (opcional) |
+| `#` | Dígito, espaço, `+` ou `-` (opcional) |
+| `L` | Letra obrigatória (A–Z, a–z) |
+| `?` | Letra opcional |
+| `A` | Letra ou dígito obrigatório |
+| `a` | Letra ou dígito opcional |
+| `C` | Qualquer caractere obrigatório |
+| `c` | Qualquer caractere opcional |
+| `>` | Força maiúsculas a partir daqui |
+| `<` | Força minúsculas a partir daqui |
+| `\` | Próximo caractere é literal |
+
+### Máscaras prontas (Brasil)
+
+| Dado | EditMask |
+|---|---|
+| Celular | `"(00) 00000-0000;0;_"` |
+| Telefone fixo | `"(00) 0000-0000;0;_"` |
+| CPF | `"000.000.000-00;0;_"` |
+| CNPJ | `"00.000.000/0000-00;0;_"` |
+| CEP | `"00000-000;0;_"` |
+| Data DD/MM/AAAA | `"00/00/0000;0;_"` |
+| Hora HH:MM:SS | `"00:00:00;0;_"` |
+| Placa Mercosul | `">LLL-0A000;0;_"` |
+
+### Exemplo
+
+```pascal
+uses FRMaterialMaskEdit;
+
+// CPF com máscara visual
+FRMaterialMaskEdit1.Caption      := 'CPF';
+FRMaterialMaskEdit1.EditMask     := '000.000.000-00;0;_';
+FRMaterialMaskEdit1.AccentColor  := RGBToColor(33, 150, 243);
+FRMaterialMaskEdit1.ShowClearButton := True;
+
+// Ler o valor sem a máscara (somente dígitos)
+ShowMessage(FRMaterialMaskEdit1.Text);        // ex.: "12345678901"
+// Ler o valor com a máscara formatada
+ShowMessage(FRMaterialMaskEdit1.MaskedText);  // ex.: "123.456.789-01"
+```
+
+---
+
 ## Comportamento comum
 
-Todos os quatro controles compartilham as mesmas convenções visuais:
+Todos os cinco controles compartilham as mesmas convenções visuais:
 
 - **Em repouso**: sublinhado cinza fino abaixo do campo.
 - **Com foco**: o sublinhado engrossa e assume a `AccentColor`; o label flutuante sobe para o topo e também fica em `AccentColor`.
