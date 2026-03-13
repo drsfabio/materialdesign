@@ -409,7 +409,7 @@ end;
 
 function TFRMaterialMaskEdit.GetMaskedText: string;
 begin
-  Result := FMaskEdit.GetMasked;
+  Result := FMaskEdit.EditText;
 end;
 
 function TFRMaterialMaskEdit.GetLabelCaption: TCaption;

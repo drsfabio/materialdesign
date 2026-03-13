@@ -37,7 +37,7 @@ interface
 uses
   FRMaterialTheme, Classes, Clipbrd, Controls, ExtCtrls, Forms, Graphics,
   {$IFDEF FPC} LCLType, LResources, {$ENDIF}
-  Menus, StdCtrls, SysUtils;
+  Math, Menus, StdCtrls, SysUtils;
 
 type
 
@@ -228,8 +228,8 @@ implementation
 procedure Register;
 begin
   {$IFDEF FPC}
-    { Descomente e adicione o ícone quando disponível:
-      {$I icons\frmaterialcurrencyedit_icon.lrs} }
+    // Descomente a linha abaixo para adicionar ícone ao componente:
+    // {$I icons\frmaterialcurrencyedit_icon.lrs}
   {$ENDIF}
   RegisterComponents('BGRA Controls', [TFRMaterialCurrencyEdit]);
 end;
@@ -305,7 +305,7 @@ end;
 
 procedure TFRMaterialCurrencyEdit.InternalKeyPress(Sender: TObject; var Key: Char);
 var
-  Changed: Boolean;
+  ValueChanged: Boolean;
   S: string;
   I: Integer;
   NewCents: Int64;
@@ -313,14 +313,14 @@ var
   SaveKey: Char;
 begin
   SaveKey := Key;
-  Changed := False;
+  ValueChanged := False;
 
   case Key of
     '0'..'9':
     begin
       FCents := FCents * 10 + (Ord(Key) - Ord('0'));
       Key    := #0;
-      Changed := True;
+      ValueChanged := True;
     end;
     #8: { Backspace }
     begin
@@ -328,7 +328,7 @@ begin
       begin
         FCents := FCents div 10;
         if FCents = 0 then FNegative := False;
-        Changed := True;
+        ValueChanged := True;
       end;
       Key := #0;
     end;
@@ -338,7 +338,7 @@ begin
       begin
         FNegative := not FNegative;
         if FCents = 0 then FNegative := False;
-        Changed := True;
+        ValueChanged := True;
       end;
       Key := #0;
     end;
@@ -357,7 +357,7 @@ begin
       FCents    := NewCents;
       FNegative := NewNeg and FAllowNegative and (NewCents > 0);
       Key       := #0;
-      Changed   := True;
+      ValueChanged := True;
     end;
     #1, #3: { Ctrl+A, Ctrl+C — passa para o TEdit }
     begin
@@ -367,7 +367,7 @@ begin
     Key := #0; { bloqueia qualquer outro caractere }
   end;
 
-  if Changed then
+  if ValueChanged then
   begin
     RefreshDisplay;
     UpdateClearButton;
@@ -384,11 +384,8 @@ end;
 { --- Value --- }
 
 function TFRMaterialCurrencyEdit.GetValue: Currency;
-var
-  Scale: Currency;
 begin
-  Scale  := Pow10(FDecimalPlaces);
-  Result := FCents / Scale;
+  Result := Extended(FCents) / Extended(Pow10(FDecimalPlaces));
   if FNegative then Result := -Result;
 end;
 

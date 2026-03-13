@@ -4,7 +4,7 @@ Componentes de entrada com estilo Material Design para Lazarus / Free Pascal, in
 
 ## Visão geral
 
-Este pacote fornece quatro controles de entrada no estilo Material Design que encapsulam widgets padrão da LCL, adicionando:
+Este pacote fornece seis controles de entrada no estilo Material Design que encapsulam widgets padrão da LCL, adicionando:
 
 - **Label flutuante** — o rótulo sobe acima do campo ao receber foco ou quando preenchido
 - **Sublinhado Material** — linha fina em repouso, linha dupla colorida com foco
@@ -30,7 +30,16 @@ Este pacote é um **fork** das units Material Design originalmente incluídas no
 
 Você pode instalar este pacote **ao mesmo tempo** que o BGRAControls sem nenhum conflito de nomes de unit.
 
-> **Migração do BCMaterial original (BGRAControls):** As classes foram renomeadas de `TBCMaterial*` para `TFRMaterial*`. Ao migrar, use Localizar/Substituir global no seu projeto: substitua `TBCMaterial` por `TFRMaterial` e atualize as cláusulas `uses` (`BCMaterialEdit` → `FRMaterialEdit`, `BCMaterialComboEdit` → `FRMaterialComboEdit`, etc.).
+> **Migração do BCMaterial original (BGRAControls):** As classes foram renomeadas de `TBCMaterial*` para `TFRMaterial*`. Ao migrar, use **Localizar/Substituir** global no projeto (substitua `TBCMaterial` por `TFRMaterial`) e atualize as cláusulas `uses` conforme a tabela abaixo:
+
+| Unit antiga (BCMaterial) | Unit nova (FRMaterial) | Classe antiga | Classe nova |
+|---|---|---|---|
+| `BCMaterialEdit` | `FRMaterialEdit` | `TBCMaterialEdit` | `TFRMaterialEdit` |
+| `BCMaterialComboEdit` | `FRMaterialComboEdit` | `TBCMaterialComboEdit` | `TFRMaterialComboEdit` |
+| `BCMaterialCheckComboEdit` | `FRMaterialCheckComboEdit` | `TBCMaterialCheckComboEdit` | `TFRMaterialCheckComboEdit` |
+| `BCMaterialDateEdit` | `FRMaterialDateEdit` | `TBCMaterialDateEdit` | `TFRMaterialDateEdit` |
+
+`TFRMaterialMaskEdit` e `TFRMaterialCurrencyEdit` são componentes novos, sem equivalente no pacote BCMaterial original.
 
 ---
 
@@ -65,7 +74,7 @@ Caso o BGRABitmapPack ainda não esteja disponível no seu IDE, instale-o primei
    O Lazarus pedirá confirmação para reconstruir o IDE — confirme com **Sim**.
 
 4. **Verificar**  
-   Após o IDE reiniciar, abra a **Paleta de Componentes** e procure pela aba **Material Design**.  
+   Após o IDE reiniciar, abra a **Paleta de Componentes** e procure pela aba **BGRA Controls**.  
    Você deverá ver:
    - `TFRMaterialEdit`
    - `TFRMaterialMaskEdit`
@@ -130,7 +139,15 @@ Campo de texto de uma linha com estilo Material Design.
 
 ### Eventos principais
 
-`OnChange`, `OnClick`, `OnEnter`, `OnExit`, `OnKeyDown`, `OnKeyPress`, `OnKeyUp`, `OnClearButtonClick`, `OnSearchButtonClick`, `OnEditingDone`, `OnUTF8KeyPress`
+| Evento | Descrição |
+|---|---|
+| `OnChange` | Disparado a cada alteração do texto |
+| `OnClick` | Clique no campo |
+| `OnEnter` / `OnExit` | Campo recebe / perde foco |
+| `OnKeyDown`, `OnKeyPress`, `OnKeyUp` | Eventos de teclado padrão |
+| `OnUTF8KeyPress` | Tecla pressionada (string UTF-8) |
+| `OnClearButtonClick` | Botão `×` foi clicado |
+| `OnEditingDone` | Edição confirmada (Enter ou perda de foco) |
 
 ### Exemplo
 
@@ -300,6 +317,18 @@ As demais propriedades (`Caption`, `AccentColor`, `DisabledColor`, `Variant`, `B
 
 Formato: `<máscara>;<useLiteral>;<blankChar>`
 
+| Parte | Valores | Significado |
+|---|---|---|
+| `<máscara>` | string | Padrão de entrada (ver tabela de caracteres abaixo) |
+| `<useLiteral>` | `0` ou `1` | `0` → `Text` retorna somente os dígitos/letras digitados; `1` → `Text` inclui os literais da máscara |
+| `<blankChar>` | qualquer char | Caractere exibido enquanto a posição ainda não foi preenchida (ex.: `_`) |
+
+> **`Text` vs `MaskedText`**  
+> - `Text` sempre retorna o conteúdo **sem** literais (somente os caracteres digitados), independente do `useLiteral`.  
+> - `MaskedText` sempre retorna o conteúdo **com** literais, útil para exibir ou persistir o valor já formatado.
+
+#### Caracteres especiais da máscara
+
 | Caractere | Significado |
 |---|---|
 | `0` | Dígito obrigatório (0–9) |
@@ -416,7 +445,7 @@ FRMaterialCurrencyEdit1.DecimalSeparator  := '.';
 
 ## Comportamento comum
 
-Todos os cinco controles compartilham as mesmas convenções visuais:
+Todos os seis controles compartilham as mesmas convenções visuais:
 
 - **Em repouso**: sublinhado cinza fino abaixo do campo.
 - **Com foco**: o sublinhado engrossa e assume a `AccentColor`; o label flutuante sobe para o topo e também fica em `AccentColor`.

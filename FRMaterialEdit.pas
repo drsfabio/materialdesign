@@ -6,7 +6,7 @@ interface
 
 uses
   FRMaterialTheme, Buttons, Classes, Controls, Dialogs, ExtCtrls, Forms, Graphics,
-  {$IFDEF FPC} LCLType, LResources, {$ENDIF} Menus, StdCtrls, SysUtils;
+  {$IFDEF FPC} LCLType, LResources, {$ENDIF} MaskEdit, Menus, StdCtrls, SysUtils;
 
 type
 
@@ -84,12 +84,9 @@ type
     function GetEditCharCase: TEditCharCase;
     function GetEditCursor: TCursor;
     function GetEditDoubleBuffered: Boolean;
-    function GetEditEchoMode: TEchoMode;
     function GetEditHideSelection: Boolean;
     function GetEditHint: TTranslateString;
     function GetEditMaxLength: Integer;
-    function GetEditNumbersOnly: Boolean;
-    function GetEditPasswordChar: Char;
     function GetEditParentColor: Boolean;
     function GetEditPopupMenu: TPopupMenu;
     function GetEditReadOnly: Boolean;
@@ -109,13 +106,10 @@ type
     procedure SetEditCharCase(AValue: TEditCharCase);
     procedure SetEditCursor(AValue: TCursor);
     procedure SetEditDoubleBuffered(AValue: Boolean);
-    procedure SetEditEchoMode(AValue: TEchoMode);
     procedure SetEditHideSelection(AValue: Boolean);
     procedure SetEditHint(const AValue: TTranslateString);
     procedure SetEditMaxLength(AValue: Integer);
-    procedure SetEditNumbersOnly(AValue: Boolean);
     procedure SetEditParentColor(AValue: Boolean);
-    procedure SetEditPasswordChar(AValue: Char);
     procedure SetEditPopupMenu(AValue: TPopupmenu);
     procedure SetEditReadOnly(AValue: Boolean);
     procedure SetEditShowHint(AValue: Boolean);
@@ -153,7 +147,6 @@ type
     property Cursor: TCursor read GetEditCursor write SetEditCursor default crDefault;
     property DisabledColor: TColor read FDisabledColor write FDisabledColor;
     property DoubleBuffered: Boolean read GetEditDoubleBuffered write SetEditDoubleBuffered;
-    property EchoMode: TEchoMode read GetEditEchoMode write SetEditEchoMode default emNormal;
     property EditLabel: TBoundLabel read FLabel;
     property Enabled;
     property Font;
@@ -161,11 +154,9 @@ type
     property Hint: TTranslateString read GetEditHint write SetEditHint;
     property LabelSpacing: Integer read GetLabelSpacing write SetLabelSpacing default 4;
     property MaxLength: Integer read GetEditMaxLength write SetEditMaxLength default 0;
-    property NumbersOnly: Boolean read GetEditNumbersOnly write SetEditNumbersOnly default False;
     property ParentBiDiMode;
     property ParentColor default False;
     property ParentFont default False;
-    property PasswordChar: Char read GetEditPasswordChar write SetEditPasswordChar default #0;
     property PopupMenu: TPopupmenu read GetEditPopupMenu write SetEditPopupMenu;
     property ReadOnly: Boolean read GetEditReadOnly write SetEditReadOnly default False;
     { Quando True, exibe um botão "×" à direita do campo ao digitar texto }
@@ -209,12 +200,14 @@ type
 
   { TFRMaterialEdit }
 
-  TFRMaterialEdit = class(specialize TFRMaterialEditBase<TEdit>)
+  TFRMaterialEdit = class(specialize TFRMaterialEditBase<TMaskEdit>)
   private
+    function GetEditMask: string;
+    procedure SetEditMask(const AValue: string);
+    function GetMaskedText: string;
     function GetEditDragCursor: TCursor;
     function GetEditDragMode: TDragMode;
 
-    function GetOnEditContextPopup: TContextPopupEvent;
     function GetOnEditDblClick: TNotifyEvent;
     function GetOnEditDragDrop: TDragDropEvent;
     function GetOnEditDragOver: TDragOverEvent;
@@ -224,7 +217,6 @@ type
     procedure SetEditDragCursor(AValue: TCursor);
     procedure SetEditDragMode(AValue: TDragMode);
 
-    procedure SetOnEditContextPopup(AValue: TContextPopupEvent);
     procedure SetOnEditDblClick(AValue: TNotifyEvent);
     procedure SetOnEditDragDrop(AValue: TDragDropEvent);
     procedure SetOnEditDragOver(AValue: TDragOverEvent);
@@ -249,19 +241,18 @@ type
     property DragCursor: TCursor read GetEditDragCursor write SetEditDragCursor default crDrag;
     property DragMode: TDragMode read GetEditDragMode write SetEditDragMode default dmManual;
     property Font;
-    property EchoMode;
-    property Edit: TEdit read FEdit;
+    property Edit: TMaskEdit read FEdit;
     property EditLabel;
+    property EditMask: string read GetEditMask write SetEditMask;
     property Enabled;
     property HideSelection;
     property Hint;
     property LabelSpacing;
     property MaxLength;
-    property NumbersOnly;
+    property MaskedText: string read GetMaskedText;
     property ParentBiDiMode;
     property ParentColor;
     property ParentFont;
-    property PasswordChar;
     property PopupMenu;
     property ReadOnly;
     property ShowClearButton;
@@ -281,7 +272,6 @@ type
     property OnClearButtonClick;
     property OnSearchButtonClick: TNotifyEvent read FOnSearchButtonClick write FOnSearchButtonClick;
     property OnClick;
-    property OnContextPopup;
     property OnDbClick: TNotifyEvent read GetOnEditDblClick write SetOnEditDblClick;
     property OnDragDrop: TDragDropEvent read GetOnEditDragDrop write SetOnEditDragDrop;
     property OnDragOver: TDragOverEvent read GetOnEditDragOver write SetOnEditDragOver;
@@ -463,11 +453,6 @@ begin
   result := FEdit.DoubleBuffered;
 end;
 
-function TFRMaterialEditBase.GetEditEchoMode: TEchoMode;
-begin
-  result := FEdit.EchoMode;
-end;
-
 function TFRMaterialEditBase.GetEditHideSelection: Boolean;
 begin
   result := FEdit.HideSelection;
@@ -481,16 +466,6 @@ end;
 function TFRMaterialEditBase.GetEditMaxLength: Integer;
 begin
   result := FEdit.MaxLength;
-end;
-
-function TFRMaterialEditBase.GetEditNumbersOnly: Boolean;
-begin
-  result := FEdit.NumbersOnly;
-end;
-
-function TFRMaterialEditBase.GetEditPasswordChar: Char;
-begin
-  result := FEdit.PasswordChar;
 end;
 
 function TFRMaterialEditBase.GetEditParentColor: Boolean;
@@ -773,11 +748,6 @@ begin
   FEdit.DoubleBuffered := AValue;
 end;
 
-procedure TFRMaterialEditBase.SetEditEchoMode(AValue: TEchoMode);
-begin
-  FEdit.EchoMode := AValue;
-end;
-
 procedure TFRMaterialEditBase.SetEditHideSelection(AValue: Boolean);
 begin
   FEdit.HideSelection := AValue;
@@ -793,20 +763,10 @@ begin
   FEdit.MaxLength := AValue;
 end;
 
-procedure TFRMaterialEditBase.SetEditNumbersOnly(AValue: Boolean);
-begin
-  FEdit.NumbersOnly := AValue;
-end;
-
 procedure TFRMaterialEditBase.SetEditParentColor(AValue: Boolean);
 begin
   FEdit.ParentColor := AValue;
   FLabel.ParentColor := AValue;
-end;
-
-procedure TFRMaterialEditBase.SetEditPasswordChar(AValue: Char);
-begin
-  FEdit.PasswordChar := AValue;
 end;
 
 procedure TFRMaterialEditBase.SetEditTabStop(AValue: Boolean);
@@ -1106,11 +1066,6 @@ begin
   result := FEdit.DragMode;
 end;
 
-function TFRMaterialEdit.GetOnEditContextPopup: TContextPopupEvent;
-begin
-  result := FEdit.OnContextPopup;
-end;
-
 function TFRMaterialEdit.GetOnEditDblClick: TNotifyEvent;
 begin
   result := FEdit.OnDblClick;
@@ -1146,11 +1101,6 @@ begin
   FEdit.DragMode := AValue;
 end;
 
-procedure TFRMaterialEdit.SetOnEditContextPopup(AValue: TContextPopupEvent);
-begin
-  FEdit.OnContextPopup := AValue;
-end;
-
 procedure TFRMaterialEdit.SetOnEditDblClick(AValue: TNotifyEvent);
 begin
   FEdit.OnDblClick := AValue;
@@ -1174,6 +1124,24 @@ end;
 procedure TFRMaterialEdit.SetOnEditStartDrag(AValue: TStartDragEvent);
 begin
   FEdit.OnStartDrag := AValue;
+end;
+
+{ --- EditMask / MaskedText --- }
+
+function TFRMaterialEdit.GetEditMask: string;
+begin
+  Result := FEdit.EditMask;
+end;
+
+procedure TFRMaterialEdit.SetEditMask(const AValue: string);
+begin
+  FEdit.EditMask := AValue;
+end;
+
+function TFRMaterialEdit.GetMaskedText: string;
+begin
+  { EditText retorna o texto COM os literais da máscara }
+  Result := FEdit.EditText;
 end;
 
 end.
