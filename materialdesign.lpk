@@ -12,7 +12,7 @@
         <UnitName Value="BCMaterialTheme"/>
       </Item1>
       <Item2>
-        <Filename Value="bcmaterialedit.pas"/>
+        <Filename Value="BCMaterialEdit.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="BCMaterialEdit"/>
       </Item2>
