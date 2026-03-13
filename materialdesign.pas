@@ -8,7 +8,7 @@ unit materialdesign;
 interface
 
 uses
-  BCMaterialEdit, BCMaterialDateEdit, BCMaterialComboEdit, 
+  BCMaterialTheme, BCMaterialEdit, BCMaterialDateEdit, BCMaterialComboEdit, 
   BCMaterialCheckComboEdit;
 
 implementation

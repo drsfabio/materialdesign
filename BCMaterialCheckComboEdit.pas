@@ -18,7 +18,7 @@ unit BCMaterialCheckComboEdit;
 interface
 
 uses
-  Classes, Controls, ExtCtrls, Forms, Graphics, Math,
+  BCMaterialTheme, Classes, Controls, ExtCtrls, Forms, Graphics, Math,
   {$IFDEF FPC} LCLType, LResources, {$ENDIF}
   Menus, StdCtrls, CheckLst, SysUtils;
 
@@ -48,6 +48,8 @@ type
     FDropButton: TButton;
     FDropDown: TCheckComboDropDown;
     FFocused: Boolean;
+    FVariant: TBCMaterialVariant;
+    FBorderRadius: Integer;
     FItems: TStrings;
     FDisplayFormat: TCheckComboDisplayFormat;
     FEmptyText: string;
@@ -134,6 +136,10 @@ type
     property Constraints;
     property Cursor: TCursor read GetEditCursor write SetEditCursor default crDefault;
     property DisabledColor: TColor read FDisabledColor write FDisabledColor;
+    { Variante visual: sublinhado (mvStandard), preenchido (mvFilled) ou contornado (mvOutlined) }
+    property Variant: TBCMaterialVariant read FVariant write FVariant default mvStandard;
+    { Raio dos cantos arredondados em pixels; 0 = cantos retos }
+    property BorderRadius: Integer read FBorderRadius write FBorderRadius default 0;
     { Como o campo exibe os itens selecionados }
     property DisplayFormat: TCheckComboDisplayFormat
       read GetDisplayFormat write SetDisplayFormat default cdfCommaSeparated;
@@ -670,12 +676,16 @@ end;
 
 procedure TBCMaterialCheckComboEdit.Paint;
 var
-  LeftPos, RightPos: Integer;
+  LeftPos, RightPos, FieldTop, CR: Integer;
+  DecoColor: TColor;
 begin
   inherited Paint;
-  Canvas.Brush.Color := Color;
-  Canvas.Pen.Color := Color;
-  Canvas.Rectangle(0, 0, Width, Height);
+
+  CR := FBorderRadius * 2;
+  if FFocused and Self.Enabled then
+    DecoColor := AccentColor
+  else
+    DecoColor := DisabledColor;
 
   if Assigned(Parent) and (Parent.Color = Color) then
   begin
@@ -687,17 +697,49 @@ begin
     RightPos := Width;
   end;
 
-  if FFocused and Self.Enabled then
-  begin
-    Canvas.Pen.Color  := AccentColor;
-    Canvas.Line(LeftPos, Height - 2, RightPos, Height - 2);
-    Canvas.Line(LeftPos, Height - 1, RightPos, Height - 1);
-    FLabel.Font.Color := AccentColor;
-  end else
-  begin
-    Canvas.Pen.Color  := DisabledColor;
-    Canvas.Line(LeftPos, Height - 1, RightPos, Height - 1);
-    FLabel.Font.Color := DisabledColor;
+  FieldTop := FDisplayEdit.Top - 2;
+  if FieldTop < 0 then FieldTop := 0;
+
+  Canvas.Pen.Width   := 1;
+  Canvas.Pen.Color   := Color;
+  Canvas.Brush.Color := Color;
+  case FVariant of
+    mvFilled:
+      if CR > 0 then
+        Canvas.RoundRect(0, 0, Width, Height, CR, CR)
+      else
+        Canvas.Rectangle(0, 0, Width, Height);
+  else
+    Canvas.Rectangle(0, 0, Width, Height);
+  end;
+
+  Canvas.Pen.Color  := DecoColor;
+  FLabel.Font.Color := DecoColor;
+
+  case FVariant of
+    mvStandard, mvFilled:
+    begin
+      if FFocused and Self.Enabled then
+      begin
+        Canvas.Line(LeftPos, Height - 2, RightPos, Height - 2);
+        Canvas.Line(LeftPos, Height - 1, RightPos, Height - 1);
+      end else
+        Canvas.Line(LeftPos, Height - 1, RightPos, Height - 1);
+    end;
+    mvOutlined:
+    begin
+      Canvas.Brush.Style := bsClear;
+      if FFocused and Self.Enabled then
+        Canvas.Pen.Width := 2
+      else
+        Canvas.Pen.Width := 1;
+      if CR > 0 then
+        Canvas.RoundRect(LeftPos, FieldTop, RightPos, Height - 1, CR, CR)
+      else
+        Canvas.Rectangle(LeftPos, FieldTop, RightPos, Height - 1);
+      Canvas.Pen.Width   := 1;
+      Canvas.Brush.Style := bsSolid;
+    end;
   end;
 end;
 
@@ -769,6 +811,9 @@ begin
   FDisplayFormat := cdfCommaSeparated;
   FDropDownCount := 8;
   FEmptyText     := '';
+
+  FVariant      := mvStandard;
+  FBorderRadius := 0;
 
   UpdateDisplayText;
 end;

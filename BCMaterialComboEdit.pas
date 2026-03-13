@@ -18,7 +18,7 @@ unit BCMaterialComboEdit;
 interface
 
 uses
-  Classes, Controls, ExtCtrls, Forms, Graphics,
+  BCMaterialTheme, Classes, Controls, ExtCtrls, Forms, Graphics,
   {$IFDEF FPC} LCLType, LResources, {$ENDIF}
   Menus, StdCtrls, SysUtils;
 
@@ -33,6 +33,8 @@ type
     FLabel: TBoundLabel;
     FCombo: TComboBox;
     FFocused: Boolean;
+    FVariant: TBCMaterialVariant;
+    FBorderRadius: Integer;
     { Armazena OnChange do usuário — FCombo.OnChange é reservado internamente }
     FUserOnChange: TNotifyEvent;
 
@@ -161,6 +163,10 @@ type
     property Constraints;
     property Cursor: TCursor read GetEditCursor write SetEditCursor default crDefault;
     property DisabledColor: TColor read FDisabledColor write FDisabledColor;
+    { Variante visual: sublinhado (mvStandard), preenchido (mvFilled) ou contornado (mvOutlined) }
+    property Variant: TBCMaterialVariant read FVariant write FVariant default mvStandard;
+    { Raio dos cantos arredondados em pixels; 0 = cantos retos }
+    property BorderRadius: Integer read FBorderRadius write FBorderRadius default 0;
     { Número de linhas visíveis no dropdown }
     property DropDownCount: Integer
       read GetDropDownCount write SetDropDownCount default 8;
@@ -741,34 +747,70 @@ end;
 
 procedure TBCMaterialComboEdit.Paint;
 var
-  LeftPos, RightPos: Integer;
+  LeftPos, RightPos, FieldTop, CR: Integer;
+  DecoColor: TColor;
 begin
   inherited Paint;
-  Canvas.Brush.Color := Color;
-  Canvas.Pen.Color := Color;
-  Canvas.Rectangle(0, 0, Width, Height);
+
+  CR := FBorderRadius * 2;
+  if FFocused and Self.Enabled then
+    DecoColor := AccentColor
+  else
+    DecoColor := DisabledColor;
 
   if Assigned(Parent) and (Parent.Color = Color) then
   begin
-    LeftPos := FCombo.Left;
+    LeftPos  := FCombo.Left;
     RightPos := FCombo.Left + FCombo.Width;
   end else
   begin
-    LeftPos := 0;
+    LeftPos  := 0;
     RightPos := Width;
   end;
 
-  if FFocused and Self.Enabled then
-  begin
-    Canvas.Pen.Color := AccentColor;
-    Canvas.Line(LeftPos, Height - 2, RightPos, Height - 2);
-    Canvas.Line(LeftPos, Height - 1, RightPos, Height - 1);
-    FLabel.Font.Color := AccentColor;
-  end else
-  begin
-    Canvas.Pen.Color := DisabledColor;
-    Canvas.Line(LeftPos, Height - 1, RightPos, Height - 1);
-    FLabel.Font.Color := DisabledColor;
+  FieldTop := FCombo.Top - 2;
+  if FieldTop < 0 then FieldTop := 0;
+
+  Canvas.Pen.Width   := 1;
+  Canvas.Pen.Color   := Color;
+  Canvas.Brush.Color := Color;
+  case FVariant of
+    mvFilled:
+      if CR > 0 then
+        Canvas.RoundRect(0, 0, Width, Height, CR, CR)
+      else
+        Canvas.Rectangle(0, 0, Width, Height);
+  else
+    Canvas.Rectangle(0, 0, Width, Height);
+  end;
+
+  Canvas.Pen.Color  := DecoColor;
+  FLabel.Font.Color := DecoColor;
+
+  case FVariant of
+    mvStandard, mvFilled:
+    begin
+      if FFocused and Self.Enabled then
+      begin
+        Canvas.Line(LeftPos, Height - 2, RightPos, Height - 2);
+        Canvas.Line(LeftPos, Height - 1, RightPos, Height - 1);
+      end else
+        Canvas.Line(LeftPos, Height - 1, RightPos, Height - 1);
+    end;
+    mvOutlined:
+    begin
+      Canvas.Brush.Style := bsClear;
+      if FFocused and Self.Enabled then
+        Canvas.Pen.Width := 2
+      else
+        Canvas.Pen.Width := 1;
+      if CR > 0 then
+        Canvas.RoundRect(LeftPos, FieldTop, RightPos, Height - 1, CR, CR)
+      else
+        Canvas.Rectangle(LeftPos, FieldTop, RightPos, Height - 1);
+      Canvas.Pen.Width   := 1;
+      Canvas.Brush.Style := bsSolid;
+    end;
   end;
 end;
 
@@ -817,6 +859,9 @@ begin
 
   { Intercepta OnChange para não sobrescrever o handler do usuário }
   FCombo.OnChange := @InternalComboChange;
+
+  FVariant      := mvStandard;
+  FBorderRadius := 0;
 end;
 
 end.

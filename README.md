@@ -9,6 +9,8 @@ Este pacote fornece quatro controles de entrada no estilo Material Design que en
 - **Label flutuante** — o rótulo sobe acima do campo ao receber foco ou quando preenchido
 - **Sublinhado Material** — linha fina em repouso, linha dupla colorida com foco
 - **AccentColor** — cor personalizável usada no sublinhado e no label com foco
+- **Variant** — três estilos visuais: `mvStandard`, `mvFilled`, `mvOutlined`
+- **BorderRadius** — cantos arredondados configuráveis
 - **API consistente** — todos os controles seguem as mesmas convenções visuais
 
 | Componente | Encapsula | Uso |
@@ -116,6 +118,9 @@ Campo de texto de uma linha com estilo Material Design.
 | `AccentColor` | `TColor` | — | Cor do sublinhado e do label com foco |
 | `DisabledColor` | `TColor` | — | Cor do sublinhado quando desabilitado |
 | `ShowClearButton` | `Boolean` | `False` | Exibe botão `×` quando o campo tem texto |
+| `ShowSearchButton` | `Boolean` | `False` | Exibe botão com ícone de lupa à direita do campo |
+| `Variant` | `TBCMaterialVariant` | `mvStandard` | Estilo visual do campo (ver tabela abaixo) |
+| `BorderRadius` | `Integer` | `0` | Raio dos cantos arredondados em pixels |
 | `ReadOnly` | `Boolean` | `False` | Impede edição pelo usuário |
 | `MaxLength` | `Integer` | `0` | Máximo de caracteres (0 = ilimitado) |
 | `EchoMode` | `TEchoMode` | `emNormal` | Use `emPassword` para campos de senha |
@@ -126,10 +131,11 @@ Campo de texto de uma linha com estilo Material Design.
 | `LabelSpacing` | `Integer` | `4` | Pixels entre o label e o campo |
 | `EditLabel` | `TBoundLabel` | — | Acesso direto ao label interno |
 | `ClearButton` | `TButton` | — | Acesso direto ao botão de limpeza (somente leitura) |
+| `SearchButton` | `TBitBtn` | — | Acesso direto ao botão de pesquisa (somente leitura) |
 
 ### Eventos principais
 
-`OnChange`, `OnClick`, `OnEnter`, `OnExit`, `OnKeyDown`, `OnKeyPress`, `OnKeyUp`, `OnClearButtonClick`, `OnEditingDone`, `OnUTF8KeyPress`
+`OnChange`, `OnClick`, `OnEnter`, `OnExit`, `OnKeyDown`, `OnKeyPress`, `OnKeyUp`, `OnClearButtonClick`, `OnSearchButtonClick`, `OnEditingDone`, `OnUTF8KeyPress`
 
 ### Exemplo
 
@@ -137,7 +143,8 @@ Campo de texto de uma linha com estilo Material Design.
 BCMaterialEdit1.Caption         := 'E-mail';
 BCMaterialEdit1.TextHint        := 'usuario@exemplo.com';
 BCMaterialEdit1.AccentColor     := RGBToColor(33, 150, 243);
-BCMaterialEdit1.ShowClearButton := True;
+BCMaterialEdit1.ShowClearButton  := True;
+BCMaterialEdit1.ShowSearchButton := True;
 ```
 
 ---
@@ -157,8 +164,9 @@ Seletor do tipo lista suspensa com estilo Material Design. Equivalente ao `<sele
 | `Style` | `TComboBoxStyle` | `csDropDown` | `csDropDown` (editável) ou `csDropDownList` (somente seleção) |
 | `AccentColor` | `TColor` | — | Cor do sublinhado e do label com foco |
 | `DisabledColor` | `TColor` | — | Cor do sublinhado quando desabilitado |
+| `Variant` | `TBCMaterialVariant` | `mvStandard` | Estilo visual do campo |
+| `BorderRadius` | `Integer` | `0` | Raio dos cantos arredondados em pixels |
 | `Sorted` | `Boolean` | `False` | Ordenar itens alfabeticamente |
-| `AutoComplete` | `Boolean` | `True` | Autocompletar enquanto digita |
 | `DropDownCount` | `Integer` | — | Número de linhas visíveis na lista |
 | `MaxLength` | `Integer` | `0` | Máximo de caracteres no modo editável |
 | `ReadOnly` | `Boolean` | `False` | Desabilitar edição no modo `csDropDown` |
@@ -203,6 +211,8 @@ Campo de seleção múltipla que abre um painel flutuante com `TCheckListBox`. E
 | `EmptyText` | `string` | `''` | Texto exibido quando nada está selecionado |
 | `AccentColor` | `TColor` | — | Cor do sublinhado e do label com foco |
 | `DisabledColor` | `TColor` | — | Cor do sublinhado quando desabilitado |
+| `Variant` | `TBCMaterialVariant` | `mvStandard` | Estilo visual do campo |
+| `BorderRadius` | `Integer` | `0` | Raio dos cantos arredondados em pixels |
 | `DropDownCount` | `Integer` | — | Máximo de linhas visíveis no painel flutuante |
 | `Sorted` | `Boolean` | `False` | Ordenar itens alfabeticamente |
 | `LabelSpacing` | `Integer` | `4` | Pixels entre o label e o campo |
@@ -246,6 +256,8 @@ Seletor de data com label flutuante e sublinhado Material Design. Encapsula o `T
 | `CalendarDisplaySettings` | `TDisplaySettings` | — | Controla os elementos visíveis do calendário popup |
 | `AccentColor` | `TColor` | — | Cor do sublinhado e do label com foco |
 | `DisabledColor` | `TColor` | — | Cor do sublinhado quando desabilitado |
+| `Variant` | `TBCMaterialVariant` | `mvStandard` | Estilo visual do campo |
+| `BorderRadius` | `Integer` | `0` | Raio dos cantos arredondados em pixels |
 | `ShowClearButton` | `Boolean` | `False` | Exibe botão `×` para limpar a data |
 | `ReadOnly` | `Boolean` | `False` | Impede edição pelo usuário |
 | `LabelSpacing` | `Integer` | `4` | Pixels entre o label e o campo |
@@ -283,6 +295,67 @@ Todos os quatro controles compartilham as mesmas convenções visuais:
 - **Com foco**: o sublinhado engrossa e assume a `AccentColor`; o label flutuante sobe para o topo e também fica em `AccentColor`.
 - **Desabilitado**: o sublinhado usa a `DisabledColor`.
 - A classe base `TBCMaterialEditBase<T>` é genérica; `T` é o controle LCL encapsulado.
+
+### Variant — três estilos visuais
+
+A propriedade `Variant: TBCMaterialVariant` está disponível em todos os quatro componentes.
+
+| Valor | Visual | Sublinhado | Borda |
+|---|---|---|---|
+| `mvStandard` | Campo plano, fundo da janela | Sim | Não |
+| `mvFilled` | Campo preenchido com `Color` | Sim | Não |
+| `mvOutlined` | Campo contornado | Não | Sim (arredondada) |
+
+Juntos com `BorderRadius: Integer` (raio em pixels), permitem várias combinações:
+
+```pascal
+{ Campo outlined com cantos arredondados (estilo Material 3) }
+BCMaterialEdit1.Variant      := mvOutlined;
+BCMaterialEdit1.BorderRadius := 4;
+
+{ Campo preenchido com fundo claro e cantos arredondados }
+BCMaterialEdit1.Variant      := mvFilled;
+BCMaterialEdit1.Color        := $00F5F5F5;
+BCMaterialEdit1.BorderRadius := 4;
+```
+
+---
+
+## BCMaterialTheme — utilitários de contraste (WCAG 2.1)
+
+A unit `BCMaterialTheme` exporta funções de acessibilidade de cor baseadas na especificação
+[WCAG 2.1](https://www.w3.org/TR/WCAG21/#contrast-minimum):
+
+```pascal
+uses BCMaterialTheme;
+```
+
+| Função | Retorno | Descrição |
+|---|---|---|
+| `MCLuminance(AColor)` | `Single` (0..1) | Luminância relativa de uma cor |
+| `MCContrastRatio(AFg, ABg)` | `Single` (1..21) | Razão de contraste WCAG entre duas cores |
+| `MCContrastText(ABg)` | `clBlack` ou `clWhite` | Melhor cor de texto sobre `ABg` |
+
+### Exemplo — cor de label com contraste automático
+
+```pascal
+{ Garante que o label seja legível independentemente do fundo do componente }
+BCMaterialEdit1.Color := RGBToColor(30, 30, 30);   { fundo escuro }
+BCMaterialEdit1.Font.Color := MCContrastText(BCMaterialEdit1.Color);
+{ MCContrastText retorna clWhite para fundos escuros, clBlack para fundos claros }
+```
+
+### Verificar conformidade WCAG
+
+```pascal
+var
+  Ratio: Single;
+begin
+  Ratio := MCContrastRatio(clBlack, BCMaterialEdit1.Color);
+  if Ratio < 4.5 then
+    ShowMessage('Contraste insuficiente para texto normal (WCAG AA)');
+end;
+```
 
 ---
 

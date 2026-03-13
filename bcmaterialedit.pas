@@ -5,8 +5,8 @@ unit BCMaterialEdit;
 interface
 
 uses
-  Classes, Controls, Dialogs, ExtCtrls, Forms, Graphics, {$IFDEF FPC} LCLType,
-  LResources, {$ENDIF} Menus, StdCtrls, SysUtils;
+  BCMaterialTheme, Buttons, Classes, Controls, Dialogs, ExtCtrls, Forms, Graphics,
+  {$IFDEF FPC} LCLType, LResources, {$ENDIF} Menus, StdCtrls, SysUtils;
 
 type
 
@@ -21,6 +21,11 @@ type
     FClearButton: TButton;
     FShowClearButton: Boolean;
     FOnClearButtonClick: TNotifyEvent;
+    FSearchButton: TBitBtn;
+    FShowSearchButton: Boolean;
+    FOnSearchButtonClick: TNotifyEvent;
+    FVariant: TBCMaterialVariant;
+    FBorderRadius: Integer;
 
     function IsNeededAdjustSize: boolean;
 
@@ -29,6 +34,11 @@ type
     procedure ClearButtonClick(Sender: TObject);
     procedure InternalEditChange(Sender: TObject);
     procedure UpdateClearButton;
+    procedure UpdateRightButtonSpacing;
+    function GetShowSearchButton: Boolean;
+    procedure SetShowSearchButton(AValue: Boolean);
+    procedure SearchButtonClick(Sender: TObject);
+    procedure DrawSearchIcon(AColor: TColor);
 
     function GetOnEditChange: TNotifyEvent;
     function GetOnEditClick: TNotifyEvent;
@@ -125,6 +135,8 @@ type
     constructor Create(AOwner: TComponent); override;
     { Expõe o botão de limpeza para customização visual (caption, hint, font, etc.) }
     property ClearButton: TButton read FClearButton;
+    { Expõe o botão de pesquisa para customização visual (hint, glyph, etc.) }
+    property SearchButton: TBitBtn read FSearchButton;
   published
     property Align;
     property Alignment: TAlignment read GetEditAlignment write SetEditAlignment default taLeftJustify;
@@ -158,6 +170,12 @@ type
     property ReadOnly: Boolean read GetEditReadOnly write SetEditReadOnly default False;
     { Quando True, exibe um botão "×" à direita do campo ao digitar texto }
     property ShowClearButton: Boolean read GetShowClearButton write SetShowClearButton default False;
+    { Quando True, exibe um botão com ícone de lupa à direita do campo }
+    property ShowSearchButton: Boolean read GetShowSearchButton write SetShowSearchButton default False;
+    { Variante visual: sublinhado (mvStandard), preenchido (mvFilled) ou contornado (mvOutlined) }
+    property Variant: TBCMaterialVariant read FVariant write FVariant default mvStandard;
+    { Raio dos cantos arredondados em pixels; 0 = cantos retos }
+    property BorderRadius: Integer read FBorderRadius write FBorderRadius default 0;
     property ShowHint: Boolean read GetEditShowHint write SetEditShowHint default False;
     property Tag: PtrInt read GetEditTag write SetEditTag default 0;
     property TabOrder;
@@ -247,6 +265,9 @@ type
     property PopupMenu;
     property ReadOnly;
     property ShowClearButton;
+    property ShowSearchButton: Boolean read GetShowSearchButton write SetShowSearchButton default False;
+    property Variant;
+    property BorderRadius;
     property ShowHint;
     property Tag;
     property TabOrder;
@@ -258,6 +279,7 @@ type
     property OnChange;
     property OnChangeBounds;
     property OnClearButtonClick;
+    property OnSearchButtonClick: TNotifyEvent read FOnSearchButtonClick write FOnSearchButtonClick;
     property OnClick;
     property OnContextPopup;
     property OnDbClick: TNotifyEvent read GetOnEditDblClick write SetOnEditDblClick;
@@ -324,6 +346,22 @@ begin
   UpdateClearButton;
 end;
 
+procedure TBCMaterialEditBase.UpdateRightButtonSpacing;
+var
+  RightSpacing: Integer;
+begin
+  RightSpacing := 4;
+  if Assigned(FClearButton) and FClearButton.Visible then
+    Inc(RightSpacing, FClearButton.Width);
+  if Assigned(FSearchButton) and FSearchButton.Visible then
+  begin
+    if Assigned(FClearButton) and FClearButton.Visible then
+      Inc(RightSpacing, 2);
+    Inc(RightSpacing, FSearchButton.Width);
+  end;
+  FEdit.BorderSpacing.Right := RightSpacing;
+end;
+
 procedure TBCMaterialEditBase.UpdateClearButton;
 var
   ShouldShow: Boolean;
@@ -334,14 +372,63 @@ begin
   DisableAlign;
   try
     FClearButton.Visible := ShouldShow;
-    if ShouldShow then
-      FEdit.BorderSpacing.Right := FClearButton.Width + 4
-    else
-      FEdit.BorderSpacing.Right := 4;
+    UpdateRightButtonSpacing;
   finally
     EnableAlign;
   end;
   Invalidate;
+end;
+
+{ --- Botão de pesquisa --- }
+
+function TBCMaterialEditBase.GetShowSearchButton: Boolean;
+begin
+  Result := FShowSearchButton;
+end;
+
+procedure TBCMaterialEditBase.SetShowSearchButton(AValue: Boolean);
+begin
+  if FShowSearchButton = AValue then Exit;
+  FShowSearchButton := AValue;
+  DisableAlign;
+  try
+    FSearchButton.Visible := FShowSearchButton;
+    UpdateRightButtonSpacing;
+  finally
+    EnableAlign;
+  end;
+  Invalidate;
+end;
+
+procedure TBCMaterialEditBase.SearchButtonClick(Sender: TObject);
+begin
+  if Assigned(FOnSearchButtonClick) then
+    FOnSearchButtonClick(Self);
+end;
+
+procedure TBCMaterialEditBase.DrawSearchIcon(AColor: TColor);
+{ Desenha uma lupa 14×14 px no glyph do botão de pesquisa na cor AColor }
+var
+  Bmp: TBitmap;
+begin
+  Bmp := TBitmap.Create;
+  try
+    Bmp.Width  := 14;
+    Bmp.Height := 14;
+    { Fundo transparente: TBitBtn usa o pixel inferior-esquerdo como máscara }
+    Bmp.Canvas.Brush.Color := clFuchsia;
+    Bmp.Canvas.FillRect(Rect(0, 0, 14, 14));
+    Bmp.Canvas.Pen.Color  := AColor;
+    Bmp.Canvas.Pen.Width  := 2;
+    Bmp.Canvas.Brush.Style := bsClear;
+    Bmp.Canvas.Ellipse(1, 1, 10, 10);   { círculo da lente }
+    Bmp.Canvas.MoveTo(8, 8);
+    Bmp.Canvas.LineTo(13, 13);           { cabo da lupa }
+    Bmp.Canvas.Pen.Width := 1;
+    FSearchButton.Glyph.Assign(Bmp);
+  finally
+    Bmp.Free;
+  end;
 end;
 
 { --- Getters de propriedades do Edit --- }
@@ -806,6 +893,7 @@ end;
 procedure TBCMaterialEditBase.DoOnResize;
 var
   AutoSizedHeight: longint;
+  BtnLeft: Integer;
 begin
   if IsNeededAdjustSize then
   begin
@@ -827,13 +915,22 @@ begin
     FEdit.Align := alClient;
   end;
 
-  { Posiciona o botão de limpeza à direita do campo de edição }
+  { Posiciona os botões de ação à direita do campo de edição }
+  BtnLeft := FEdit.Left + FEdit.Width + 2;
   if Assigned(FClearButton) and FClearButton.Visible then
   begin
     FClearButton.Height := FEdit.Height - 2;
-    FClearButton.Left   := FEdit.Left + FEdit.Width + 2;
+    FClearButton.Left   := BtnLeft;
     FClearButton.Top    := FEdit.Top + (FEdit.Height - FClearButton.Height) div 2;
     FClearButton.BringToFront;
+    Inc(BtnLeft, FClearButton.Width + 2);
+  end;
+  if Assigned(FSearchButton) and FSearchButton.Visible then
+  begin
+    FSearchButton.Height := FEdit.Height - 2;
+    FSearchButton.Left   := BtnLeft;
+    FSearchButton.Top    := FEdit.Top + (FEdit.Height - FSearchButton.Height) div 2;
+    FSearchButton.BringToFront;
   end;
 
   inherited DoOnResize;
@@ -841,38 +938,83 @@ end;
 
 procedure TBCMaterialEditBase.Paint;
 var
-  LeftPos, RightPos: integer;
+  LeftPos, RightPos, FieldTop, CR: Integer;
+  DecoColor: TColor;
 begin
   inherited Paint;
-  Canvas.Brush.Color := Color;
-  Canvas.Pen.Color := Color;
-  Canvas.Rectangle(0, 0, Width, Height);
 
+  CR := FBorderRadius * 2;
+  if FFocused and Self.Enabled then
+    DecoColor := AccentColor
+  else
+    DecoColor := DisabledColor;
+
+  { Extensão horizontal do sublinhado/borda }
   if Assigned(Parent) and (Parent.Color = Color) then
   begin
     LeftPos := FEdit.Left;
-    { Estende o sublinhado até cobrir a área do botão de limpeza quando visível }
-    if FClearButton.Visible then
+    { Estende até cobrir a área dos botões de ação quando visíveis }
+    if FSearchButton.Visible then
+      RightPos := FSearchButton.Left + FSearchButton.Width
+    else if FClearButton.Visible then
       RightPos := FClearButton.Left + FClearButton.Width
     else
       RightPos := FEdit.Left + FEdit.Width;
   end else
   begin
-    LeftPos := 0;
+    LeftPos  := 0;
     RightPos := Width;
   end;
 
-  if (FFocused) and (Self.Enabled) then
-  begin
-    Canvas.Pen.Color := AccentColor;
-    Canvas.Line(LeftPos, Height - 2, RightPos, Height - 2);
-    Canvas.Line(LeftPos, Height - 1, RightPos, Height - 1);
-    FLabel.Font.Color := AccentColor;
-  end else
-  begin
-    Canvas.Pen.Color := DisabledColor;
-    Canvas.Line(LeftPos, Height - 1, RightPos, Height - 1);
-    FLabel.Font.Color := DisabledColor;
+  FieldTop := FEdit.Top - 2;
+  if FieldTop < 0 then FieldTop := 0;
+
+  { Passo 1: preenchimento do fundo }
+  Canvas.Pen.Width   := 1;
+  Canvas.Pen.Color   := Color;
+  Canvas.Brush.Color := Color;
+  case FVariant of
+    mvFilled:
+      if CR > 0 then
+        Canvas.RoundRect(0, 0, Width, Height, CR, CR)
+      else
+        Canvas.Rectangle(0, 0, Width, Height);
+  else
+    Canvas.Rectangle(0, 0, Width, Height);
+  end;
+
+  { Passo 2: cor do label e decoração do campo }
+  Canvas.Pen.Color  := DecoColor;
+  FLabel.Font.Color := DecoColor;
+
+  { Atualiza ícone da lupa com a mesma cor do sublinhado }
+  if FSearchButton.Visible then
+    DrawSearchIcon(DecoColor);
+
+  case FVariant of
+    mvStandard, mvFilled:
+    begin
+      if FFocused and Self.Enabled then
+      begin
+        Canvas.Line(LeftPos, Height - 2, RightPos, Height - 2);
+        Canvas.Line(LeftPos, Height - 1, RightPos, Height - 1);
+      end else
+        Canvas.Line(LeftPos, Height - 1, RightPos, Height - 1);
+    end;
+    mvOutlined:
+    begin
+      Canvas.Brush.Style := bsClear;
+      if FFocused and Self.Enabled then
+        Canvas.Pen.Width := 2
+      else
+        Canvas.Pen.Width := 1;
+      if CR > 0 then
+        Canvas.RoundRect(LeftPos, FieldTop, RightPos, Height - 1, CR, CR)
+      else
+        Canvas.Rectangle(LeftPos, FieldTop, RightPos, Height - 1);
+      Canvas.Pen.Width   := 1;
+      Canvas.Brush.Style := bsSolid;
+    end;
   end;
 end;
 
@@ -934,7 +1076,22 @@ begin
   FClearButton.OnClick := @ClearButtonClick;
   FClearButton.SetSubComponent(True);
 
-  FShowClearButton := False;
+  { Configura o botão de pesquisa }
+  FSearchButton := TBitBtn.Create(Self);
+  FSearchButton.Caption  := '';
+  FSearchButton.Width    := 22;
+  FSearchButton.Height   := 22;
+  FSearchButton.TabStop  := False;
+  FSearchButton.Visible  := False;
+  FSearchButton.Parent   := Self;
+  FSearchButton.OnClick  := @SearchButtonClick;
+  FSearchButton.SetSubComponent(True);
+  DrawSearchIcon(DisabledColor);
+
+  FShowClearButton  := False;
+  FShowSearchButton := False;
+  FVariant          := mvStandard;
+  FBorderRadius     := 0;
 end;
 
 { TBCMaterialEdit }
