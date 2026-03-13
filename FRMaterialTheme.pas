@@ -1,11 +1,11 @@
-unit BCMaterialTheme;
+﻿unit FRMaterialTheme;
 
 {$mode objfpc}{$H+}
 
 { Utilitários de tema compartilhados pelos componentes Material Design.
 
   Exporta:
-    TBCMaterialVariant — enum para os três estilos visuais de campo
+    TFRMaterialVariant — enum para os três estilos visuais de campo
     MCLuminance        — luminância relativa de uma cor (WCAG 2.1)
     MCContrastRatio    — razão de contraste entre duas cores (WCAG 2.1)
     MCContrastText     — retorna clBlack ou clWhite para máximo contraste
@@ -25,7 +25,7 @@ type
     mvFilled   : campo preenchido com cantos arredondados + sublinhado na base
     mvOutlined : moldura retangular/arredondada sem sublinhado (estilo MD3)
   }
-  TBCMaterialVariant = (
+  TFRMaterialVariant = (
     mvStandard,
     mvFilled,
     mvOutlined

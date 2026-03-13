@@ -1,9 +1,9 @@
-unit BCMaterialComboEdit;
+﻿unit FRMaterialComboEdit;
 
 {$mode objfpc}{$H+}
 
-{ TBCMaterialComboEdit
-  Variante "select/combobox" do TBCMaterialEdit com estilo Material Design.
+{ TFRMaterialComboEdit
+  Variante "select/combobox" do TFRMaterialEdit com estilo Material Design.
   Encapsula TComboBox (LCL) expondo:
     - Label flutuante acima do campo (accentColor no foco)
     - Sublinhado Material Design (linha dupla no foco)
@@ -18,22 +18,22 @@ unit BCMaterialComboEdit;
 interface
 
 uses
-  BCMaterialTheme, Classes, Controls, ExtCtrls, Forms, Graphics,
+  FRMaterialTheme, Classes, Controls, ExtCtrls, Forms, Graphics,
   {$IFDEF FPC} LCLType, LResources, {$ENDIF}
   Menus, StdCtrls, SysUtils;
 
 type
 
-  { TBCMaterialComboEdit }
+  { TFRMaterialComboEdit }
 
-  TBCMaterialComboEdit = class(TCustomPanel)
+  TFRMaterialComboEdit = class(TCustomPanel)
   private
     FAccentColor: TColor;
     FDisabledColor: TColor;
     FLabel: TBoundLabel;
     FCombo: TComboBox;
     FFocused: Boolean;
-    FVariant: TBCMaterialVariant;
+    FVariant: TFRMaterialVariant;
     FBorderRadius: Integer;
     { Armazena OnChange do usuário — FCombo.OnChange é reservado internamente }
     FUserOnChange: TNotifyEvent;
@@ -164,7 +164,7 @@ type
     property Cursor: TCursor read GetEditCursor write SetEditCursor default crDefault;
     property DisabledColor: TColor read FDisabledColor write FDisabledColor;
     { Variante visual: sublinhado (mvStandard), preenchido (mvFilled) ou contornado (mvOutlined) }
-    property Variant: TBCMaterialVariant read FVariant write FVariant default mvStandard;
+    property Variant: TFRMaterialVariant read FVariant write FVariant default mvStandard;
     { Raio dos cantos arredondados em pixels; 0 = cantos retos }
     property BorderRadius: Integer read FBorderRadius write FBorderRadius default 0;
     { Número de linhas visíveis no dropdown }
@@ -238,21 +238,21 @@ implementation
 procedure Register;
 begin
   {$IFDEF FPC}
-    { {$I icons\bcmaterialcomboedit_icon.lrs} }
+    { {$I icons\frmaterialcomboedit_icon.lrs} }
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TBCMaterialComboEdit]);
+  RegisterComponents('BGRA Controls', [TFRMaterialComboEdit]);
 end;
 
-{ TBCMaterialComboEdit }
+{ TFRMaterialComboEdit }
 
-function TBCMaterialComboEdit.IsNeededAdjustSize: Boolean;
+function TFRMaterialComboEdit.IsNeededAdjustSize: Boolean;
 begin
   if Self.Align in [alLeft, alRight, alClient] then Exit(False);
   if (akTop in Self.Anchors) and (akBottom in Self.Anchors) then Exit(False);
   Result := True; { TComboBox tem altura fixa (AutoSize implícito) }
 end;
 
-procedure TBCMaterialComboEdit.InternalComboChange(Sender: TObject);
+procedure TFRMaterialComboEdit.InternalComboChange(Sender: TObject);
 begin
   if Assigned(FUserOnChange) then
     FUserOnChange(Sender);
@@ -260,183 +260,183 @@ end;
 
 { --- Getters/Setters de propriedades --- }
 
-function TBCMaterialComboEdit.GetAutoComplete: Boolean;
+function TFRMaterialComboEdit.GetAutoComplete: Boolean;
 begin
   Result := FCombo.AutoComplete;
 end;
 
-procedure TBCMaterialComboEdit.SetAutoComplete(AValue: Boolean);
+procedure TFRMaterialComboEdit.SetAutoComplete(AValue: Boolean);
 begin
   FCombo.AutoComplete := AValue;
 end;
 
-function TBCMaterialComboEdit.GetAutoCompleteText: TComboBoxAutoCompleteText;
+function TFRMaterialComboEdit.GetAutoCompleteText: TComboBoxAutoCompleteText;
 begin
   Result := FCombo.AutoCompleteText;
 end;
 
-procedure TBCMaterialComboEdit.SetAutoCompleteText(AValue: TComboBoxAutoCompleteText);
+procedure TFRMaterialComboEdit.SetAutoCompleteText(AValue: TComboBoxAutoCompleteText);
 begin
   FCombo.AutoCompleteText := AValue;
 end;
 
-function TBCMaterialComboEdit.GetAutoDropDown: Boolean;
+function TFRMaterialComboEdit.GetAutoDropDown: Boolean;
 begin
   Result := FCombo.AutoDropDown;
 end;
 
-procedure TBCMaterialComboEdit.SetAutoDropDown(AValue: Boolean);
+procedure TFRMaterialComboEdit.SetAutoDropDown(AValue: Boolean);
 begin
   FCombo.AutoDropDown := AValue;
 end;
 
-function TBCMaterialComboEdit.GetComboStyle: TComboBoxStyle;
+function TFRMaterialComboEdit.GetComboStyle: TComboBoxStyle;
 begin
   Result := FCombo.Style;
 end;
 
-procedure TBCMaterialComboEdit.SetComboStyle(AValue: TComboBoxStyle);
+procedure TFRMaterialComboEdit.SetComboStyle(AValue: TComboBoxStyle);
 begin
   FCombo.Style := AValue;
 end;
 
-function TBCMaterialComboEdit.GetDropDownCount: Integer;
+function TFRMaterialComboEdit.GetDropDownCount: Integer;
 begin
   Result := FCombo.DropDownCount;
 end;
 
-procedure TBCMaterialComboEdit.SetDropDownCount(AValue: Integer);
+procedure TFRMaterialComboEdit.SetDropDownCount(AValue: Integer);
 begin
   FCombo.DropDownCount := AValue;
 end;
 
-function TBCMaterialComboEdit.GetEditCursor: TCursor;
+function TFRMaterialComboEdit.GetEditCursor: TCursor;
 begin
   Result := FCombo.Cursor;
 end;
 
-procedure TBCMaterialComboEdit.SetEditCursor(AValue: TCursor);
+procedure TFRMaterialComboEdit.SetEditCursor(AValue: TCursor);
 begin
   FCombo.Cursor := AValue;
 end;
 
-function TBCMaterialComboEdit.GetItems: TStrings;
+function TFRMaterialComboEdit.GetItems: TStrings;
 begin
   Result := FCombo.Items;
 end;
 
-procedure TBCMaterialComboEdit.SetItems(AValue: TStrings);
+procedure TFRMaterialComboEdit.SetItems(AValue: TStrings);
 begin
   FCombo.Items := AValue;
 end;
 
-function TBCMaterialComboEdit.GetItemHeight: Integer;
+function TFRMaterialComboEdit.GetItemHeight: Integer;
 begin
   Result := FCombo.ItemHeight;
 end;
 
-procedure TBCMaterialComboEdit.SetItemHeight(AValue: Integer);
+procedure TFRMaterialComboEdit.SetItemHeight(AValue: Integer);
 begin
   FCombo.ItemHeight := AValue;
 end;
 
-function TBCMaterialComboEdit.GetItemIndex: Integer;
+function TFRMaterialComboEdit.GetItemIndex: Integer;
 begin
   Result := FCombo.ItemIndex;
 end;
 
-procedure TBCMaterialComboEdit.SetItemIndex(AValue: Integer);
+procedure TFRMaterialComboEdit.SetItemIndex(AValue: Integer);
 begin
   FCombo.ItemIndex := AValue;
 end;
 
-function TBCMaterialComboEdit.GetItemWidth: Integer;
+function TFRMaterialComboEdit.GetItemWidth: Integer;
 begin
   Result := FCombo.ItemWidth;
 end;
 
-procedure TBCMaterialComboEdit.SetItemWidth(AValue: Integer);
+procedure TFRMaterialComboEdit.SetItemWidth(AValue: Integer);
 begin
   FCombo.ItemWidth := AValue;
 end;
 
-function TBCMaterialComboEdit.GetMaxLength: Integer;
+function TFRMaterialComboEdit.GetMaxLength: Integer;
 begin
   Result := FCombo.MaxLength;
 end;
 
-procedure TBCMaterialComboEdit.SetMaxLength(AValue: Integer);
+procedure TFRMaterialComboEdit.SetMaxLength(AValue: Integer);
 begin
   FCombo.MaxLength := AValue;
 end;
 
-function TBCMaterialComboEdit.GetEditPopupMenu: TPopupMenu;
+function TFRMaterialComboEdit.GetEditPopupMenu: TPopupMenu;
 begin
   if csDestroying in ComponentState then Exit(nil);
   Result := FCombo.PopupMenu;
 end;
 
-procedure TBCMaterialComboEdit.SetEditPopupMenu(AValue: TPopupMenu);
+procedure TFRMaterialComboEdit.SetEditPopupMenu(AValue: TPopupMenu);
 begin
   FCombo.PopupMenu := AValue;
 end;
 
-function TBCMaterialComboEdit.GetEditReadOnly: Boolean;
+function TFRMaterialComboEdit.GetEditReadOnly: Boolean;
 begin
   Result := FCombo.ReadOnly;
 end;
 
-procedure TBCMaterialComboEdit.SetEditReadOnly(AValue: Boolean);
+procedure TFRMaterialComboEdit.SetEditReadOnly(AValue: Boolean);
 begin
   FCombo.ReadOnly := AValue;
 end;
 
-function TBCMaterialComboEdit.GetSorted: Boolean;
+function TFRMaterialComboEdit.GetSorted: Boolean;
 begin
   Result := FCombo.Sorted;
 end;
 
-procedure TBCMaterialComboEdit.SetSorted(AValue: Boolean);
+procedure TFRMaterialComboEdit.SetSorted(AValue: Boolean);
 begin
   FCombo.Sorted := AValue;
 end;
 
-function TBCMaterialComboEdit.GetEditTabStop: Boolean;
+function TFRMaterialComboEdit.GetEditTabStop: Boolean;
 begin
   Result := FCombo.TabStop;
 end;
 
-procedure TBCMaterialComboEdit.SetEditTabStop(AValue: Boolean);
+procedure TFRMaterialComboEdit.SetEditTabStop(AValue: Boolean);
 begin
   FCombo.TabStop := AValue;
 end;
 
-function TBCMaterialComboEdit.GetEditText: TCaption;
+function TFRMaterialComboEdit.GetEditText: TCaption;
 begin
   Result := FCombo.Text;
 end;
 
-procedure TBCMaterialComboEdit.SetEditText(const AValue: TCaption);
+procedure TFRMaterialComboEdit.SetEditText(const AValue: TCaption);
 begin
   FCombo.Text := AValue;
 end;
 
-function TBCMaterialComboEdit.GetLabelCaption: TCaption;
+function TFRMaterialComboEdit.GetLabelCaption: TCaption;
 begin
   Result := FLabel.Caption;
 end;
 
-procedure TBCMaterialComboEdit.SetLabelCaption(const AValue: TCaption);
+procedure TFRMaterialComboEdit.SetLabelCaption(const AValue: TCaption);
 begin
   FLabel.Caption := AValue;
 end;
 
-function TBCMaterialComboEdit.GetLabelSpacing: Integer;
+function TFRMaterialComboEdit.GetLabelSpacing: Integer;
 begin
   Result := FLabel.BorderSpacing.Bottom;
 end;
 
-procedure TBCMaterialComboEdit.SetLabelSpacing(AValue: Integer);
+procedure TFRMaterialComboEdit.SetLabelSpacing(AValue: Integer);
 begin
   if FLabel.BorderSpacing.Bottom = AValue then Exit;
   FLabel.BorderSpacing.Bottom := AValue;
@@ -445,219 +445,219 @@ end;
 
 { --- Getters/Setters de eventos --- }
 
-function TBCMaterialComboEdit.GetOnChange: TNotifyEvent;
+function TFRMaterialComboEdit.GetOnChange: TNotifyEvent;
 begin
   Result := FUserOnChange;
 end;
 
-procedure TBCMaterialComboEdit.SetOnChange(AValue: TNotifyEvent);
+procedure TFRMaterialComboEdit.SetOnChange(AValue: TNotifyEvent);
 begin
   FUserOnChange := AValue;
 end;
 
-function TBCMaterialComboEdit.GetOnClick: TNotifyEvent;
+function TFRMaterialComboEdit.GetOnClick: TNotifyEvent;
 begin
   Result := FCombo.OnClick;
 end;
 
-procedure TBCMaterialComboEdit.SetOnClick(AValue: TNotifyEvent);
+procedure TFRMaterialComboEdit.SetOnClick(AValue: TNotifyEvent);
 begin
   FCombo.OnClick := AValue;
 end;
 
-function TBCMaterialComboEdit.GetOnCloseUp: TNotifyEvent;
+function TFRMaterialComboEdit.GetOnCloseUp: TNotifyEvent;
 begin
   Result := FCombo.OnCloseUp;
 end;
 
-procedure TBCMaterialComboEdit.SetOnCloseUp(AValue: TNotifyEvent);
+procedure TFRMaterialComboEdit.SetOnCloseUp(AValue: TNotifyEvent);
 begin
   FCombo.OnCloseUp := AValue;
 end;
 
-function TBCMaterialComboEdit.GetOnDblClick: TNotifyEvent;
+function TFRMaterialComboEdit.GetOnDblClick: TNotifyEvent;
 begin
   Result := FCombo.OnDblClick;
 end;
 
-procedure TBCMaterialComboEdit.SetOnDblClick(AValue: TNotifyEvent);
+procedure TFRMaterialComboEdit.SetOnDblClick(AValue: TNotifyEvent);
 begin
   FCombo.OnDblClick := AValue;
 end;
 
-function TBCMaterialComboEdit.GetOnDropDown: TNotifyEvent;
+function TFRMaterialComboEdit.GetOnDropDown: TNotifyEvent;
 begin
   Result := FCombo.OnDropDown;
 end;
 
-procedure TBCMaterialComboEdit.SetOnDropDown(AValue: TNotifyEvent);
+procedure TFRMaterialComboEdit.SetOnDropDown(AValue: TNotifyEvent);
 begin
   FCombo.OnDropDown := AValue;
 end;
 
-function TBCMaterialComboEdit.GetOnEditingDone: TNotifyEvent;
+function TFRMaterialComboEdit.GetOnEditingDone: TNotifyEvent;
 begin
   Result := FCombo.OnEditingDone;
 end;
 
-procedure TBCMaterialComboEdit.SetOnEditingDone(AValue: TNotifyEvent);
+procedure TFRMaterialComboEdit.SetOnEditingDone(AValue: TNotifyEvent);
 begin
   FCombo.OnEditingDone := AValue;
 end;
 
-function TBCMaterialComboEdit.GetOnEnter: TNotifyEvent;
+function TFRMaterialComboEdit.GetOnEnter: TNotifyEvent;
 begin
   Result := FCombo.OnEnter;
 end;
 
-procedure TBCMaterialComboEdit.SetOnEnter(AValue: TNotifyEvent);
+procedure TFRMaterialComboEdit.SetOnEnter(AValue: TNotifyEvent);
 begin
   FCombo.OnEnter := AValue;
 end;
 
-function TBCMaterialComboEdit.GetOnExit: TNotifyEvent;
+function TFRMaterialComboEdit.GetOnExit: TNotifyEvent;
 begin
   Result := FCombo.OnExit;
 end;
 
-procedure TBCMaterialComboEdit.SetOnExit(AValue: TNotifyEvent);
+procedure TFRMaterialComboEdit.SetOnExit(AValue: TNotifyEvent);
 begin
   FCombo.OnExit := AValue;
 end;
 
-function TBCMaterialComboEdit.GetOnKeyDown: TKeyEvent;
+function TFRMaterialComboEdit.GetOnKeyDown: TKeyEvent;
 begin
   Result := FCombo.OnKeyDown;
 end;
 
-procedure TBCMaterialComboEdit.SetOnKeyDown(AValue: TKeyEvent);
+procedure TFRMaterialComboEdit.SetOnKeyDown(AValue: TKeyEvent);
 begin
   FCombo.OnKeyDown := AValue;
 end;
 
-function TBCMaterialComboEdit.GetOnKeyPress: TKeyPressEvent;
+function TFRMaterialComboEdit.GetOnKeyPress: TKeyPressEvent;
 begin
   Result := FCombo.OnKeyPress;
 end;
 
-procedure TBCMaterialComboEdit.SetOnKeyPress(AValue: TKeyPressEvent);
+procedure TFRMaterialComboEdit.SetOnKeyPress(AValue: TKeyPressEvent);
 begin
   FCombo.OnKeyPress := AValue;
 end;
 
-function TBCMaterialComboEdit.GetOnKeyUp: TKeyEvent;
+function TFRMaterialComboEdit.GetOnKeyUp: TKeyEvent;
 begin
   Result := FCombo.OnKeyUp;
 end;
 
-procedure TBCMaterialComboEdit.SetOnKeyUp(AValue: TKeyEvent);
+procedure TFRMaterialComboEdit.SetOnKeyUp(AValue: TKeyEvent);
 begin
   FCombo.OnKeyUp := AValue;
 end;
 
-function TBCMaterialComboEdit.GetOnMouseDown: TMouseEvent;
+function TFRMaterialComboEdit.GetOnMouseDown: TMouseEvent;
 begin
   Result := FCombo.OnMouseDown;
 end;
 
-procedure TBCMaterialComboEdit.SetOnMouseDown(AValue: TMouseEvent);
+procedure TFRMaterialComboEdit.SetOnMouseDown(AValue: TMouseEvent);
 begin
   FCombo.OnMouseDown := AValue;
 end;
 
-function TBCMaterialComboEdit.GetOnMouseEnter: TNotifyEvent;
+function TFRMaterialComboEdit.GetOnMouseEnter: TNotifyEvent;
 begin
   Result := FCombo.OnMouseEnter;
 end;
 
-procedure TBCMaterialComboEdit.SetOnMouseEnter(AValue: TNotifyEvent);
+procedure TFRMaterialComboEdit.SetOnMouseEnter(AValue: TNotifyEvent);
 begin
   FCombo.OnMouseEnter := AValue;
 end;
 
-function TBCMaterialComboEdit.GetOnMouseLeave: TNotifyEvent;
+function TFRMaterialComboEdit.GetOnMouseLeave: TNotifyEvent;
 begin
   Result := FCombo.OnMouseLeave;
 end;
 
-procedure TBCMaterialComboEdit.SetOnMouseLeave(AValue: TNotifyEvent);
+procedure TFRMaterialComboEdit.SetOnMouseLeave(AValue: TNotifyEvent);
 begin
   FCombo.OnMouseLeave := AValue;
 end;
 
-function TBCMaterialComboEdit.GetOnMouseMove: TMouseMoveEvent;
+function TFRMaterialComboEdit.GetOnMouseMove: TMouseMoveEvent;
 begin
   Result := FCombo.OnMouseMove;
 end;
 
-procedure TBCMaterialComboEdit.SetOnMouseMove(AValue: TMouseMoveEvent);
+procedure TFRMaterialComboEdit.SetOnMouseMove(AValue: TMouseMoveEvent);
 begin
   FCombo.OnMouseMove := AValue;
 end;
 
-function TBCMaterialComboEdit.GetOnMouseUp: TMouseEvent;
+function TFRMaterialComboEdit.GetOnMouseUp: TMouseEvent;
 begin
   Result := FCombo.OnMouseUp;
 end;
 
-procedure TBCMaterialComboEdit.SetOnMouseUp(AValue: TMouseEvent);
+procedure TFRMaterialComboEdit.SetOnMouseUp(AValue: TMouseEvent);
 begin
   FCombo.OnMouseUp := AValue;
 end;
 
-function TBCMaterialComboEdit.GetOnMouseWheel: TMouseWheelEvent;
+function TFRMaterialComboEdit.GetOnMouseWheel: TMouseWheelEvent;
 begin
   Result := FCombo.OnMouseWheel;
 end;
 
-procedure TBCMaterialComboEdit.SetOnMouseWheel(AValue: TMouseWheelEvent);
+procedure TFRMaterialComboEdit.SetOnMouseWheel(AValue: TMouseWheelEvent);
 begin
   FCombo.OnMouseWheel := AValue;
 end;
 
-function TBCMaterialComboEdit.GetOnMouseWheelDown: TMouseWheelUpDownEvent;
+function TFRMaterialComboEdit.GetOnMouseWheelDown: TMouseWheelUpDownEvent;
 begin
   Result := FCombo.OnMouseWheelDown;
 end;
 
-procedure TBCMaterialComboEdit.SetOnMouseWheelDown(AValue: TMouseWheelUpDownEvent);
+procedure TFRMaterialComboEdit.SetOnMouseWheelDown(AValue: TMouseWheelUpDownEvent);
 begin
   FCombo.OnMouseWheelDown := AValue;
 end;
 
-function TBCMaterialComboEdit.GetOnMouseWheelUp: TMouseWheelUpDownEvent;
+function TFRMaterialComboEdit.GetOnMouseWheelUp: TMouseWheelUpDownEvent;
 begin
   Result := FCombo.OnMouseWheelUp;
 end;
 
-procedure TBCMaterialComboEdit.SetOnMouseWheelUp(AValue: TMouseWheelUpDownEvent);
+procedure TFRMaterialComboEdit.SetOnMouseWheelUp(AValue: TMouseWheelUpDownEvent);
 begin
   FCombo.OnMouseWheelUp := AValue;
 end;
 
-function TBCMaterialComboEdit.GetOnSelect: TNotifyEvent;
+function TFRMaterialComboEdit.GetOnSelect: TNotifyEvent;
 begin
   Result := FCombo.OnSelect;
 end;
 
-procedure TBCMaterialComboEdit.SetOnSelect(AValue: TNotifyEvent);
+procedure TFRMaterialComboEdit.SetOnSelect(AValue: TNotifyEvent);
 begin
   FCombo.OnSelect := AValue;
 end;
 
-function TBCMaterialComboEdit.GetOnUTF8KeyPress: TUTF8KeyPressEvent;
+function TFRMaterialComboEdit.GetOnUTF8KeyPress: TUTF8KeyPressEvent;
 begin
   Result := FCombo.OnUTF8KeyPress;
 end;
 
-procedure TBCMaterialComboEdit.SetOnUTF8KeyPress(AValue: TUTF8KeyPressEvent);
+procedure TFRMaterialComboEdit.SetOnUTF8KeyPress(AValue: TUTF8KeyPressEvent);
 begin
   FCombo.OnUTF8KeyPress := AValue;
 end;
 
 { --- Métodos públicos --- }
 
-function TBCMaterialComboEdit.SelectedText: string;
+function TFRMaterialComboEdit.SelectedText: string;
 begin
   if FCombo.ItemIndex >= 0 then
     Result := FCombo.Items[FCombo.ItemIndex]
@@ -665,7 +665,7 @@ begin
     Result := '';
 end;
 
-procedure TBCMaterialComboEdit.SelectByText(const AText: string);
+procedure TFRMaterialComboEdit.SelectByText(const AText: string);
 var
   i: Integer;
 begin
@@ -679,20 +679,20 @@ end;
 
 { --- Métodos protegidos --- }
 
-procedure TBCMaterialComboEdit.SetAnchors(const AValue: TAnchors);
+procedure TFRMaterialComboEdit.SetAnchors(const AValue: TAnchors);
 begin
   if Self.Anchors = AValue then Exit;
   inherited SetAnchors(AValue);
   if not (csLoading in ComponentState) then Self.DoOnResize;
 end;
 
-procedure TBCMaterialComboEdit.SetColor(AValue: TColor);
+procedure TFRMaterialComboEdit.SetColor(AValue: TColor);
 begin
   inherited SetColor(AValue);
   FCombo.Color := AValue;
 end;
 
-procedure TBCMaterialComboEdit.SetName(const AValue: TComponentName);
+procedure TFRMaterialComboEdit.SetName(const AValue: TComponentName);
 begin
   if csDesigning in ComponentState then
   begin
@@ -706,21 +706,21 @@ begin
   inherited SetName(AValue);
 end;
 
-procedure TBCMaterialComboEdit.DoEnter;
+procedure TFRMaterialComboEdit.DoEnter;
 begin
   inherited DoEnter;
   FFocused := True;
   Invalidate;
 end;
 
-procedure TBCMaterialComboEdit.DoExit;
+procedure TFRMaterialComboEdit.DoExit;
 begin
   FFocused := False;
   Invalidate;
   inherited DoExit;
 end;
 
-procedure TBCMaterialComboEdit.DoOnResize;
+procedure TFRMaterialComboEdit.DoOnResize;
 var
   AutoSizedHeight: LongInt;
 begin
@@ -745,7 +745,7 @@ begin
   inherited DoOnResize;
 end;
 
-procedure TBCMaterialComboEdit.Paint;
+procedure TFRMaterialComboEdit.Paint;
 var
   LeftPos, RightPos, FieldTop, CR: Integer;
   DecoColor: TColor;
@@ -814,7 +814,7 @@ begin
   end;
 end;
 
-constructor TBCMaterialComboEdit.Create(AOwner: TComponent);
+constructor TFRMaterialComboEdit.Create(AOwner: TComponent);
 begin
   FCombo := TComboBox.Create(Self);
   FLabel := TBoundLabel.Create(Self);

@@ -1,8 +1,8 @@
-unit BCMaterialCheckComboEdit;
+﻿unit FRMaterialCheckComboEdit;
 
 {$mode objfpc}{$H+}
 
-{ TBCMaterialCheckComboEdit
+{ TFRMaterialCheckComboEdit
   Multi-select com checkboxes no estilo Material Design.
   Equivalente ao <select multiple> / Material Multi-Select da web.
 
@@ -18,7 +18,7 @@ unit BCMaterialCheckComboEdit;
 interface
 
 uses
-  BCMaterialTheme, Classes, Controls, ExtCtrls, Forms, Graphics, Math,
+  FRMaterialTheme, Classes, Controls, ExtCtrls, Forms, Graphics, Math,
   {$IFDEF FPC} LCLType, LResources, {$ENDIF}
   Menus, StdCtrls, CheckLst, SysUtils;
 
@@ -37,9 +37,9 @@ type
   { Painel flutuante interno — não publicado }
   TCheckComboDropDown = class;
 
-  { TBCMaterialCheckComboEdit }
+  { TFRMaterialCheckComboEdit }
 
-  TBCMaterialCheckComboEdit = class(TCustomPanel)
+  TFRMaterialCheckComboEdit = class(TCustomPanel)
   private
     FAccentColor: TColor;
     FDisabledColor: TColor;
@@ -48,7 +48,7 @@ type
     FDropButton: TButton;
     FDropDown: TCheckComboDropDown;
     FFocused: Boolean;
-    FVariant: TBCMaterialVariant;
+    FVariant: TFRMaterialVariant;
     FBorderRadius: Integer;
     FItems: TStrings;
     FDisplayFormat: TCheckComboDisplayFormat;
@@ -137,7 +137,7 @@ type
     property Cursor: TCursor read GetEditCursor write SetEditCursor default crDefault;
     property DisabledColor: TColor read FDisabledColor write FDisabledColor;
     { Variante visual: sublinhado (mvStandard), preenchido (mvFilled) ou contornado (mvOutlined) }
-    property Variant: TBCMaterialVariant read FVariant write FVariant default mvStandard;
+    property Variant: TFRMaterialVariant read FVariant write FVariant default mvStandard;
     { Raio dos cantos arredondados em pixels; 0 = cantos retos }
     property BorderRadius: Integer read FBorderRadius write FBorderRadius default 0;
     { Como o campo exibe os itens selecionados }
@@ -194,13 +194,13 @@ type
   TCheckComboDropDown = class(TCustomForm)
   private
     FCheckList: TCheckListBox;
-    FOwnerCombo: TBCMaterialCheckComboEdit;
+    FOwnerCombo: TFRMaterialCheckComboEdit;
     procedure CheckListItemClick(Sender: TObject);
   protected
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure Deactivate; override;
   public
-    constructor CreateForCombo(AOwner: TBCMaterialCheckComboEdit);
+    constructor CreateForCombo(AOwner: TFRMaterialCheckComboEdit);
     procedure SyncItems;
     procedure SyncChecks;
     property CheckList: TCheckListBox read FCheckList;
@@ -213,14 +213,14 @@ implementation
 procedure Register;
 begin
   {$IFDEF FPC}
-    { {$I icons\bcmaterialcheckcomboedit_icon.lrs} }
+    { {$I icons\frmaterialcheckcomboedit_icon.lrs} }
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TBCMaterialCheckComboEdit]);
+  RegisterComponents('BGRA Controls', [TFRMaterialCheckComboEdit]);
 end;
 
 { TCheckComboDropDown }
 
-constructor TCheckComboDropDown.CreateForCombo(AOwner: TBCMaterialCheckComboEdit);
+constructor TCheckComboDropDown.CreateForCombo(AOwner: TFRMaterialCheckComboEdit);
 begin
   inherited CreateNew(AOwner);
   FOwnerCombo := AOwner;
@@ -290,16 +290,16 @@ begin
     FCheckList.Checked[i] := FOwnerCombo.Checked[i];
 end;
 
-{ TBCMaterialCheckComboEdit }
+{ TFRMaterialCheckComboEdit }
 
-function TBCMaterialCheckComboEdit.IsNeededAdjustSize: Boolean;
+function TFRMaterialCheckComboEdit.IsNeededAdjustSize: Boolean;
 begin
   if Self.Align in [alLeft, alRight, alClient] then Exit(False);
   if (akTop in Self.Anchors) and (akBottom in Self.Anchors) then Exit(False);
   Result := True;
 end;
 
-procedure TBCMaterialCheckComboEdit.DropButtonClick(Sender: TObject);
+procedure TFRMaterialCheckComboEdit.DropButtonClick(Sender: TObject);
 begin
   if IsDropDownOpen then
     CloseDropDown
@@ -307,7 +307,7 @@ begin
     OpenDropDown;
 end;
 
-procedure TBCMaterialCheckComboEdit.CloseDropDown;
+procedure TFRMaterialCheckComboEdit.CloseDropDown;
 begin
   if not Assigned(FDropDown) then Exit;
   FDropDown.Hide;
@@ -315,12 +315,12 @@ begin
     FOnDropDownClose(Self);
 end;
 
-procedure TBCMaterialCheckComboEdit.DropDownDeactivate(Sender: TObject);
+procedure TFRMaterialCheckComboEdit.DropDownDeactivate(Sender: TObject);
 begin
   CloseDropDown;
 end;
 
-procedure TBCMaterialCheckComboEdit.InternalCheckChange(AIndex: Integer;
+procedure TFRMaterialCheckComboEdit.InternalCheckChange(AIndex: Integer;
   AChecked: Boolean);
 begin
   UpdateDisplayText;
@@ -329,14 +329,14 @@ begin
   Invalidate;
 end;
 
-procedure TBCMaterialCheckComboEdit.ItemsChange(Sender: TObject);
+procedure TFRMaterialCheckComboEdit.ItemsChange(Sender: TObject);
 begin
   if Assigned(FDropDown) then
     FDropDown.SyncItems;
   UpdateDisplayText;
 end;
 
-procedure TBCMaterialCheckComboEdit.UpdateDisplayText;
+procedure TFRMaterialCheckComboEdit.UpdateDisplayText;
 var
   i: Integer;
   CheckedItems: TStringList;
@@ -376,7 +376,7 @@ end;
 
 { --- Checked[] e contagem --- }
 
-function TBCMaterialCheckComboEdit.GetChecked(AIndex: Integer): Boolean;
+function TFRMaterialCheckComboEdit.GetChecked(AIndex: Integer): Boolean;
 begin
   if not Assigned(FDropDown) or
      (AIndex < 0) or (AIndex >= FDropDown.CheckList.Items.Count) then
@@ -384,7 +384,7 @@ begin
   Result := FDropDown.CheckList.Checked[AIndex];
 end;
 
-procedure TBCMaterialCheckComboEdit.SetChecked(AIndex: Integer; AValue: Boolean);
+procedure TFRMaterialCheckComboEdit.SetChecked(AIndex: Integer; AValue: Boolean);
 begin
   if not Assigned(FDropDown) or
      (AIndex < 0) or (AIndex >= FDropDown.CheckList.Items.Count) then Exit;
@@ -393,7 +393,7 @@ begin
   InternalCheckChange(AIndex, AValue);
 end;
 
-function TBCMaterialCheckComboEdit.GetCheckedCount: Integer;
+function TFRMaterialCheckComboEdit.GetCheckedCount: Integer;
 var
   i: Integer;
 begin
@@ -405,52 +405,52 @@ end;
 
 { --- Getters/Setters --- }
 
-function TBCMaterialCheckComboEdit.GetItems: TStrings;
+function TFRMaterialCheckComboEdit.GetItems: TStrings;
 begin
   Result := FItems;
 end;
 
-procedure TBCMaterialCheckComboEdit.SetItems(AValue: TStrings);
+procedure TFRMaterialCheckComboEdit.SetItems(AValue: TStrings);
 begin
   FItems.Assign(AValue);
 end;
 
-function TBCMaterialCheckComboEdit.GetDisplayFormat: TCheckComboDisplayFormat;
+function TFRMaterialCheckComboEdit.GetDisplayFormat: TCheckComboDisplayFormat;
 begin
   Result := FDisplayFormat;
 end;
 
-procedure TBCMaterialCheckComboEdit.SetDisplayFormat(AValue: TCheckComboDisplayFormat);
+procedure TFRMaterialCheckComboEdit.SetDisplayFormat(AValue: TCheckComboDisplayFormat);
 begin
   if FDisplayFormat = AValue then Exit;
   FDisplayFormat := AValue;
   UpdateDisplayText;
 end;
 
-function TBCMaterialCheckComboEdit.GetEmptyText: string;
+function TFRMaterialCheckComboEdit.GetEmptyText: string;
 begin
   Result := FEmptyText;
 end;
 
-procedure TBCMaterialCheckComboEdit.SetEmptyText(const AValue: string);
+procedure TFRMaterialCheckComboEdit.SetEmptyText(const AValue: string);
 begin
   if FEmptyText = AValue then Exit;
   FEmptyText := AValue;
   UpdateDisplayText;
 end;
 
-function TBCMaterialCheckComboEdit.GetDropDownCount: Integer;
+function TFRMaterialCheckComboEdit.GetDropDownCount: Integer;
 begin
   Result := FDropDownCount;
 end;
 
-procedure TBCMaterialCheckComboEdit.SetDropDownCount(AValue: Integer);
+procedure TFRMaterialCheckComboEdit.SetDropDownCount(AValue: Integer);
 begin
   if FDropDownCount = AValue then Exit;
   FDropDownCount := AValue;
 end;
 
-function TBCMaterialCheckComboEdit.GetSorted: Boolean;
+function TFRMaterialCheckComboEdit.GetSorted: Boolean;
 begin
   if Assigned(FDropDown) then
     Result := FDropDown.CheckList.Sorted
@@ -458,57 +458,57 @@ begin
     Result := False;
 end;
 
-procedure TBCMaterialCheckComboEdit.SetSorted(AValue: Boolean);
+procedure TFRMaterialCheckComboEdit.SetSorted(AValue: Boolean);
 begin
   if Assigned(FDropDown) then
     FDropDown.CheckList.Sorted := AValue;
 end;
 
-function TBCMaterialCheckComboEdit.GetLabelCaption: TCaption;
+function TFRMaterialCheckComboEdit.GetLabelCaption: TCaption;
 begin
   Result := FLabel.Caption;
 end;
 
-procedure TBCMaterialCheckComboEdit.SetLabelCaption(const AValue: TCaption);
+procedure TFRMaterialCheckComboEdit.SetLabelCaption(const AValue: TCaption);
 begin
   FLabel.Caption := AValue;
 end;
 
-function TBCMaterialCheckComboEdit.GetLabelSpacing: Integer;
+function TFRMaterialCheckComboEdit.GetLabelSpacing: Integer;
 begin
   Result := FLabel.BorderSpacing.Bottom;
 end;
 
-procedure TBCMaterialCheckComboEdit.SetLabelSpacing(AValue: Integer);
+procedure TFRMaterialCheckComboEdit.SetLabelSpacing(AValue: Integer);
 begin
   if FLabel.BorderSpacing.Bottom = AValue then Exit;
   FLabel.BorderSpacing.Bottom := AValue;
   if not (csLoading in ComponentState) then Self.DoOnResize;
 end;
 
-function TBCMaterialCheckComboEdit.GetEditCursor: TCursor;
+function TFRMaterialCheckComboEdit.GetEditCursor: TCursor;
 begin
   Result := FDisplayEdit.Cursor;
 end;
 
-procedure TBCMaterialCheckComboEdit.SetEditCursor(AValue: TCursor);
+procedure TFRMaterialCheckComboEdit.SetEditCursor(AValue: TCursor);
 begin
   FDisplayEdit.Cursor := AValue;
 end;
 
-function TBCMaterialCheckComboEdit.GetEditTabStop: Boolean;
+function TFRMaterialCheckComboEdit.GetEditTabStop: Boolean;
 begin
   Result := FDisplayEdit.TabStop;
 end;
 
-procedure TBCMaterialCheckComboEdit.SetEditTabStop(AValue: Boolean);
+procedure TFRMaterialCheckComboEdit.SetEditTabStop(AValue: Boolean);
 begin
   FDisplayEdit.TabStop := AValue;
 end;
 
 { --- Métodos públicos --- }
 
-procedure TBCMaterialCheckComboEdit.CheckAll(AChecked: Boolean);
+procedure TFRMaterialCheckComboEdit.CheckAll(AChecked: Boolean);
 var
   i: Integer;
 begin
@@ -519,7 +519,7 @@ begin
   Invalidate;
 end;
 
-procedure TBCMaterialCheckComboEdit.InvertAll;
+procedure TFRMaterialCheckComboEdit.InvertAll;
 var
   i: Integer;
 begin
@@ -530,7 +530,7 @@ begin
   Invalidate;
 end;
 
-function TBCMaterialCheckComboEdit.GetCheckedItems: TStringList;
+function TFRMaterialCheckComboEdit.GetCheckedItems: TStringList;
 var
   i: Integer;
 begin
@@ -541,7 +541,7 @@ begin
       Result.Add(FDropDown.CheckList.Items[i]);
 end;
 
-function TBCMaterialCheckComboEdit.GetCheckedIndices: TStringList;
+function TFRMaterialCheckComboEdit.GetCheckedIndices: TStringList;
 var
   i: Integer;
 begin
@@ -552,7 +552,7 @@ begin
       Result.Add(IntToStr(i));
 end;
 
-procedure TBCMaterialCheckComboEdit.OpenDropDown;
+procedure TFRMaterialCheckComboEdit.OpenDropDown;
 var
   P: TPoint;
   ListHeight: Integer;
@@ -584,27 +584,27 @@ begin
     FOnDropDownOpen(Self);
 end;
 
-function TBCMaterialCheckComboEdit.IsDropDownOpen: Boolean;
+function TFRMaterialCheckComboEdit.IsDropDownOpen: Boolean;
 begin
   Result := Assigned(FDropDown) and FDropDown.Visible;
 end;
 
 { --- Métodos protegidos --- }
 
-procedure TBCMaterialCheckComboEdit.SetAnchors(const AValue: TAnchors);
+procedure TFRMaterialCheckComboEdit.SetAnchors(const AValue: TAnchors);
 begin
   if Self.Anchors = AValue then Exit;
   inherited SetAnchors(AValue);
   if not (csLoading in ComponentState) then Self.DoOnResize;
 end;
 
-procedure TBCMaterialCheckComboEdit.SetColor(AValue: TColor);
+procedure TFRMaterialCheckComboEdit.SetColor(AValue: TColor);
 begin
   inherited SetColor(AValue);
   if Assigned(FDisplayEdit) then FDisplayEdit.Color := AValue;
 end;
 
-procedure TBCMaterialCheckComboEdit.SetName(const AValue: TComponentName);
+procedure TFRMaterialCheckComboEdit.SetName(const AValue: TComponentName);
 begin
   if csDesigning in ComponentState then
   begin
@@ -616,21 +616,21 @@ begin
   inherited SetName(AValue);
 end;
 
-procedure TBCMaterialCheckComboEdit.DoEnter;
+procedure TFRMaterialCheckComboEdit.DoEnter;
 begin
   inherited DoEnter;
   FFocused := True;
   Invalidate;
 end;
 
-procedure TBCMaterialCheckComboEdit.DoExit;
+procedure TFRMaterialCheckComboEdit.DoExit;
 begin
   FFocused := False;
   Invalidate;
   inherited DoExit;
 end;
 
-procedure TBCMaterialCheckComboEdit.DoOnResize;
+procedure TFRMaterialCheckComboEdit.DoOnResize;
 var
   AutoSizedHeight: LongInt;
   EditArea: TRect;
@@ -674,7 +674,7 @@ begin
   inherited DoOnResize;
 end;
 
-procedure TBCMaterialCheckComboEdit.Paint;
+procedure TFRMaterialCheckComboEdit.Paint;
 var
   LeftPos, RightPos, FieldTop, CR: Integer;
   DecoColor: TColor;
@@ -743,7 +743,7 @@ begin
   end;
 end;
 
-procedure TBCMaterialCheckComboEdit.KeyDown(var Key: Word; Shift: TShiftState);
+procedure TFRMaterialCheckComboEdit.KeyDown(var Key: Word; Shift: TShiftState);
 begin
   inherited KeyDown(Key, Shift);
   if Key in [VK_RETURN, VK_DOWN, VK_F4] then
@@ -751,7 +751,7 @@ begin
   if (Key = VK_ESCAPE) and IsDropDownOpen then CloseDropDown;
 end;
 
-constructor TBCMaterialCheckComboEdit.Create(AOwner: TComponent);
+constructor TFRMaterialCheckComboEdit.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
 
@@ -818,7 +818,7 @@ begin
   UpdateDisplayText;
 end;
 
-destructor TBCMaterialCheckComboEdit.Destroy;
+destructor TFRMaterialCheckComboEdit.Destroy;
 begin
   FItems.Free;
   inherited Destroy;

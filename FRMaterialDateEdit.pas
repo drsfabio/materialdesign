@@ -1,8 +1,8 @@
-unit BCMaterialDateEdit;
+﻿unit FRMaterialDateEdit;
 
 {$mode objfpc}{$H+}
 
-{ TBCMaterialDateEdit
+{ TFRMaterialDateEdit
   Componente de edição de data com estilo Material Design.
   Encapsula TDateEdit (LCL) com:
     - Label flutuante acima do campo (accentColor no foco)
@@ -17,21 +17,21 @@ unit BCMaterialDateEdit;
 interface
 
 uses
-  BCMaterialTheme, Classes, Calendar, Controls, EditBtn, ExtCtrls, Forms, Graphics,
+  FRMaterialTheme, Classes, Calendar, Controls, EditBtn, ExtCtrls, Forms, Graphics,
   {$IFDEF FPC} LCLType, LResources, {$ENDIF} Menus, StdCtrls, SysUtils;
 
 type
 
-  { TBCMaterialDateEdit }
+  { TFRMaterialDateEdit }
 
-  TBCMaterialDateEdit = class(TCustomPanel)
+  TFRMaterialDateEdit = class(TCustomPanel)
   private
     FAccentColor: TColor;
     FDisabledColor: TColor;
     FLabel: TBoundLabel;
     FDateEdit: TDateEdit;
     FFocused: Boolean;
-    FVariant: TBCMaterialVariant;
+    FVariant: TFRMaterialVariant;
     FBorderRadius: Integer;
     FClearButton: TButton;
     FShowClearButton: Boolean;
@@ -138,7 +138,7 @@ type
     property DirectInput: Boolean read GetDirectInput write SetDirectInput default True;
     property DisabledColor: TColor read FDisabledColor write FDisabledColor;
     { Variante visual: sublinhado (mvStandard), preenchido (mvFilled) ou contornado (mvOutlined) }
-    property Variant: TBCMaterialVariant read FVariant write FVariant default mvStandard;
+    property Variant: TFRMaterialVariant read FVariant write FVariant default mvStandard;
     { Raio dos cantos arredondados em pixels; 0 = cantos retos }
     property BorderRadius: Integer read FBorderRadius write FBorderRadius default 0;
     { Label flutuante acima do campo }
@@ -192,14 +192,14 @@ procedure Register;
 begin
   {$IFDEF FPC}
     { Descomente e adicione o ícone quando disponível:
-      {$I icons\bcmaterialdateedit_icon.lrs} }
+      {$I icons\frmaterialdateedit_icon.lrs} }
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TBCMaterialDateEdit]);
+  RegisterComponents('BGRA Controls', [TFRMaterialDateEdit]);
 end;
 
-{ TBCMaterialDateEdit }
+{ TFRMaterialDateEdit }
 
-function TBCMaterialDateEdit.IsNeededAdjustSize: Boolean;
+function TFRMaterialDateEdit.IsNeededAdjustSize: Boolean;
 begin
   if (Self.Align in [alLeft, alRight, alClient]) then Exit(False);
   if (akTop in Self.Anchors) and (akBottom in Self.Anchors) then Exit(False);
@@ -208,19 +208,19 @@ end;
 
 { --- Botão de limpeza --- }
 
-function TBCMaterialDateEdit.GetShowClearButton: Boolean;
+function TFRMaterialDateEdit.GetShowClearButton: Boolean;
 begin
   Result := FShowClearButton;
 end;
 
-procedure TBCMaterialDateEdit.SetShowClearButton(AValue: Boolean);
+procedure TFRMaterialDateEdit.SetShowClearButton(AValue: Boolean);
 begin
   if FShowClearButton = AValue then Exit;
   FShowClearButton := AValue;
   UpdateClearButton;
 end;
 
-procedure TBCMaterialDateEdit.ClearButtonClick(Sender: TObject);
+procedure TFRMaterialDateEdit.ClearButtonClick(Sender: TObject);
 begin
   ClearDate;
   FDateEdit.SetFocus;
@@ -228,14 +228,14 @@ begin
     FOnClearButtonClick(Self);
 end;
 
-procedure TBCMaterialDateEdit.InternalDateEditChange(Sender: TObject);
+procedure TFRMaterialDateEdit.InternalDateEditChange(Sender: TObject);
 begin
   UpdateClearButton;
   if Assigned(FUserOnChange) then
     FUserOnChange(Sender);
 end;
 
-procedure TBCMaterialDateEdit.UpdateClearButton;
+procedure TFRMaterialDateEdit.UpdateClearButton;
 var
   ShouldShow: Boolean;
 begin
@@ -259,131 +259,131 @@ begin
   Invalidate;
 end;
 
-procedure TBCMaterialDateEdit.ClearDate;
+procedure TFRMaterialDateEdit.ClearDate;
 begin
   FDateEdit.Text := '';
 end;
 
 { --- Getters/Setters de propriedades --- }
 
-function TBCMaterialDateEdit.GetCalendarDisplaySettings: TDisplaySettings;
+function TFRMaterialDateEdit.GetCalendarDisplaySettings: TDisplaySettings;
 begin
   Result := FDateEdit.CalendarDisplaySettings;
 end;
 
-procedure TBCMaterialDateEdit.SetCalendarDisplaySettings(AValue: TDisplaySettings);
+procedure TFRMaterialDateEdit.SetCalendarDisplaySettings(AValue: TDisplaySettings);
 begin
   FDateEdit.CalendarDisplaySettings := AValue;
 end;
 
-function TBCMaterialDateEdit.GetDate: TDateTime;
+function TFRMaterialDateEdit.GetDate: TDateTime;
 begin
   Result := FDateEdit.Date;
 end;
 
-procedure TBCMaterialDateEdit.SetDate(AValue: TDateTime);
+procedure TFRMaterialDateEdit.SetDate(AValue: TDateTime);
 begin
   FDateEdit.Date := AValue;
 end;
 
-function TBCMaterialDateEdit.GetDateOrder: TDateOrder;
+function TFRMaterialDateEdit.GetDateOrder: TDateOrder;
 begin
   Result := FDateEdit.DateOrder;
 end;
 
-procedure TBCMaterialDateEdit.SetDateOrder(AValue: TDateOrder);
+procedure TFRMaterialDateEdit.SetDateOrder(AValue: TDateOrder);
 begin
   FDateEdit.DateOrder := AValue;
 end;
 
-function TBCMaterialDateEdit.GetDirectInput: Boolean;
+function TFRMaterialDateEdit.GetDirectInput: Boolean;
 begin
   Result := FDateEdit.DirectInput;
 end;
 
-procedure TBCMaterialDateEdit.SetDirectInput(AValue: Boolean);
+procedure TFRMaterialDateEdit.SetDirectInput(AValue: Boolean);
 begin
   FDateEdit.DirectInput := AValue;
 end;
 
-function TBCMaterialDateEdit.GetEditCursor: TCursor;
+function TFRMaterialDateEdit.GetEditCursor: TCursor;
 begin
   Result := FDateEdit.Cursor;
 end;
 
-procedure TBCMaterialDateEdit.SetEditCursor(AValue: TCursor);
+procedure TFRMaterialDateEdit.SetEditCursor(AValue: TCursor);
 begin
   FDateEdit.Cursor := AValue;
 end;
 
-function TBCMaterialDateEdit.GetEditPopupMenu: TPopupMenu;
+function TFRMaterialDateEdit.GetEditPopupMenu: TPopupMenu;
 begin
   if csDestroying in ComponentState then Exit(nil);
   Result := FDateEdit.PopupMenu;
 end;
 
-procedure TBCMaterialDateEdit.SetEditPopupMenu(AValue: TPopupMenu);
+procedure TFRMaterialDateEdit.SetEditPopupMenu(AValue: TPopupMenu);
 begin
   FDateEdit.PopupMenu := AValue;
 end;
 
-function TBCMaterialDateEdit.GetEditReadOnly: Boolean;
+function TFRMaterialDateEdit.GetEditReadOnly: Boolean;
 begin
   Result := FDateEdit.ReadOnly;
 end;
 
-procedure TBCMaterialDateEdit.SetEditReadOnly(AValue: Boolean);
+procedure TFRMaterialDateEdit.SetEditReadOnly(AValue: Boolean);
 begin
   FDateEdit.ReadOnly := AValue;
   UpdateClearButton;
 end;
 
-function TBCMaterialDateEdit.GetEditTabStop: Boolean;
+function TFRMaterialDateEdit.GetEditTabStop: Boolean;
 begin
   Result := FDateEdit.TabStop;
 end;
 
-procedure TBCMaterialDateEdit.SetEditTabStop(AValue: Boolean);
+procedure TFRMaterialDateEdit.SetEditTabStop(AValue: Boolean);
 begin
   FDateEdit.TabStop := AValue;
 end;
 
-function TBCMaterialDateEdit.GetEditText: TCaption;
+function TFRMaterialDateEdit.GetEditText: TCaption;
 begin
   Result := FDateEdit.Text;
 end;
 
-procedure TBCMaterialDateEdit.SetEditText(const AValue: TCaption);
+procedure TFRMaterialDateEdit.SetEditText(const AValue: TCaption);
 begin
   FDateEdit.Text := AValue;
 end;
 
-function TBCMaterialDateEdit.GetEditTextHint: TTranslateString;
+function TFRMaterialDateEdit.GetEditTextHint: TTranslateString;
 begin
   Result := FDateEdit.TextHint;
 end;
 
-procedure TBCMaterialDateEdit.SetEditTextHint(const AValue: TTranslateString);
+procedure TFRMaterialDateEdit.SetEditTextHint(const AValue: TTranslateString);
 begin
   FDateEdit.TextHint := AValue;
 end;
 
-function TBCMaterialDateEdit.GetLabelCaption: TCaption;
+function TFRMaterialDateEdit.GetLabelCaption: TCaption;
 begin
   Result := FLabel.Caption;
 end;
 
-procedure TBCMaterialDateEdit.SetLabelCaption(const AValue: TCaption);
+procedure TFRMaterialDateEdit.SetLabelCaption(const AValue: TCaption);
 begin
   FLabel.Caption := AValue;
 end;
 
-function TBCMaterialDateEdit.GetLabelSpacing: Integer;
+function TFRMaterialDateEdit.GetLabelSpacing: Integer;
 begin
   Result := FLabel.BorderSpacing.Bottom;
 end;
 
-procedure TBCMaterialDateEdit.SetLabelSpacing(AValue: Integer);
+procedure TFRMaterialDateEdit.SetLabelSpacing(AValue: Integer);
 begin
   if FLabel.BorderSpacing.Bottom = AValue then Exit;
   FLabel.BorderSpacing.Bottom := AValue;
@@ -392,12 +392,12 @@ end;
 
 { --- Getters/Setters de eventos --- }
 
-function TBCMaterialDateEdit.GetOnAcceptDate: TAcceptDateEvent;
+function TFRMaterialDateEdit.GetOnAcceptDate: TAcceptDateEvent;
 begin
   Result := FDateEdit.OnAcceptDate;
 end;
 
-procedure TBCMaterialDateEdit.SetOnAcceptDate(AValue: TAcceptDateEvent);
+procedure TFRMaterialDateEdit.SetOnAcceptDate(AValue: TAcceptDateEvent);
 begin
   FDateEdit.OnAcceptDate := AValue;
 end;
@@ -405,122 +405,122 @@ end;
 { OnChange é interceptado internamente para controlar o botão de limpeza.
   O handler do usuário é armazenado em FUserOnChange e chamado dentro de
   InternalDateEditChange. }
-function TBCMaterialDateEdit.GetOnChange: TNotifyEvent;
+function TFRMaterialDateEdit.GetOnChange: TNotifyEvent;
 begin
   Result := FUserOnChange;
 end;
 
-procedure TBCMaterialDateEdit.SetOnChange(AValue: TNotifyEvent);
+procedure TFRMaterialDateEdit.SetOnChange(AValue: TNotifyEvent);
 begin
   FUserOnChange := AValue;
 end;
 
-function TBCMaterialDateEdit.GetOnClick: TNotifyEvent;
+function TFRMaterialDateEdit.GetOnClick: TNotifyEvent;
 begin
   Result := FDateEdit.OnClick;
 end;
 
-procedure TBCMaterialDateEdit.SetOnClick(AValue: TNotifyEvent);
+procedure TFRMaterialDateEdit.SetOnClick(AValue: TNotifyEvent);
 begin
   FDateEdit.OnClick := AValue;
 end;
 
-function TBCMaterialDateEdit.GetOnCustomDate: TCustomDateEvent;
+function TFRMaterialDateEdit.GetOnCustomDate: TCustomDateEvent;
 begin
   Result := FDateEdit.OnCustomDate;
 end;
 
-procedure TBCMaterialDateEdit.SetOnCustomDate(AValue: TCustomDateEvent);
+procedure TFRMaterialDateEdit.SetOnCustomDate(AValue: TCustomDateEvent);
 begin
   FDateEdit.OnCustomDate := AValue;
 end;
 
-function TBCMaterialDateEdit.GetOnEditingDone: TNotifyEvent;
+function TFRMaterialDateEdit.GetOnEditingDone: TNotifyEvent;
 begin
   Result := FDateEdit.OnEditingDone;
 end;
 
-procedure TBCMaterialDateEdit.SetOnEditingDone(AValue: TNotifyEvent);
+procedure TFRMaterialDateEdit.SetOnEditingDone(AValue: TNotifyEvent);
 begin
   FDateEdit.OnEditingDone := AValue;
 end;
 
-function TBCMaterialDateEdit.GetOnEnter: TNotifyEvent;
+function TFRMaterialDateEdit.GetOnEnter: TNotifyEvent;
 begin
   Result := FDateEdit.OnEnter;
 end;
 
-procedure TBCMaterialDateEdit.SetOnEnter(AValue: TNotifyEvent);
+procedure TFRMaterialDateEdit.SetOnEnter(AValue: TNotifyEvent);
 begin
   FDateEdit.OnEnter := AValue;
 end;
 
-function TBCMaterialDateEdit.GetOnExit: TNotifyEvent;
+function TFRMaterialDateEdit.GetOnExit: TNotifyEvent;
 begin
   Result := FDateEdit.OnExit;
 end;
 
-procedure TBCMaterialDateEdit.SetOnExit(AValue: TNotifyEvent);
+procedure TFRMaterialDateEdit.SetOnExit(AValue: TNotifyEvent);
 begin
   FDateEdit.OnExit := AValue;
 end;
 
-function TBCMaterialDateEdit.GetOnKeyDown: TKeyEvent;
+function TFRMaterialDateEdit.GetOnKeyDown: TKeyEvent;
 begin
   Result := FDateEdit.OnKeyDown;
 end;
 
-procedure TBCMaterialDateEdit.SetOnKeyDown(AValue: TKeyEvent);
+procedure TFRMaterialDateEdit.SetOnKeyDown(AValue: TKeyEvent);
 begin
   FDateEdit.OnKeyDown := AValue;
 end;
 
-function TBCMaterialDateEdit.GetOnKeyPress: TKeyPressEvent;
+function TFRMaterialDateEdit.GetOnKeyPress: TKeyPressEvent;
 begin
   Result := FDateEdit.OnKeyPress;
 end;
 
-procedure TBCMaterialDateEdit.SetOnKeyPress(AValue: TKeyPressEvent);
+procedure TFRMaterialDateEdit.SetOnKeyPress(AValue: TKeyPressEvent);
 begin
   FDateEdit.OnKeyPress := AValue;
 end;
 
-function TBCMaterialDateEdit.GetOnKeyUp: TKeyEvent;
+function TFRMaterialDateEdit.GetOnKeyUp: TKeyEvent;
 begin
   Result := FDateEdit.OnKeyUp;
 end;
 
-procedure TBCMaterialDateEdit.SetOnKeyUp(AValue: TKeyEvent);
+procedure TFRMaterialDateEdit.SetOnKeyUp(AValue: TKeyEvent);
 begin
   FDateEdit.OnKeyUp := AValue;
 end;
 
-function TBCMaterialDateEdit.GetOnUTF8KeyPress: TUTF8KeyPressEvent;
+function TFRMaterialDateEdit.GetOnUTF8KeyPress: TUTF8KeyPressEvent;
 begin
   Result := FDateEdit.OnUTF8KeyPress;
 end;
 
-procedure TBCMaterialDateEdit.SetOnUTF8KeyPress(AValue: TUTF8KeyPressEvent);
+procedure TFRMaterialDateEdit.SetOnUTF8KeyPress(AValue: TUTF8KeyPressEvent);
 begin
   FDateEdit.OnUTF8KeyPress := AValue;
 end;
 
 { --- Métodos protegidos --- }
 
-procedure TBCMaterialDateEdit.SetAnchors(const AValue: TAnchors);
+procedure TFRMaterialDateEdit.SetAnchors(const AValue: TAnchors);
 begin
   if Self.Anchors = AValue then Exit;
   inherited SetAnchors(AValue);
   if not (csLoading in ComponentState) then Self.DoOnResize;
 end;
 
-procedure TBCMaterialDateEdit.SetColor(AValue: TColor);
+procedure TFRMaterialDateEdit.SetColor(AValue: TColor);
 begin
   inherited SetColor(AValue);
   FDateEdit.Color := AValue;
 end;
 
-procedure TBCMaterialDateEdit.SetName(const AValue: TComponentName);
+procedure TFRMaterialDateEdit.SetName(const AValue: TComponentName);
 begin
   if csDesigning in ComponentState then
   begin
@@ -534,21 +534,21 @@ begin
   inherited SetName(AValue);
 end;
 
-procedure TBCMaterialDateEdit.DoEnter;
+procedure TFRMaterialDateEdit.DoEnter;
 begin
   inherited DoEnter;
   FFocused := True;
   Invalidate;
 end;
 
-procedure TBCMaterialDateEdit.DoExit;
+procedure TFRMaterialDateEdit.DoExit;
 begin
   FFocused := False;
   Invalidate;
   inherited DoExit;
 end;
 
-procedure TBCMaterialDateEdit.DoOnResize;
+procedure TFRMaterialDateEdit.DoOnResize;
 var
   AutoSizedHeight: LongInt;
 begin
@@ -584,7 +584,7 @@ begin
   inherited DoOnResize;
 end;
 
-procedure TBCMaterialDateEdit.Paint;
+procedure TFRMaterialDateEdit.Paint;
 var
   LeftPos, RightPos, FieldTop, CR: Integer;
   DecoColor: TColor;
@@ -656,7 +656,7 @@ begin
   end;
 end;
 
-constructor TBCMaterialDateEdit.Create(AOwner: TComponent);
+constructor TFRMaterialDateEdit.Create(AOwner: TComponent);
 begin
   FDateEdit := TDateEdit.Create(Self);
   FLabel    := TBoundLabel.Create(Self);

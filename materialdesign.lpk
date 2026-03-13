@@ -8,28 +8,28 @@
     <License Value="LGPL v3"/>
     <Files Count="5">
       <Item1>
-        <Filename Value="BCMaterialTheme.pas"/>
-        <UnitName Value="BCMaterialTheme"/>
+        <Filename Value="FRMaterialTheme.pas"/>
+        <UnitName Value="FRMaterialTheme"/>
       </Item1>
       <Item2>
-        <Filename Value="BCMaterialEdit.pas"/>
+        <Filename Value="FRMaterialEdit.pas"/>
         <HasRegisterProc Value="True"/>
-        <UnitName Value="BCMaterialEdit"/>
+        <UnitName Value="FRMaterialEdit"/>
       </Item2>
       <Item3>
-        <Filename Value="BCMaterialDateEdit.pas"/>
+        <Filename Value="FRMaterialDateEdit.pas"/>
         <HasRegisterProc Value="True"/>
-        <UnitName Value="BCMaterialDateEdit"/>
+        <UnitName Value="FRMaterialDateEdit"/>
       </Item3>
       <Item4>
-        <Filename Value="BCMaterialComboEdit.pas"/>
+        <Filename Value="FRMaterialComboEdit.pas"/>
         <HasRegisterProc Value="True"/>
-        <UnitName Value="BCMaterialComboEdit"/>
+        <UnitName Value="FRMaterialComboEdit"/>
       </Item4>
       <Item5>
-        <Filename Value="BCMaterialCheckComboEdit.pas"/>
+        <Filename Value="FRMaterialCheckComboEdit.pas"/>
         <HasRegisterProc Value="True"/>
-        <UnitName Value="BCMaterialCheckComboEdit"/>
+        <UnitName Value="FRMaterialCheckComboEdit"/>
       </Item5>
     </Files>
     <RequiredPkgs Count="3">
