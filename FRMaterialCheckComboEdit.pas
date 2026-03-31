@@ -213,7 +213,7 @@ implementation
 procedure Register;
 begin
   {$IFDEF FPC}
-    { {$I icons\frmaterialcheckcomboedit_icon.lrs} }
+    {$I icons\frmaterialcheckcomboedit_icon.lrs}
   {$ENDIF}
   RegisterComponents('BGRA Controls', [TFRMaterialCheckComboEdit]);
 end;

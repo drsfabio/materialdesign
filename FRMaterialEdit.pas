@@ -5,10 +5,13 @@
 interface
 
 uses
-  FRMaterialTheme, Buttons, Classes, Controls, Dialogs, ExtCtrls, Forms, Graphics,
-  {$IFDEF FPC} LCLType, LResources, {$ENDIF} MaskEdit, Menus, StdCtrls, SysUtils;
+  FRMaterialTheme, FRMaterialIcons, FRMaterialMasks, Classes, Clipbrd, Controls, Dialogs, ExtCtrls, Forms, Graphics,
+  {$IFDEF FPC} LCLType, LResources, {$ENDIF} Math, MaskEdit, Menus, StdCtrls, SysUtils;
 
 type
+
+  { Posição do botão de pesquisa }
+  TFRButtonPosition = (bpLeft, bpRight);
 
   { TFRMaterialEditBase }
 
@@ -18,14 +21,51 @@ type
     FDisabledColor: TColor;
     FLabel: TBoundLabel;
     FFocused: boolean;
-    FClearButton: TButton;
+    FClearButton: TFRMaterialIconButton;
     FShowClearButton: Boolean;
     FOnClearButtonClick: TNotifyEvent;
-    FSearchButton: TBitBtn;
+    FSearchButton: TFRMaterialIconButton;
     FShowSearchButton: Boolean;
     FOnSearchButtonClick: TNotifyEvent;
+    FSearchButtonPosition: TFRButtonPosition;
     FVariant: TFRMaterialVariant;
     FBorderRadius: Integer;
+    FIconStrokeWidth: Double;
+    FValidationState: TFRValidationState;
+    FValidColor: TColor;
+    FInvalidColor: TColor;
+
+    { Novos campos — HelperText / ErrorText / Counter }
+    FHelperText: string;
+    FErrorText: string;
+    FShowCharCounter: Boolean;
+
+    { Novos campos — Validação avançada }
+    FRequired: Boolean;
+    FMinLength: Integer;
+    FValidateMode: TFRValidateMode;
+    FOnValidate: TFRValidateEvent;
+
+    { Novos campos — Prefixo / Sufixo }
+    FPrefixText: string;
+    FSuffixText: string;
+
+    { Novos campos — LeadingIcon }
+    FLeadingIcon: TFRMaterialIconButton;
+    FShowLeadingIcon: Boolean;
+    FLeadingIconMode: TFRIconMode;
+    FOnLeadingIconClick: TNotifyEvent;
+
+    { Novos campos — PasswordMode }
+    FPasswordMode: Boolean;
+    FEyeButton: TFRMaterialIconButton;
+
+    { Novos campos — CopyButton }
+    FCopyButton: TFRMaterialIconButton;
+    FShowCopyButton: Boolean;
+
+    { Novos campos — AutoFocusNext }
+    FAutoFocusNext: Boolean;
 
     function IsNeededAdjustSize: boolean;
 
@@ -38,7 +78,33 @@ type
     function GetShowSearchButton: Boolean;
     procedure SetShowSearchButton(AValue: Boolean);
     procedure SearchButtonClick(Sender: TObject);
-    procedure DrawSearchIcon(AColor: TColor);
+    function GetIconStrokeWidth: Double;
+    procedure SetIconStrokeWidth(AValue: Double);
+    function GetSearchButtonPosition: TFRButtonPosition;
+    procedure SetSearchButtonPosition(AValue: TFRButtonPosition);
+    procedure AnchorButtons;
+    function GetValidationState: TFRValidationState;
+    procedure SetValidationState(AValue: TFRValidationState);
+
+    { Novos setters }
+    procedure SetHelperText(const AValue: string);
+    procedure SetErrorText(const AValue: string);
+    procedure SetShowCharCounter(AValue: Boolean);
+    procedure SetRequired(AValue: Boolean);
+    procedure SetPrefixText(const AValue: string);
+    procedure SetSuffixText(const AValue: string);
+    procedure SetShowLeadingIcon(AValue: Boolean);
+    procedure SetLeadingIconMode(AValue: TFRIconMode);
+    procedure LeadingIconClick(Sender: TObject);
+    procedure SetPasswordMode(AValue: Boolean);
+    procedure EyeButtonClick(Sender: TObject);
+    procedure SetShowCopyButton(AValue: Boolean);
+    procedure CopyButtonClick(Sender: TObject);
+
+    { Helpers }
+    function GetBottomMargin: Integer;
+    function GetDisplayHelperText: string;
+    procedure InternalValidate;
 
     function GetOnEditChange: TNotifyEvent;
     function GetOnEditClick: TNotifyEvent;
@@ -127,10 +193,16 @@ type
     procedure Paint; override;
   public
     constructor Create(AOwner: TComponent); override;
-    { Expõe o botão de limpeza para customização visual (caption, hint, font, etc.) }
-    property ClearButton: TButton read FClearButton;
-    { Expõe o botão de pesquisa para customização visual (hint, glyph, etc.) }
-    property SearchButton: TBitBtn read FSearchButton;
+    { Expõe o botão de limpeza para customização visual }
+    property ClearButton: TFRMaterialIconButton read FClearButton;
+    { Expõe o botão de pesquisa para customização visual }
+    property SearchButton: TFRMaterialIconButton read FSearchButton;
+    { Expõe o botão lateral esquerdo (ícone de líder) }
+    property LeadingIcon: TFRMaterialIconButton read FLeadingIcon;
+    { Expõe o botão de olho (toggle senha) }
+    property EyeButton: TFRMaterialIconButton read FEyeButton;
+    { Expõe o botão de copiar }
+    property CopyButton: TFRMaterialIconButton read FCopyButton;
   published
     property Align;
     property Alignment: TAlignment read GetEditAlignment write SetEditAlignment default taLeftJustify;
@@ -161,12 +233,52 @@ type
     property ReadOnly: Boolean read GetEditReadOnly write SetEditReadOnly default False;
     { Quando True, exibe um botão "×" à direita do campo ao digitar texto }
     property ShowClearButton: Boolean read GetShowClearButton write SetShowClearButton default False;
-    { Quando True, exibe um botão com ícone de lupa à direita do campo }
+    { Quando True, exibe um botão com ícone de lupa ao lado do campo }
     property ShowSearchButton: Boolean read GetShowSearchButton write SetShowSearchButton default False;
+    { Posição do botão de pesquisa: bpLeft (esquerda) ou bpRight (direita, padrão) }
+    property SearchButtonPosition: TFRButtonPosition read GetSearchButtonPosition write SetSearchButtonPosition default bpRight;
     { Variante visual: sublinhado (mvStandard), preenchido (mvFilled) ou contornado (mvOutlined) }
     property Variant: TFRMaterialVariant read FVariant write FVariant default mvStandard;
     { Raio dos cantos arredondados em pixels; 0 = cantos retos }
     property BorderRadius: Integer read FBorderRadius write FBorderRadius default 0;
+    { Espessura do traço dos ícones SVG (0 = usa padrão de cada ícone) }
+    property IconStrokeWidth: Double read GetIconStrokeWidth write SetIconStrokeWidth;
+    { Estado atual da validação: vsNone (neutro), vsValid (válido), vsInvalid (inválido) }
+    property ValidationState: TFRValidationState read GetValidationState write SetValidationState default vsNone;
+    { Cor de destaque quando ValidationState = vsValid }
+    property ValidColor: TColor read FValidColor write FValidColor default $0000B300;
+    { Cor de destaque quando ValidationState = vsInvalid }
+    property InvalidColor: TColor read FInvalidColor write FInvalidColor default $000000FF;
+    { Texto auxiliar exibido abaixo do campo (oculto quando ErrorText existe e estado é inválido) }
+    property HelperText: string read FHelperText write SetHelperText;
+    { Texto de erro exibido abaixo do campo quando ValidationState = vsInvalid }
+    property ErrorText: string read FErrorText write SetErrorText;
+    { Quando True, exibe um contador de caracteres "N/MaxLength" abaixo do campo }
+    property ShowCharCounter: Boolean read FShowCharCounter write SetShowCharCounter default False;
+    { Quando True, o campo é obrigatório; label exibe asterisco e valida campo vazio }
+    property Required: Boolean read FRequired write SetRequired default False;
+    { Comprimento mínimo de texto; validado conforme ValidateMode }
+    property MinLength: Integer read FMinLength write FMinLength default 0;
+    { Modo de validação: vmOnExit (padrão) ou vmOnChange }
+    property ValidateMode: TFRValidateMode read FValidateMode write FValidateMode default vmOnExit;
+    { Evento de validação personalizada — permite lógica de validação customizada }
+    property OnValidate: TFRValidateEvent read FOnValidate write FOnValidate;
+    { Texto fixo exibido como prefixo dentro do campo (ex: "R$") }
+    property PrefixText: string read FPrefixText write SetPrefixText;
+    { Texto fixo exibido como sufixo dentro do campo (ex: "kg") }
+    property SuffixText: string read FSuffixText write SetSuffixText;
+    { Quando True, exibe um ícone SVG à esquerda do campo }
+    property ShowLeadingIcon: Boolean read FShowLeadingIcon write SetShowLeadingIcon default False;
+    { Modo do ícone à esquerda (imSearch, imCalendar, etc.) }
+    property LeadingIconMode: TFRIconMode read FLeadingIconMode write SetLeadingIconMode default imSearch;
+    { Disparado ao clicar no ícone à esquerda }
+    property OnLeadingIconClick: TNotifyEvent read FOnLeadingIconClick write FOnLeadingIconClick;
+    { Quando True, campo opera em modo senha com botão toggle (olho) }
+    property PasswordMode: Boolean read FPasswordMode write SetPasswordMode default False;
+    { Quando True, exibe um botão para copiar o texto para a área de transferência }
+    property ShowCopyButton: Boolean read FShowCopyButton write SetShowCopyButton default False;
+    { Quando True, ao completar máscara/validação o foco avança para o próximo controle }
+    property AutoFocusNext: Boolean read FAutoFocusNext write FAutoFocusNext default False;
     property ShowHint: Boolean read GetEditShowHint write SetEditShowHint default False;
     property Tag: PtrInt read GetEditTag write SetEditTag default 0;
     property TabOrder;
@@ -202,6 +314,26 @@ type
 
   TFRMaterialEdit = class(specialize TFRMaterialEditBase<TMaskEdit>)
   private
+    FTextMask: TFRTextMaskType;
+    FApplyingMask: Boolean;
+    FUserOnChange: TNotifyEvent;
+    FUserOnKeyPress: TKeyPressEvent;
+
+    { Input Filter }
+    FInputFilter: TFRInputFilter;
+    FAllowedChars: string;
+
+    { Numeric Mask }
+    FNumericMask: TFRNumericMaskType;
+    FNumericValue: Currency;
+    FApplyingNumeric: Boolean;
+
+    { AutoComplete }
+    FAutoCompleteItems: TStringList;
+    FAutoCompletePopup: TListBox;
+    FAutoCompleteEnabled: Boolean;
+    FOnAutoCompleteSelect: TNotifyEvent;
+
     function GetEditMask: string;
     procedure SetEditMask(const AValue: string);
     function GetMaskedText: string;
@@ -222,6 +354,44 @@ type
     procedure SetOnEditDragOver(AValue: TDragOverEvent);
     procedure SetOnEditEndDrag(AValue: TEndDragEvent);
     procedure SetOnEditStartDrag(AValue: TStartDragEvent);
+
+    { Máscara PT-BR }
+    function GetTextMask: TFRTextMaskType;
+    procedure SetTextMask(AValue: TFRTextMaskType);
+    procedure MaskKeyPress(Sender: TObject; var Key: Char);
+    procedure MaskChange(Sender: TObject);
+    function GetUserOnChange: TNotifyEvent;
+    procedure SetUserOnChange(AValue: TNotifyEvent);
+    function GetUserOnKeyPress: TKeyPressEvent;
+    procedure SetUserOnKeyPress(AValue: TKeyPressEvent);
+
+    { Input Filter }
+    procedure SetInputFilter(AValue: TFRInputFilter);
+    procedure FilterKeyPress(Sender: TObject; var Key: Char);
+
+    { Numeric Mask }
+    procedure SetNumericMask(AValue: TFRNumericMaskType);
+    procedure NumericKeyPress(Sender: TObject; var Key: Char);
+    procedure NumericChange(Sender: TObject);
+    function GetNumericValue: Currency;
+    procedure SetNumericValue(AValue: Currency);
+
+    { AutoComplete }
+    procedure SetAutoCompleteEnabled(AValue: Boolean);
+    procedure AutoCompleteChange(Sender: TObject);
+    procedure AutoCompleteKeyDown(Sender: TObject; var Key: Word; {%H-}Shift: TShiftState);
+    procedure AutoCompletePopupClick(Sender: TObject);
+    procedure AutoCompletePopupExit(Sender: TObject);
+    procedure ShowAutoCompletePopup;
+    procedure HideAutoCompletePopup;
+  protected
+    procedure DoExit; override;
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    { Lista de itens para auto-completar }
+    property AutoCompleteItems: TStringList read FAutoCompleteItems;
   published
     property Align;
     property Alignment;
@@ -257,6 +427,24 @@ type
     property ReadOnly;
     property ShowClearButton;
     property ShowSearchButton: Boolean read GetShowSearchButton write SetShowSearchButton default False;
+    property SearchButtonPosition;
+    { Máscara PT-BR com formatação automática e validação }
+    property TextMask: TFRTextMaskType read GetTextMask write SetTextMask default tmtNone;
+    { Filtro de entrada: restringe os caracteres que podem ser digitados }
+    property InputFilter: TFRInputFilter read FInputFilter write SetInputFilter default ifNone;
+    { Caracteres permitidos quando InputFilter = ifCustom (ex: '0123456789.,') }
+    property AllowedChars: string read FAllowedChars write FAllowedChars;
+    { Máscara numérica com formatação automática (R$, kg, etc.) }
+    property NumericMask: TFRNumericMaskType read FNumericMask write SetNumericMask default nmtNone;
+    { Valor numérico (Currency) do campo — leitura/escrita direta }
+    property NumericValue: Currency read GetNumericValue write SetNumericValue;
+    { Quando True, habilita sugestões automáticas baseadas em AutoCompleteItems }
+    property AutoCompleteEnabled: Boolean read FAutoCompleteEnabled write SetAutoCompleteEnabled default False;
+    { Disparado ao selecionar um item do auto-completar }
+    property OnAutoCompleteSelect: TNotifyEvent read FOnAutoCompleteSelect write FOnAutoCompleteSelect;
+    property ValidationState;
+    property ValidColor;
+    property InvalidColor;
     property Variant;
     property BorderRadius;
     property ShowHint;
@@ -267,7 +455,7 @@ type
     property TextHint;
     property Visible;
 
-    property OnChange;
+    property OnChange: TNotifyEvent read GetUserOnChange write SetUserOnChange;
     property OnChangeBounds;
     property OnClearButtonClick;
     property OnSearchButtonClick: TNotifyEvent read FOnSearchButtonClick write FOnSearchButtonClick;
@@ -280,7 +468,7 @@ type
     property OnEnter;
     property OnExit;
     property OnKeyDown;
-    property OnKeyPress;
+    property OnKeyPress: TKeyPressEvent read GetUserOnKeyPress write SetUserOnKeyPress;
     property OnKeyUp;
     property OnMouseDown;
     property OnMouseEnter;
@@ -334,22 +522,17 @@ end;
 procedure TFRMaterialEditBase.InternalEditChange(Sender: TObject);
 begin
   UpdateClearButton;
+  { Validação em tempo real se ValidateMode = vmOnChange }
+  if FValidateMode = vmOnChange then
+    InternalValidate;
+  { Repinta para atualizar o contador de caracteres }
+  if FShowCharCounter then
+    Invalidate;
 end;
 
 procedure TFRMaterialEditBase.UpdateRightButtonSpacing;
-var
-  RightSpacing: Integer;
 begin
-  RightSpacing := 4;
-  if Assigned(FClearButton) and FClearButton.Visible then
-    Inc(RightSpacing, FClearButton.Width);
-  if Assigned(FSearchButton) and FSearchButton.Visible then
-  begin
-    if Assigned(FClearButton) and FClearButton.Visible then
-      Inc(RightSpacing, 2);
-    Inc(RightSpacing, FSearchButton.Width);
-  end;
-  FEdit.BorderSpacing.Right := RightSpacing;
+  AnchorButtons;
 end;
 
 procedure TFRMaterialEditBase.UpdateClearButton;
@@ -383,7 +566,7 @@ begin
   DisableAlign;
   try
     FSearchButton.Visible := FShowSearchButton;
-    UpdateRightButtonSpacing;
+    AnchorButtons;
   finally
     EnableAlign;
   end;
@@ -396,29 +579,357 @@ begin
     FOnSearchButtonClick(Self);
 end;
 
-procedure TFRMaterialEditBase.DrawSearchIcon(AColor: TColor);
-{ Desenha uma lupa 14×14 px no glyph do botão de pesquisa na cor AColor }
-var
-  Bmp: TBitmap;
+function TFRMaterialEditBase.GetIconStrokeWidth: Double;
 begin
-  Bmp := TBitmap.Create;
-  try
-    Bmp.Width  := 14;
-    Bmp.Height := 14;
-    { Fundo transparente: TBitBtn usa o pixel inferior-esquerdo como máscara }
-    Bmp.Canvas.Brush.Color := clFuchsia;
-    Bmp.Canvas.FillRect(Rect(0, 0, 14, 14));
-    Bmp.Canvas.Pen.Color  := AColor;
-    Bmp.Canvas.Pen.Width  := 2;
-    Bmp.Canvas.Brush.Style := bsClear;
-    Bmp.Canvas.Ellipse(1, 1, 10, 10);   { círculo da lente }
-    Bmp.Canvas.MoveTo(8, 8);
-    Bmp.Canvas.LineTo(13, 13);           { cabo da lupa }
-    Bmp.Canvas.Pen.Width := 1;
-    FSearchButton.Glyph.Assign(Bmp);
-  finally
-    Bmp.Free;
+  Result := FIconStrokeWidth;
+end;
+
+procedure TFRMaterialEditBase.SetIconStrokeWidth(AValue: Double);
+begin
+  if FIconStrokeWidth = AValue then Exit;
+  FIconStrokeWidth := AValue;
+  FClearButton.StrokeWidth   := AValue;
+  FSearchButton.StrokeWidth  := AValue;
+  FLeadingIcon.StrokeWidth   := AValue;
+  FEyeButton.StrokeWidth     := AValue;
+  FCopyButton.StrokeWidth    := AValue;
+  FClearButton.InvalidateCache;
+  FSearchButton.InvalidateCache;
+  FLeadingIcon.InvalidateCache;
+  FEyeButton.InvalidateCache;
+  FCopyButton.InvalidateCache;
+end;
+
+function TFRMaterialEditBase.GetSearchButtonPosition: TFRButtonPosition;
+begin
+  Result := FSearchButtonPosition;
+end;
+
+procedure TFRMaterialEditBase.SetSearchButtonPosition(AValue: TFRButtonPosition);
+begin
+  if FSearchButtonPosition = AValue then Exit;
+  FSearchButtonPosition := AValue;
+  AnchorButtons;
+  Invalidate;
+end;
+
+procedure TFRMaterialEditBase.AnchorButtons;
+var
+  LeftSpacing, RightSpacing: Integer;
+  RightAnchorCtrl: TControl;
+  RightAnchorSide: TAnchorSideReference;
+begin
+  LeftSpacing  := 4;
+  RightSpacing := 4;
+
+  { Limpa âncoras dos botões antes de reconfigurar }
+  FClearButton.Anchors  := [];
+  FSearchButton.Anchors := [];
+  FLeadingIcon.Anchors  := [];
+  FEyeButton.Anchors    := [];
+  FCopyButton.Anchors   := [];
+
+  { LeadingIcon — sempre à esquerda }
+  if FShowLeadingIcon then
+  begin
+    FLeadingIcon.Anchors := [akLeft, akTop, akBottom];
+    FLeadingIcon.AnchorSide[akLeft].Control   := Self;
+    FLeadingIcon.AnchorSide[akLeft].Side      := asrTop;
+    FLeadingIcon.AnchorSide[akTop].Control    := FEdit;
+    FLeadingIcon.AnchorSide[akTop].Side       := asrTop;
+    FLeadingIcon.AnchorSide[akBottom].Control := FEdit;
+    FLeadingIcon.AnchorSide[akBottom].Side    := asrBottom;
+    FLeadingIcon.BorderSpacing.Left := 4;
+    Inc(LeftSpacing, FLeadingIcon.Width + 2);
   end;
+
+  { Botão de pesquisa — posição configurável }
+  if FShowSearchButton then
+  begin
+    FSearchButton.Anchors := [akTop, akBottom];
+    case FSearchButtonPosition of
+      bpLeft:
+      begin
+        FSearchButton.Anchors := FSearchButton.Anchors + [akLeft];
+        if FShowLeadingIcon then
+        begin
+          FSearchButton.AnchorSide[akLeft].Control := FLeadingIcon;
+          FSearchButton.AnchorSide[akLeft].Side    := asrBottom;
+        end
+        else
+        begin
+          FSearchButton.AnchorSide[akLeft].Control := Self;
+          FSearchButton.AnchorSide[akLeft].Side    := asrTop;
+        end;
+        FSearchButton.AnchorSide[akTop].Control  := FEdit;
+        FSearchButton.AnchorSide[akTop].Side     := asrTop;
+        FSearchButton.AnchorSide[akBottom].Control := FEdit;
+        FSearchButton.AnchorSide[akBottom].Side    := asrBottom;
+        FSearchButton.BorderSpacing.Left := 4;
+        Inc(LeftSpacing, FSearchButton.Width + 2);
+      end;
+      bpRight:
+      begin
+        FSearchButton.Anchors := FSearchButton.Anchors + [akRight];
+        FSearchButton.AnchorSide[akRight].Control := Self;
+        FSearchButton.AnchorSide[akRight].Side    := asrBottom;
+        FSearchButton.AnchorSide[akTop].Control   := FEdit;
+        FSearchButton.AnchorSide[akTop].Side      := asrTop;
+        FSearchButton.AnchorSide[akBottom].Control := FEdit;
+        FSearchButton.AnchorSide[akBottom].Side    := asrBottom;
+        FSearchButton.BorderSpacing.Right := 4;
+        Inc(RightSpacing, FSearchButton.Width + 2);
+      end;
+    end;
+  end;
+
+  { Determina referência de âncora direita para botões internos }
+  if FShowSearchButton and (FSearchButtonPosition = bpRight) then
+  begin
+    RightAnchorCtrl := FSearchButton;
+    RightAnchorSide := asrTop;
+  end
+  else
+  begin
+    RightAnchorCtrl := Self;
+    RightAnchorSide := asrBottom;
+  end;
+
+  { EyeButton — à direita (antes do search se bpRight) }
+  if FPasswordMode and FEyeButton.Visible then
+  begin
+    FEyeButton.Anchors := [akTop, akRight, akBottom];
+    FEyeButton.AnchorSide[akTop].Control    := FEdit;
+    FEyeButton.AnchorSide[akTop].Side       := asrTop;
+    FEyeButton.AnchorSide[akBottom].Control := FEdit;
+    FEyeButton.AnchorSide[akBottom].Side    := asrBottom;
+    FEyeButton.AnchorSide[akRight].Control  := RightAnchorCtrl;
+    FEyeButton.AnchorSide[akRight].Side     := RightAnchorSide;
+    FEyeButton.BorderSpacing.Right := 2;
+    Inc(RightSpacing, FEyeButton.Width + 2);
+    { Atualiza referência para o próximo botão }
+    RightAnchorCtrl := FEyeButton;
+    RightAnchorSide := asrTop;
+  end;
+
+  { CopyButton — à direita }
+  if FShowCopyButton then
+  begin
+    FCopyButton.Anchors := [akTop, akRight, akBottom];
+    FCopyButton.AnchorSide[akTop].Control    := FEdit;
+    FCopyButton.AnchorSide[akTop].Side       := asrTop;
+    FCopyButton.AnchorSide[akBottom].Control := FEdit;
+    FCopyButton.AnchorSide[akBottom].Side    := asrBottom;
+    FCopyButton.AnchorSide[akRight].Control  := RightAnchorCtrl;
+    FCopyButton.AnchorSide[akRight].Side     := RightAnchorSide;
+    FCopyButton.BorderSpacing.Right := 2;
+    Inc(RightSpacing, FCopyButton.Width + 2);
+    { Atualiza referência para o próximo botão }
+    RightAnchorCtrl := FCopyButton;
+    RightAnchorSide := asrTop;
+  end;
+
+  { Botão de limpeza — sempre à direita, antes dos anteriores }
+  if FShowClearButton then
+  begin
+    FClearButton.Anchors := [akTop, akRight, akBottom];
+    FClearButton.AnchorSide[akTop].Control    := FEdit;
+    FClearButton.AnchorSide[akTop].Side       := asrTop;
+    FClearButton.AnchorSide[akBottom].Control := FEdit;
+    FClearButton.AnchorSide[akBottom].Side    := asrBottom;
+    FClearButton.AnchorSide[akRight].Control  := RightAnchorCtrl;
+    FClearButton.AnchorSide[akRight].Side     := RightAnchorSide;
+    FClearButton.BorderSpacing.Right := 2;
+    Inc(RightSpacing, FClearButton.Width + 2);
+  end;
+
+  FEdit.BorderSpacing.Left  := LeftSpacing;
+  FEdit.BorderSpacing.Right := RightSpacing;
+end;
+
+function TFRMaterialEditBase.GetValidationState: TFRValidationState;
+begin
+  Result := FValidationState;
+end;
+
+procedure TFRMaterialEditBase.SetValidationState(AValue: TFRValidationState);
+begin
+  if FValidationState = AValue then Exit;
+  FValidationState := AValue;
+  Invalidate;
+end;
+
+{ --- Novos setters --- }
+
+procedure TFRMaterialEditBase.SetHelperText(const AValue: string);
+begin
+  if FHelperText = AValue then Exit;
+  FHelperText := AValue;
+  if not (csLoading in ComponentState) then DoOnResize;
+  Invalidate;
+end;
+
+procedure TFRMaterialEditBase.SetErrorText(const AValue: string);
+begin
+  if FErrorText = AValue then Exit;
+  FErrorText := AValue;
+  if not (csLoading in ComponentState) then DoOnResize;
+  Invalidate;
+end;
+
+procedure TFRMaterialEditBase.SetShowCharCounter(AValue: Boolean);
+begin
+  if FShowCharCounter = AValue then Exit;
+  FShowCharCounter := AValue;
+  if not (csLoading in ComponentState) then DoOnResize;
+  Invalidate;
+end;
+
+procedure TFRMaterialEditBase.SetRequired(AValue: Boolean);
+begin
+  if FRequired = AValue then Exit;
+  FRequired := AValue;
+  Invalidate;
+end;
+
+procedure TFRMaterialEditBase.SetPrefixText(const AValue: string);
+begin
+  if FPrefixText = AValue then Exit;
+  FPrefixText := AValue;
+  Invalidate;
+end;
+
+procedure TFRMaterialEditBase.SetSuffixText(const AValue: string);
+begin
+  if FSuffixText = AValue then Exit;
+  FSuffixText := AValue;
+  Invalidate;
+end;
+
+procedure TFRMaterialEditBase.SetShowLeadingIcon(AValue: Boolean);
+begin
+  if FShowLeadingIcon = AValue then Exit;
+  FShowLeadingIcon := AValue;
+  DisableAlign;
+  try
+    FLeadingIcon.Visible := FShowLeadingIcon;
+    AnchorButtons;
+  finally
+    EnableAlign;
+  end;
+  Invalidate;
+end;
+
+procedure TFRMaterialEditBase.SetLeadingIconMode(AValue: TFRIconMode);
+begin
+  if FLeadingIconMode = AValue then Exit;
+  FLeadingIconMode := AValue;
+  FLeadingIcon.IconMode := AValue;
+  FLeadingIcon.InvalidateCache;
+end;
+
+procedure TFRMaterialEditBase.LeadingIconClick(Sender: TObject);
+begin
+  if Assigned(FOnLeadingIconClick) then
+    FOnLeadingIconClick(Self);
+end;
+
+procedure TFRMaterialEditBase.SetPasswordMode(AValue: Boolean);
+begin
+  if FPasswordMode = AValue then Exit;
+  FPasswordMode := AValue;
+  DisableAlign;
+  try
+    FEyeButton.Visible := FPasswordMode;
+    if FPasswordMode then
+    begin
+      FEdit.EchoMode := emPassword;
+      FEdit.PasswordChar := '*';
+      FEyeButton.IconMode := imEyeClosed;
+    end
+    else
+    begin
+      FEdit.EchoMode := emNormal;
+      FEdit.PasswordChar := #0;
+    end;
+    AnchorButtons;
+  finally
+    EnableAlign;
+  end;
+  Invalidate;
+end;
+
+procedure TFRMaterialEditBase.EyeButtonClick(Sender: TObject);
+begin
+  if FEdit.EchoMode = emPassword then
+  begin
+    FEdit.EchoMode := emNormal;
+    FEdit.PasswordChar := #0;
+    FEyeButton.IconMode := imEyeOpen;
+  end
+  else
+  begin
+    FEdit.EchoMode := emPassword;
+    FEdit.PasswordChar := '*';
+    FEyeButton.IconMode := imEyeClosed;
+  end;
+  FEyeButton.InvalidateCache;
+  if FEdit.CanFocus then
+    FEdit.SetFocus;
+end;
+
+procedure TFRMaterialEditBase.SetShowCopyButton(AValue: Boolean);
+begin
+  if FShowCopyButton = AValue then Exit;
+  FShowCopyButton := AValue;
+  DisableAlign;
+  try
+    FCopyButton.Visible := FShowCopyButton;
+    AnchorButtons;
+  finally
+    EnableAlign;
+  end;
+  Invalidate;
+end;
+
+procedure TFRMaterialEditBase.CopyButtonClick(Sender: TObject);
+begin
+  Clipboard.AsText := FEdit.Text;
+end;
+
+function TFRMaterialEditBase.GetBottomMargin: Integer;
+begin
+  Result := 0;
+  if (FHelperText <> '') or (FErrorText <> '') or FShowCharCounter then
+    Result := Canvas.TextHeight('Hg') + 4;
+end;
+
+function TFRMaterialEditBase.GetDisplayHelperText: string;
+begin
+  if (FValidationState = vsInvalid) and (FErrorText <> '') then
+    Result := FErrorText
+  else
+    Result := FHelperText;
+end;
+
+procedure TFRMaterialEditBase.InternalValidate;
+var
+  State: TFRValidationState;
+begin
+  State := vsNone;
+
+  { Obrigatório }
+  if FRequired and (Trim(FEdit.Text) = '') then
+    State := vsInvalid
+  { MinLength }
+  else if (FMinLength > 0) and (Length(FEdit.Text) > 0) and (Length(FEdit.Text) < FMinLength) then
+    State := vsInvalid
+  { Callback customizado }
+  else if Assigned(FOnValidate) then
+    FOnValidate(Self, FEdit.Text, State);
+
+  if State <> vsNone then
+    ValidationState := State;
 end;
 
 { --- Getters de propriedades do Edit --- }
@@ -846,6 +1357,9 @@ end;
 procedure TFRMaterialEditBase.DoExit;
 begin
   FFocused := False;
+  { Validação interna no DoExit base — Required, MinLength, OnValidate }
+  if FValidateMode = vmOnExit then
+    InternalValidate;
   Invalidate;
   inherited DoExit;
 end;
@@ -853,8 +1367,10 @@ end;
 procedure TFRMaterialEditBase.DoOnResize;
 var
   AutoSizedHeight: longint;
-  BtnLeft: Integer;
+  BottomExtra, BtnSize: Integer;
 begin
+  BottomExtra := GetBottomMargin;
+
   if IsNeededAdjustSize then
   begin
     FEdit.Align := alBottom;
@@ -866,7 +1382,8 @@ begin
       FEdit.Height +
       FEdit.BorderSpacing.Around +
       FEdit.BorderSpacing.Bottom +
-      FEdit.BorderSpacing.Top;
+      FEdit.BorderSpacing.Top +
+      BottomExtra;
 
     if Self.Height <> AutoSizedHeight then
       Self.Height := AutoSizedHeight;
@@ -875,22 +1392,34 @@ begin
     FEdit.Align := alClient;
   end;
 
-  { Posiciona os botões de ação à direita do campo de edição }
-  BtnLeft := FEdit.Left + FEdit.Width + 2;
-  if Assigned(FClearButton) and FClearButton.Visible then
+  { Dimensiona os botões proporcionais ao Edit; âncoras cuidam do posicionamento }
+  BtnSize := FEdit.Height - 2;
+  if BtnSize < 8 then BtnSize := 8;
+
+  if Assigned(FSearchButton) then
   begin
-    FClearButton.Height := FEdit.Height - 2;
-    FClearButton.Left   := BtnLeft;
-    FClearButton.Top    := FEdit.Top + (FEdit.Height - FClearButton.Height) div 2;
-    FClearButton.BringToFront;
-    Inc(BtnLeft, FClearButton.Width + 2);
+    FSearchButton.Width  := BtnSize;
+    FSearchButton.Height := BtnSize;
   end;
-  if Assigned(FSearchButton) and FSearchButton.Visible then
+  if Assigned(FClearButton) then
   begin
-    FSearchButton.Height := FEdit.Height - 2;
-    FSearchButton.Left   := BtnLeft;
-    FSearchButton.Top    := FEdit.Top + (FEdit.Height - FSearchButton.Height) div 2;
-    FSearchButton.BringToFront;
+    FClearButton.Width  := BtnSize;
+    FClearButton.Height := BtnSize;
+  end;
+  if Assigned(FLeadingIcon) then
+  begin
+    FLeadingIcon.Width  := BtnSize;
+    FLeadingIcon.Height := BtnSize;
+  end;
+  if Assigned(FEyeButton) then
+  begin
+    FEyeButton.Width  := BtnSize;
+    FEyeButton.Height := BtnSize;
+  end;
+  if Assigned(FCopyButton) then
+  begin
+    FCopyButton.Width  := BtnSize;
+    FCopyButton.Height := BtnSize;
   end;
 
   inherited DoOnResize;
@@ -898,16 +1427,27 @@ end;
 
 procedure TFRMaterialEditBase.Paint;
 var
-  LeftPos, RightPos, FieldTop, CR: Integer;
-  DecoColor: TColor;
+  LeftPos, RightPos, FieldTop, CR, DecoBottom, BottomExtra: Integer;
+  DecoColor, HelperColor: TColor;
+  HelperStr, CounterStr, LblCap: string;
+  PrefixW: Integer;
 begin
   inherited Paint;
 
   CR := FBorderRadius * 2;
-  if FFocused and Self.Enabled then
-    DecoColor := AccentColor
+  BottomExtra := GetBottomMargin;
+  DecoBottom := Height - BottomExtra;
+
+  { Prioridade: validação > foco > inativo }
+  case FValidationState of
+    vsValid:   DecoColor := FValidColor;
+    vsInvalid: DecoColor := FInvalidColor;
   else
-    DecoColor := DisabledColor;
+    if FFocused and Self.Enabled then
+      DecoColor := AccentColor
+    else
+      DecoColor := DisabledColor;
+  end;
 
   { Extensão horizontal do sublinhado/borda }
   if Assigned(Parent) and (Parent.Color = Color) then
@@ -945,21 +1485,35 @@ begin
 
   { Passo 2: cor do label e decoração do campo }
   Canvas.Pen.Color  := DecoColor;
-  FLabel.Font.Color := DecoColor;
 
-  { Atualiza ícone da lupa com a mesma cor do sublinhado }
-  if FSearchButton.Visible then
-    DrawSearchIcon(DecoColor);
+  { Label — mostra asterisco quando Required }
+  LblCap := FLabel.Caption;
+  if FRequired then
+  begin
+    if (LblCap <> '') and (LblCap[Length(LblCap)] <> '*') then
+      FLabel.Font.Color := DecoColor
+    else
+      FLabel.Font.Color := DecoColor;
+  end
+  else
+    FLabel.Font.Color := DecoColor;
+
+  { Atualiza cor dos ícones SVG dos botões de ação conforme o estado de foco }
+  if FSearchButton.Visible and (FSearchButton.NormalColor <> DecoColor) then
+  begin
+    FSearchButton.NormalColor := DecoColor;
+    FSearchButton.InvalidateCache;
+  end;
 
   case FVariant of
     mvStandard, mvFilled:
     begin
       if FFocused and Self.Enabled then
       begin
-        Canvas.Line(LeftPos, Height - 2, RightPos, Height - 2);
-        Canvas.Line(LeftPos, Height - 1, RightPos, Height - 1);
+        Canvas.Line(LeftPos, DecoBottom - 2, RightPos, DecoBottom - 2);
+        Canvas.Line(LeftPos, DecoBottom - 1, RightPos, DecoBottom - 1);
       end else
-        Canvas.Line(LeftPos, Height - 1, RightPos, Height - 1);
+        Canvas.Line(LeftPos, DecoBottom - 1, RightPos, DecoBottom - 1);
     end;
     mvOutlined:
     begin
@@ -969,12 +1523,80 @@ begin
       else
         Canvas.Pen.Width := 1;
       if CR > 0 then
-        Canvas.RoundRect(LeftPos, FieldTop, RightPos, Height - 1, CR, CR)
+        Canvas.RoundRect(LeftPos, FieldTop, RightPos, DecoBottom - 1, CR, CR)
       else
-        Canvas.Rectangle(LeftPos, FieldTop, RightPos, Height - 1);
+        Canvas.Rectangle(LeftPos, FieldTop, RightPos, DecoBottom - 1);
       Canvas.Pen.Width   := 1;
       Canvas.Brush.Style := bsSolid;
     end;
+  end;
+
+  { Passo 3: Required asterisk — desenha "•" vermelho ao lado do label }
+  if FRequired then
+  begin
+    Canvas.Font.Assign(FLabel.Font);
+    Canvas.Font.Color := FInvalidColor;
+    Canvas.Brush.Style := bsClear;
+    Canvas.TextOut(FLabel.Left + Canvas.TextWidth(FLabel.Caption) + 2,
+      FLabel.Top, ' *');
+    Canvas.Brush.Style := bsSolid;
+  end;
+
+  { Passo 4: Prefix / Suffix }
+  if FPrefixText <> '' then
+  begin
+    Canvas.Font.Assign(FEdit.Font);
+    Canvas.Font.Color := DisabledColor;
+    Canvas.Brush.Style := bsClear;
+    PrefixW := Canvas.TextWidth(FPrefixText + ' ');
+    Canvas.TextOut(FEdit.Left - PrefixW, FEdit.Top + (FEdit.Height - Canvas.TextHeight(FPrefixText)) div 2,
+      FPrefixText);
+    Canvas.Brush.Style := bsSolid;
+  end;
+
+  if FSuffixText <> '' then
+  begin
+    Canvas.Font.Assign(FEdit.Font);
+    Canvas.Font.Color := DisabledColor;
+    Canvas.Brush.Style := bsClear;
+    Canvas.TextOut(FEdit.Left + FEdit.Width + 2,
+      FEdit.Top + (FEdit.Height - Canvas.TextHeight(FSuffixText)) div 2,
+      FSuffixText);
+    Canvas.Brush.Style := bsSolid;
+  end;
+
+  { Passo 5: Helper text / Error text (abaixo da decoração) }
+  if BottomExtra > 0 then
+  begin
+    HelperStr := GetDisplayHelperText;
+    if FValidationState = vsInvalid then
+      HelperColor := FInvalidColor
+    else if FValidationState = vsValid then
+      HelperColor := FValidColor
+    else
+      HelperColor := DisabledColor;
+
+    Canvas.Font.Assign(Font);
+    Canvas.Font.Size := Font.Size - 1;
+    if Canvas.Font.Size < 7 then Canvas.Font.Size := 7;
+    Canvas.Brush.Style := bsClear;
+
+    if HelperStr <> '' then
+    begin
+      Canvas.Font.Color := HelperColor;
+      Canvas.TextOut(LeftPos + 4, DecoBottom + 2, HelperStr);
+    end;
+
+    { Contador de caracteres }
+    if FShowCharCounter and (FEdit.MaxLength > 0) then
+    begin
+      CounterStr := IntToStr(Length(FEdit.Text)) + '/' + IntToStr(FEdit.MaxLength);
+      Canvas.Font.Color := DisabledColor;
+      Canvas.TextOut(RightPos - Canvas.TextWidth(CounterStr) - 4,
+        DecoBottom + 2, CounterStr);
+    end;
+
+    Canvas.Brush.Style := bsSolid;
   end;
 end;
 
@@ -1025,33 +1647,88 @@ begin
     AddHandlerOnChange é usado para não sobrescrever o OnChange do usuário. }
   FEdit.AddHandlerOnChange(@InternalEditChange);
 
-  { Configura o botão de limpeza }
-  FClearButton := TButton.Create(Self);
-  FClearButton.Caption := '×';      { × — sinal de multiplicação (U+00D7) }
-  FClearButton.Width := 22;
-  FClearButton.Height := 22;
-  FClearButton.TabStop := False;     { não participa da ordem de tabulação }
-  FClearButton.Visible := False;
-  FClearButton.Parent := Self;
-  FClearButton.OnClick := @ClearButtonClick;
+  { Configura o botão de limpeza — ícone SVG "×" vermelho }
+  FClearButton := TFRMaterialIconButton.Create(Self);
+  FClearButton.IconMode := imClear;
+  FClearButton.Width    := 22;
+  FClearButton.Height   := 22;
+  FClearButton.Visible  := False;
+  FClearButton.Parent   := Self;
+  FClearButton.OnClick  := @ClearButtonClick;
   FClearButton.SetSubComponent(True);
 
-  { Configura o botão de pesquisa }
-  FSearchButton := TBitBtn.Create(Self);
-  FSearchButton.Caption  := '';
-  FSearchButton.Width    := 22;
-  FSearchButton.Height   := 22;
-  FSearchButton.TabStop  := False;
-  FSearchButton.Visible  := False;
-  FSearchButton.Parent   := Self;
-  FSearchButton.OnClick  := @SearchButtonClick;
+  { Configura o botão de pesquisa — ícone SVG de lupa }
+  FSearchButton := TFRMaterialIconButton.Create(Self);
+  FSearchButton.IconMode    := imSearch;
+  FSearchButton.NormalColor := DisabledColor;
+  FSearchButton.HoverColor  := AccentColor;
+  FSearchButton.Width       := 22;
+  FSearchButton.Height      := 22;
+  FSearchButton.Visible     := False;
+  FSearchButton.Parent      := Self;
+  FSearchButton.OnClick     := @SearchButtonClick;
   FSearchButton.SetSubComponent(True);
-  DrawSearchIcon(DisabledColor);
 
-  FShowClearButton  := False;
-  FShowSearchButton := False;
-  FVariant          := mvStandard;
-  FBorderRadius     := 0;
+  { Configura o LeadingIcon — ícone SVG à esquerda }
+  FLeadingIcon := TFRMaterialIconButton.Create(Self);
+  FLeadingIcon.IconMode    := imSearch;
+  FLeadingIcon.NormalColor := DisabledColor;
+  FLeadingIcon.HoverColor  := AccentColor;
+  FLeadingIcon.Width       := 22;
+  FLeadingIcon.Height      := 22;
+  FLeadingIcon.Visible     := False;
+  FLeadingIcon.Parent      := Self;
+  FLeadingIcon.OnClick     := @LeadingIconClick;
+  FLeadingIcon.SetSubComponent(True);
+
+  { Configura o EyeButton — toggle senha }
+  FEyeButton := TFRMaterialIconButton.Create(Self);
+  FEyeButton.IconMode    := imEyeClosed;
+  FEyeButton.NormalColor := DisabledColor;
+  FEyeButton.HoverColor  := AccentColor;
+  FEyeButton.Width       := 22;
+  FEyeButton.Height      := 22;
+  FEyeButton.Visible     := False;
+  FEyeButton.Parent      := Self;
+  FEyeButton.OnClick     := @EyeButtonClick;
+  FEyeButton.SetSubComponent(True);
+
+  { Configura o CopyButton — copiar texto }
+  FCopyButton := TFRMaterialIconButton.Create(Self);
+  FCopyButton.IconMode    := imCopy;
+  FCopyButton.NormalColor := DisabledColor;
+  FCopyButton.HoverColor  := AccentColor;
+  FCopyButton.Width       := 22;
+  FCopyButton.Height      := 22;
+  FCopyButton.Visible     := False;
+  FCopyButton.Parent      := Self;
+  FCopyButton.OnClick     := @CopyButtonClick;
+  FCopyButton.SetSubComponent(True);
+
+  FShowClearButton      := False;
+  FShowSearchButton     := False;
+  FSearchButtonPosition := bpRight;
+  FVariant              := mvStandard;
+  FBorderRadius         := 0;
+  FIconStrokeWidth      := 0;
+  FValidationState      := vsNone;
+  FValidColor           := $0000B300;
+  FInvalidColor         := $000000FF;
+
+  { Valores padrão — novos campos }
+  FHelperText       := '';
+  FErrorText        := '';
+  FShowCharCounter  := False;
+  FRequired         := False;
+  FMinLength        := 0;
+  FValidateMode     := vmOnExit;
+  FPrefixText       := '';
+  FSuffixText       := '';
+  FShowLeadingIcon  := False;
+  FLeadingIconMode  := imSearch;
+  FPasswordMode     := False;
+  FShowCopyButton   := False;
+  FAutoFocusNext    := False;
 end;
 
 { TFRMaterialEdit }
@@ -1142,6 +1819,459 @@ function TFRMaterialEdit.GetMaskedText: string;
 begin
   { EditText retorna o texto COM os literais da máscara }
   Result := FEdit.EditText;
+end;
+
+{ --- TextMask PT-BR --- }
+
+function TFRMaterialEdit.GetTextMask: TFRTextMaskType;
+begin
+  Result := FTextMask;
+end;
+
+procedure TFRMaterialEdit.SetTextMask(AValue: TFRTextMaskType);
+var
+  ML: Integer;
+begin
+  if FTextMask = AValue then Exit;
+  FTextMask := AValue;
+
+  if FTextMask <> tmtNone then
+  begin
+    { Limpa EditMask nativa para não conflitar }
+    FEdit.EditMask := '';
+
+    { MaxLength formatado }
+    ML := FRMaxLenForMask(FTextMask);
+    if ML > 0 then
+      FEdit.MaxLength := ML
+    else
+      FEdit.MaxLength := 0;
+
+    { Intercepta eventos }
+    FEdit.OnKeyPress := @MaskKeyPress;
+    FEdit.OnChange   := @MaskChange;
+  end
+  else
+  begin
+    FEdit.MaxLength  := 0;
+    FEdit.OnKeyPress := FUserOnKeyPress;
+    FEdit.OnChange   := FUserOnChange;
+    FValidationState := vsNone;
+  end;
+  Invalidate;
+end;
+
+function TFRMaterialEdit.GetUserOnChange: TNotifyEvent;
+begin
+  Result := FUserOnChange;
+end;
+
+procedure TFRMaterialEdit.SetUserOnChange(AValue: TNotifyEvent);
+begin
+  FUserOnChange := AValue;
+  { Se a máscara não estiver ativa, configura diretamente no Edit }
+  if FTextMask = tmtNone then
+    FEdit.OnChange := AValue;
+end;
+
+function TFRMaterialEdit.GetUserOnKeyPress: TKeyPressEvent;
+begin
+  Result := FUserOnKeyPress;
+end;
+
+procedure TFRMaterialEdit.SetUserOnKeyPress(AValue: TKeyPressEvent);
+begin
+  FUserOnKeyPress := AValue;
+  if FTextMask = tmtNone then
+    FEdit.OnKeyPress := AValue;
+end;
+
+procedure TFRMaterialEdit.MaskKeyPress(Sender: TObject; var Key: Char);
+begin
+  if FTextMask <> tmtNone then
+  begin
+    if not (Key in ['0'..'9', #8]) then
+      Key := #0;
+  end;
+  if Assigned(FUserOnKeyPress) then
+    FUserOnKeyPress(Sender, Key);
+end;
+
+procedure TFRMaterialEdit.MaskChange(Sender: TObject);
+var
+  Digits, Mask, Formatted: string;
+  NumDigits: Integer;
+begin
+  if FApplyingMask then Exit;
+  if FTextMask = tmtNone then
+  begin
+    if Assigned(FUserOnChange) then
+      FUserOnChange(Sender);
+    Exit;
+  end;
+
+  FApplyingMask := True;
+  try
+    Digits    := FRRemoveNonDigits(FEdit.Text);
+    NumDigits := Length(Digits);
+    Mask      := FRMaskForDigits(FTextMask, NumDigits);
+
+    if Mask <> '' then
+    begin
+      Formatted       := FRApplyMaskPattern(Digits, Mask);
+      FEdit.Text      := Formatted;
+      FEdit.SelStart  := Length(Formatted);
+    end;
+
+    { Atualiza estado de validação em tempo real }
+    ValidationState := FRValidateMask(FTextMask, FEdit.Text);
+
+    { Atualiza visibilidade do botão de limpeza }
+    UpdateClearButton;
+
+    if Assigned(FUserOnChange) then
+      FUserOnChange(Sender);
+
+    { AutoFocusNext — avança ao completar a máscara com sucesso }
+    if FAutoFocusNext and (ValidationState = vsValid) then
+    begin
+      if Assigned(Parent) then
+        Parent.SelectNext(Self, True, True);
+    end;
+  finally
+    FApplyingMask := False;
+  end;
+end;
+
+procedure TFRMaterialEdit.DoExit;
+var
+  State: TFRValidationState;
+  Digits: string;
+begin
+  { Oculta auto-completar }
+  HideAutoCompletePopup;
+
+  if FTextMask <> tmtNone then
+  begin
+    State  := FRValidateMask(FTextMask, FEdit.Text);
+    Digits := FRRemoveNonDigits(FEdit.Text);
+
+    if State = vsInvalid then
+    begin
+      ValidationState := vsInvalid;
+
+      case FTextMask of
+        tmtCpfCnpj:
+          if Length(Digits) <= 11 then
+            MessageDlg('Atenção', 'CPF inválido!', mtWarning, [mbOK], 0)
+          else
+            MessageDlg('Atenção', 'CNPJ inválido!', mtWarning, [mbOK], 0);
+        tmtCep:
+          MessageDlg('Atenção', 'CEP inválido!', mtWarning, [mbOK], 0);
+        tmtChaveNFe:
+          MessageDlg('Atenção', 'Chave NF-e inválida!', mtWarning, [mbOK], 0);
+        tmtBoleto:
+          MessageDlg('Atenção', 'Código de boleto inválido!', mtWarning, [mbOK], 0);
+        tmtTelefone:
+          MessageDlg('Atenção', 'Telefone inválido!', mtWarning, [mbOK], 0);
+      end;
+
+      if FEdit.CanFocus then
+        FEdit.SetFocus;
+      Exit; { não chama inherited — mantém foco }
+    end;
+  end;
+  inherited DoExit;
+end;
+
+procedure TFRMaterialEdit.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  inherited Notification(AComponent, Operation);
+  if (Operation = opRemove) and (AComponent = FAutoCompletePopup) then
+    FAutoCompletePopup := nil;
+end;
+
+constructor TFRMaterialEdit.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FTextMask         := tmtNone;
+  FApplyingMask     := False;
+  FInputFilter      := ifNone;
+  FAllowedChars     := '';
+  FNumericMask      := nmtNone;
+  FNumericValue     := 0;
+  FApplyingNumeric  := False;
+  FAutoCompleteEnabled := False;
+  FAutoCompleteItems := TStringList.Create;
+  FAutoCompleteItems.Sorted := True;
+  FAutoCompleteItems.Duplicates := dupIgnore;
+  FAutoCompletePopup := nil;
+end;
+
+destructor TFRMaterialEdit.Destroy;
+begin
+  HideAutoCompletePopup;
+  FreeAndNil(FAutoCompleteItems);
+  inherited Destroy;
+end;
+
+{ --- InputFilter --- }
+
+procedure TFRMaterialEdit.SetInputFilter(AValue: TFRInputFilter);
+begin
+  if FInputFilter = AValue then Exit;
+  FInputFilter := AValue;
+  if FInputFilter <> ifNone then
+  begin
+    { Não conflita com TextMask — TextMask tem prioridade }
+    if FTextMask = tmtNone then
+      FEdit.OnKeyPress := @FilterKeyPress;
+  end
+  else
+  begin
+    if FTextMask = tmtNone then
+      FEdit.OnKeyPress := FUserOnKeyPress;
+  end;
+end;
+
+procedure TFRMaterialEdit.FilterKeyPress(Sender: TObject; var Key: Char);
+begin
+  if FInputFilter = ifCustom then
+  begin
+    if (FAllowedChars <> '') and (Key >= #32) and (Pos(Key, FAllowedChars) = 0) then
+      Key := #0;
+  end
+  else if not FRIsCharAllowed(FInputFilter, Key) then
+    Key := #0;
+
+  if Assigned(FUserOnKeyPress) then
+    FUserOnKeyPress(Sender, Key);
+end;
+
+{ --- NumericMask --- }
+
+procedure TFRMaterialEdit.SetNumericMask(AValue: TFRNumericMaskType);
+begin
+  if FNumericMask = AValue then Exit;
+  FNumericMask := AValue;
+  if FNumericMask <> nmtNone then
+  begin
+    { Desativa TextMask se estava ativa }
+    FTextMask := tmtNone;
+    FEdit.EditMask := '';
+    FEdit.OnKeyPress := @NumericKeyPress;
+    FEdit.OnChange   := @NumericChange;
+    FEdit.Text := FRFormatNumeric(FNumericMask, 0);
+  end
+  else
+  begin
+    FEdit.OnKeyPress := FUserOnKeyPress;
+    FEdit.OnChange   := FUserOnChange;
+  end;
+end;
+
+procedure TFRMaterialEdit.NumericKeyPress(Sender: TObject; var Key: Char);
+begin
+  if FNumericMask <> nmtNone then
+  begin
+    if not (Key in ['0'..'9', ',', '-', #8]) then
+      Key := #0;
+  end;
+  if Assigned(FUserOnKeyPress) then
+    FUserOnKeyPress(Sender, Key);
+end;
+
+procedure TFRMaterialEdit.NumericChange(Sender: TObject);
+var
+  Val: Currency;
+  Formatted: string;
+begin
+  if FApplyingNumeric then Exit;
+  if FNumericMask = nmtNone then
+  begin
+    if Assigned(FUserOnChange) then FUserOnChange(Sender);
+    Exit;
+  end;
+
+  FApplyingNumeric := True;
+  try
+    Val := FRParseNumericText(FEdit.Text);
+    FNumericValue := Val;
+    Formatted := FRFormatNumeric(FNumericMask, Val);
+    FEdit.Text := Formatted;
+    FEdit.SelStart := Length(Formatted);
+    UpdateClearButton;
+    if Assigned(FUserOnChange) then FUserOnChange(Sender);
+  finally
+    FApplyingNumeric := False;
+  end;
+end;
+
+function TFRMaterialEdit.GetNumericValue: Currency;
+begin
+  if FNumericMask <> nmtNone then
+    Result := FRParseNumericText(FEdit.Text)
+  else
+    Result := FNumericValue;
+end;
+
+procedure TFRMaterialEdit.SetNumericValue(AValue: Currency);
+begin
+  FNumericValue := AValue;
+  if FNumericMask <> nmtNone then
+  begin
+    FApplyingNumeric := True;
+    try
+      FEdit.Text := FRFormatNumeric(FNumericMask, AValue);
+    finally
+      FApplyingNumeric := False;
+    end;
+  end;
+end;
+
+{ --- AutoComplete --- }
+
+procedure TFRMaterialEdit.SetAutoCompleteEnabled(AValue: Boolean);
+begin
+  if FAutoCompleteEnabled = AValue then Exit;
+  FAutoCompleteEnabled := AValue;
+  if FAutoCompleteEnabled then
+  begin
+    FEdit.AddHandlerOnChange(@AutoCompleteChange);
+    FEdit.OnKeyDown := @AutoCompleteKeyDown;
+  end
+  else
+  begin
+    HideAutoCompletePopup;
+  end;
+end;
+
+procedure TFRMaterialEdit.AutoCompleteChange(Sender: TObject);
+begin
+  if not FAutoCompleteEnabled then Exit;
+  if FEdit.Text = '' then
+  begin
+    HideAutoCompletePopup;
+    Exit;
+  end;
+  ShowAutoCompletePopup;
+end;
+
+procedure TFRMaterialEdit.AutoCompleteKeyDown(Sender: TObject; var Key: Word; {%H-}Shift: TShiftState);
+begin
+  if not Assigned(FAutoCompletePopup) then Exit;
+  if not FAutoCompletePopup.Visible then Exit;
+
+  case Key of
+    VK_DOWN:
+    begin
+      if FAutoCompletePopup.ItemIndex < FAutoCompletePopup.Count - 1 then
+        FAutoCompletePopup.ItemIndex := FAutoCompletePopup.ItemIndex + 1;
+      Key := 0;
+    end;
+    VK_UP:
+    begin
+      if FAutoCompletePopup.ItemIndex > 0 then
+        FAutoCompletePopup.ItemIndex := FAutoCompletePopup.ItemIndex - 1;
+      Key := 0;
+    end;
+    VK_RETURN:
+    begin
+      AutoCompletePopupClick(FAutoCompletePopup);
+      Key := 0;
+    end;
+    VK_ESCAPE:
+    begin
+      HideAutoCompletePopup;
+      Key := 0;
+    end;
+  end;
+end;
+
+procedure TFRMaterialEdit.AutoCompletePopupClick(Sender: TObject);
+begin
+  if not Assigned(FAutoCompletePopup) then Exit;
+  if FAutoCompletePopup.ItemIndex < 0 then Exit;
+
+  FEdit.Text := FAutoCompletePopup.Items[FAutoCompletePopup.ItemIndex];
+  FEdit.SelStart := Length(FEdit.Text);
+  HideAutoCompletePopup;
+
+  if Assigned(FOnAutoCompleteSelect) then
+    FOnAutoCompleteSelect(Self);
+
+  if FEdit.CanFocus then
+    FEdit.SetFocus;
+end;
+
+procedure TFRMaterialEdit.AutoCompletePopupExit(Sender: TObject);
+begin
+  HideAutoCompletePopup;
+end;
+
+procedure TFRMaterialEdit.ShowAutoCompletePopup;
+var
+  i, MatchCount: Integer;
+  Filter, UpperFilter: string;
+  P: TPoint;
+begin
+  if FAutoCompleteItems.Count = 0 then
+  begin
+    HideAutoCompletePopup;
+    Exit;
+  end;
+
+  Filter := FEdit.Text;
+  UpperFilter := UpperCase(Filter);
+
+  { Cria o popup sob demanda }
+  if not Assigned(FAutoCompletePopup) then
+  begin
+    FAutoCompletePopup := TListBox.Create(Self);
+    FAutoCompletePopup.Visible := False;
+    FAutoCompletePopup.OnClick := @AutoCompletePopupClick;
+    FAutoCompletePopup.OnExit  := @AutoCompletePopupExit;
+    FAutoCompletePopup.FreeNotification(Self);
+  end;
+
+  FAutoCompletePopup.Items.BeginUpdate;
+  try
+    FAutoCompletePopup.Items.Clear;
+    for i := 0 to FAutoCompleteItems.Count - 1 do
+    begin
+      if Pos(UpperFilter, UpperCase(FAutoCompleteItems[i])) > 0 then
+        FAutoCompletePopup.Items.Add(FAutoCompleteItems[i]);
+    end;
+  finally
+    FAutoCompletePopup.Items.EndUpdate;
+  end;
+
+  MatchCount := FAutoCompletePopup.Items.Count;
+  if MatchCount = 0 then
+  begin
+    HideAutoCompletePopup;
+    Exit;
+  end;
+
+  { Posiciona abaixo do componente }
+  if Assigned(Parent) then
+  begin
+    FAutoCompletePopup.Parent := Parent;
+    P := Point(Self.Left, Self.Top + Self.Height);
+    FAutoCompletePopup.SetBounds(P.X, P.Y, Self.Width,
+      Min(MatchCount * FAutoCompletePopup.ItemHeight + 4, 150));
+    FAutoCompletePopup.Visible := True;
+    FAutoCompletePopup.BringToFront;
+  end;
+end;
+
+procedure TFRMaterialEdit.HideAutoCompletePopup;
+begin
+  if Assigned(FAutoCompletePopup) then
+  begin
+    FAutoCompletePopup.Visible := False;
+    FAutoCompletePopup.Items.Clear;
+  end;
 end;
 
 end.

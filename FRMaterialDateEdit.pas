@@ -17,7 +17,7 @@
 interface
 
 uses
-  FRMaterialTheme, Classes, Calendar, Controls, EditBtn, ExtCtrls, Forms, Graphics,
+  FRMaterialTheme, FRMaterialIcons, Classes, Calendar, Controls, EditBtn, ExtCtrls, Forms, Graphics,
   {$IFDEF FPC} LCLType, LResources, {$ENDIF} Menus, StdCtrls, SysUtils;
 
 type
@@ -33,7 +33,7 @@ type
     FFocused: Boolean;
     FVariant: TFRMaterialVariant;
     FBorderRadius: Integer;
-    FClearButton: TButton;
+    FClearButton: TFRMaterialIconButton;
     FShowClearButton: Boolean;
     FOnClearButtonClick: TNotifyEvent;
     { Armazena OnChange do usuário; FDateEdit.OnChange é reservado para uso interno }
@@ -114,7 +114,7 @@ type
     { Acesso direto ao TDateEdit interno para customizações avançadas }
     property DateEdit: TDateEdit read FDateEdit;
     { Acesso ao botão de limpeza (caption, hint, cor etc.) }
-    property ClearButton: TButton read FClearButton;
+    property ClearButton: TFRMaterialIconButton read FClearButton;
 
   published
     property Align;
@@ -191,8 +191,7 @@ implementation
 procedure Register;
 begin
   {$IFDEF FPC}
-    { Descomente e adicione o ícone quando disponível:
-      {$I icons\frmaterialdateedit_icon.lrs} }
+    {$I icons\frmaterialdateedit_icon.lrs}
   {$ENDIF}
   RegisterComponents('BGRA Controls', [TFRMaterialDateEdit]);
 end;
@@ -248,11 +247,23 @@ begin
   DisableAlign;
   try
     FClearButton.Visible := ShouldShow;
-    { Abre/fecha espaço no lado direito para o botão }
     if ShouldShow then
-      FDateEdit.BorderSpacing.Right := FClearButton.Width + 4
+    begin
+      FClearButton.Anchors := [akTop, akRight, akBottom];
+      FClearButton.AnchorSide[akRight].Control  := Self;
+      FClearButton.AnchorSide[akRight].Side     := asrBottom;
+      FClearButton.AnchorSide[akTop].Control    := FDateEdit;
+      FClearButton.AnchorSide[akTop].Side       := asrTop;
+      FClearButton.AnchorSide[akBottom].Control := FDateEdit;
+      FClearButton.AnchorSide[akBottom].Side    := asrBottom;
+      FClearButton.BorderSpacing.Right := 4;
+      FDateEdit.BorderSpacing.Right := FClearButton.Width + 6;
+    end
     else
+    begin
+      FClearButton.Anchors := [];
       FDateEdit.BorderSpacing.Right := 4;
+    end;
   finally
     EnableAlign;
   end;
@@ -570,15 +581,11 @@ begin
   end else
     FDateEdit.Align := alClient;
 
-  { Posiciona o botão de limpeza à direita do campo de data,
-    antes do botão de calendário nativo do TDateEdit }
-  if Assigned(FClearButton) and FClearButton.Visible then
+  { Dimensiona o botão; âncoras cuidam do posicionamento }
+  if Assigned(FClearButton) then
   begin
+    FClearButton.Width  := FDateEdit.Height - 2;
     FClearButton.Height := FDateEdit.Height - 2;
-    FClearButton.Left   := FDateEdit.Left + FDateEdit.Width + 2;
-    FClearButton.Top    :=
-      FDateEdit.Top + (FDateEdit.Height - FClearButton.Height) div 2;
-    FClearButton.BringToFront;
   end;
 
   inherited DoOnResize;
@@ -700,12 +707,11 @@ begin
     chamado dentro de InternalDateEditChange. }
   FDateEdit.OnChange := @InternalDateEditChange;
 
-  { Botão de limpeza }
-  FClearButton          := TButton.Create(Self);
-  FClearButton.Caption  := '×';      { × U+00D7 }
+  { Botão de limpeza — ícone SVG "×" vermelho }
+  FClearButton := TFRMaterialIconButton.Create(Self);
+  FClearButton.IconMode := imClear;
   FClearButton.Width    := 22;
   FClearButton.Height   := 22;
-  FClearButton.TabStop  := False;
   FClearButton.Visible  := False;
   FClearButton.Parent   := Self;
   FClearButton.OnClick  := @ClearButtonClick;

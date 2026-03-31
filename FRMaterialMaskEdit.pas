@@ -42,7 +42,7 @@ unit FRMaterialMaskEdit;
 interface
 
 uses
-  FRMaterialTheme, Classes, Controls, ExtCtrls, Forms, Graphics,
+  FRMaterialTheme, FRMaterialIcons, Classes, Controls, ExtCtrls, Forms, Graphics,
   {$IFDEF FPC} LCLType, LResources, {$ENDIF}
   MaskEdit, Menus, StdCtrls, SysUtils;
 
@@ -59,7 +59,7 @@ type
     FFocused: Boolean;
     FVariant: TFRMaterialVariant;
     FBorderRadius: Integer;
-    FClearButton: TButton;
+    FClearButton: TFRMaterialIconButton;
     FShowClearButton: Boolean;
     FOnClearButtonClick: TNotifyEvent;
 
@@ -137,7 +137,7 @@ type
     { Acesso direto ao TMaskEdit interno para customizações avançadas }
     property MaskEdit: TMaskEdit read FMaskEdit;
     { Botão de limpeza — permite customizar caption, hint, cor, etc. }
-    property ClearButton: TButton read FClearButton;
+    property ClearButton: TFRMaterialIconButton read FClearButton;
     { Texto com os literais da máscara incluídos (ex.: "(11) 98765-4321") }
     property MaskedText: string read GetMaskedText;
 
@@ -218,8 +218,7 @@ implementation
 procedure Register;
 begin
   {$IFDEF FPC}
-    { Descomente e adicione o ícone quando disponível:
-      {$I icons\frmaterialmaskedit_icon.lrs} }
+    {$I icons\frmaterialmaskedit_icon.lrs}
   {$ENDIF}
   RegisterComponents('BGRA Controls', [TFRMaterialMaskEdit]);
 end;
@@ -274,9 +273,22 @@ begin
   try
     FClearButton.Visible := ShouldShow;
     if ShouldShow then
-      FMaskEdit.BorderSpacing.Right := FClearButton.Width + 4
+    begin
+      FClearButton.Anchors := [akTop, akRight, akBottom];
+      FClearButton.AnchorSide[akRight].Control  := Self;
+      FClearButton.AnchorSide[akRight].Side     := asrBottom;
+      FClearButton.AnchorSide[akTop].Control    := FMaskEdit;
+      FClearButton.AnchorSide[akTop].Side       := asrTop;
+      FClearButton.AnchorSide[akBottom].Control := FMaskEdit;
+      FClearButton.AnchorSide[akBottom].Side    := asrBottom;
+      FClearButton.BorderSpacing.Right := 4;
+      FMaskEdit.BorderSpacing.Right := FClearButton.Width + 6;
+    end
     else
+    begin
+      FClearButton.Anchors := [];
       FMaskEdit.BorderSpacing.Right := 4;
+    end;
   finally
     EnableAlign;
   end;
@@ -594,14 +606,11 @@ begin
   end else
     FMaskEdit.Align := alClient;
 
-  { Posiciona o botão de limpeza à direita do campo }
-  if Assigned(FClearButton) and FClearButton.Visible then
+  { Dimensiona o botão; âncoras cuidam do posicionamento }
+  if Assigned(FClearButton) then
   begin
+    FClearButton.Width  := FMaskEdit.Height - 2;
     FClearButton.Height := FMaskEdit.Height - 2;
-    FClearButton.Left   := FMaskEdit.Left + FMaskEdit.Width + 2;
-    FClearButton.Top    :=
-      FMaskEdit.Top + (FMaskEdit.Height - FClearButton.Height) div 2;
-    FClearButton.BringToFront;
   end;
 
   inherited DoOnResize;
@@ -725,11 +734,10 @@ begin
     O controle de visibilidade do botão de limpeza é feito internamente. }
   FMaskEdit.AddHandlerOnChange(@InternalEditChange);
 
-  FClearButton          := TButton.Create(Self);
-  FClearButton.Caption  := '×';
+  FClearButton := TFRMaterialIconButton.Create(Self);
+  FClearButton.IconMode := imClear;
   FClearButton.Width    := 22;
   FClearButton.Height   := 22;
-  FClearButton.TabStop  := False;
   FClearButton.Visible  := False;
   FClearButton.Parent   := Self;
   FClearButton.OnClick  := @ClearButtonClick;

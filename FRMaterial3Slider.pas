@@ -1,0 +1,266 @@
+unit FRMaterial3Slider;
+
+{$mode objfpc}{$H+}
+
+{ Material Design 3 — Slider.
+
+  TFRMaterialSlider — Continuous or discrete slider with thumb and track.
+
+  License: LGPL v3
+}
+
+interface
+
+uses
+  Classes, SysUtils, Controls, Graphics,
+  {$IFDEF FPC} LResources, {$ENDIF}
+  BGRABitmap, BGRABitmapTypes, FRMaterial3Base;
+
+type
+  TFRMaterialSlider = class(TFRMaterial3Control)
+  private
+    FValue: Double;
+    FMin: Double;
+    FMax: Double;
+    FDiscrete: Boolean;
+    FSteps: Integer;
+    FDragging: Boolean;
+    FShowValueLabel: Boolean;
+    FOnChange: TNotifyEvent;
+    procedure SetValue(AValue: Double);
+    procedure SetMin(AValue: Double);
+    procedure SetMax(AValue: Double);
+    procedure SetDiscrete(AValue: Boolean);
+    procedure SetSteps(AValue: Integer);
+    procedure SetShowValueLabel(AValue: Boolean);
+    function ValueToX(AVal: Double): Integer;
+    function XToValue(AX: Integer): Double;
+    procedure ClampValue;
+  protected
+    procedure Paint; override;
+    procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    class function GetControlClassDefaultSize: TSize; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+  published
+    property Value: Double read FValue write SetValue;
+    property Min: Double read FMin write SetMin;
+    property Max: Double read FMax write SetMax;
+    property Discrete: Boolean read FDiscrete write SetDiscrete default False;
+    property Steps: Integer read FSteps write SetSteps default 10;
+    property ShowValueLabel: Boolean read FShowValueLabel write SetShowValueLabel default False;
+    property Enabled;
+    property Visible;
+    property OnChange: TNotifyEvent read FOnChange write FOnChange;
+  end;
+
+procedure Register;
+
+implementation
+
+uses Math;
+
+procedure Register;
+begin
+  {$IFDEF FPC}
+    {$I icons\frmaterialslider_icon.lrs}
+  {$ENDIF}
+  RegisterComponents('BGRA Controls', [TFRMaterialSlider]);
+end;
+
+constructor TFRMaterialSlider.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FValue := 0;
+  FMin := 0;
+  FMax := 100;
+  FDiscrete := False;
+  FSteps := 10;
+  FDragging := False;
+  FShowValueLabel := False;
+  with GetControlClassDefaultSize do
+    SetInitialBounds(0, 0, cx, cy);
+end;
+
+class function TFRMaterialSlider.GetControlClassDefaultSize: TSize;
+begin
+  Result.cx := 200;
+  Result.cy := 40;
+end;
+
+procedure TFRMaterialSlider.SetValue(AValue: Double);
+begin
+  AValue := Math.Max(FMin, Math.Min(FMax, AValue));
+  if FDiscrete and (FSteps > 0) then
+  begin
+    AValue := FMin + Round((AValue - FMin) / ((FMax - FMin) / FSteps)) * ((FMax - FMin) / FSteps);
+    AValue := Math.Max(FMin, Math.Min(FMax, AValue));
+  end;
+  if FValue = AValue then Exit;
+  FValue := AValue;
+  Invalidate;
+  if Assigned(FOnChange) then FOnChange(Self);
+end;
+
+procedure TFRMaterialSlider.SetMin(AValue: Double);
+begin
+  if FMin = AValue then Exit;
+  FMin := AValue;
+  ClampValue;
+  Invalidate;
+end;
+
+procedure TFRMaterialSlider.SetMax(AValue: Double);
+begin
+  if FMax = AValue then Exit;
+  FMax := AValue;
+  ClampValue;
+  Invalidate;
+end;
+
+procedure TFRMaterialSlider.SetDiscrete(AValue: Boolean);
+begin
+  if FDiscrete = AValue then Exit;
+  FDiscrete := AValue;
+  Invalidate;
+end;
+
+procedure TFRMaterialSlider.SetSteps(AValue: Integer);
+begin
+  if AValue < 1 then AValue := 1;
+  if FSteps = AValue then Exit;
+  FSteps := AValue;
+  Invalidate;
+end;
+
+procedure TFRMaterialSlider.SetShowValueLabel(AValue: Boolean);
+begin
+  if FShowValueLabel = AValue then Exit;
+  FShowValueLabel := AValue;
+  Invalidate;
+end;
+
+procedure TFRMaterialSlider.ClampValue;
+begin
+  if FValue < FMin then FValue := FMin;
+  if FValue > FMax then FValue := FMax;
+end;
+
+function TFRMaterialSlider.ValueToX(AVal: Double): Integer;
+var
+  pad: Integer;
+begin
+  pad := 20;
+  if FMax <= FMin then
+    Result := pad
+  else
+    Result := pad + Round((AVal - FMin) / (FMax - FMin) * (Width - 2 * pad));
+end;
+
+function TFRMaterialSlider.XToValue(AX: Integer): Double;
+var
+  pad: Integer;
+begin
+  pad := 20;
+  if Width <= 2 * pad then
+    Result := FMin
+  else
+    Result := FMin + (AX - pad) / (Width - 2 * pad) * (FMax - FMin);
+  Result := Math.Max(FMin, Math.Min(FMax, Result));
+end;
+
+procedure TFRMaterialSlider.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  if Button = mbLeft then
+  begin
+    FDragging := True;
+    Value := XToValue(X);
+  end;
+  inherited;
+end;
+
+procedure TFRMaterialSlider.MouseMove(Shift: TShiftState; X, Y: Integer);
+begin
+  if FDragging then
+    Value := XToValue(X);
+  inherited;
+end;
+
+procedure TFRMaterialSlider.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  FDragging := False;
+  inherited;
+end;
+
+procedure TFRMaterialSlider.Paint;
+var
+  bmp: TBGRABitmap;
+  trackY, thumbX, pad, i, stepX: Integer;
+  activeColor, inactiveColor, thumbColor: TColor;
+  labelRect: TRect;
+  labelText: string;
+begin
+  bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
+  try
+    pad := 20;
+    trackY := Height div 2;
+    thumbX := ValueToX(FValue);
+    activeColor := MD3Colors.Primary;
+    inactiveColor := MD3Colors.SurfaceContainerHighest;
+    thumbColor := MD3Colors.Primary;
+
+    { Inactive track }
+    bmp.FillRoundRectAntialias(pad, trackY - 2, Width - pad, trackY + 2,
+      2, 2, ColorToBGRA(ColorToRGB(inactiveColor)));
+
+    { Active track }
+    if thumbX > pad then
+      bmp.FillRoundRectAntialias(pad, trackY - 2, thumbX, trackY + 2,
+        2, 2, ColorToBGRA(ColorToRGB(activeColor)));
+
+    { Discrete step dots }
+    if FDiscrete and (FSteps > 0) then
+    begin
+      for i := 0 to FSteps do
+      begin
+        stepX := pad + Round(i / FSteps * (Width - 2 * pad));
+        if stepX <= thumbX then
+          bmp.FillEllipseAntialias(stepX, trackY, 2, 2,
+            ColorToBGRA(ColorToRGB(MD3Colors.OnPrimary)))
+        else
+          bmp.FillEllipseAntialias(stepX, trackY, 2, 2,
+            ColorToBGRA(ColorToRGB(activeColor)));
+      end;
+    end;
+
+    { State layer on thumb }
+    if Enabled then
+      MD3StateLayer(bmp, thumbX - 20, trackY - 20, thumbX + 20, trackY + 20,
+        20, activeColor, InteractionState);
+
+    { Thumb }
+    bmp.FillEllipseAntialias(thumbX, trackY, 10, 10,
+      ColorToBGRA(ColorToRGB(thumbColor)));
+
+    bmp.Draw(Canvas, 0, 0, False);
+  finally
+    bmp.Free;
+  end;
+
+  { Value label tooltip }
+  if FShowValueLabel and (FDragging or Hovered) then
+  begin
+    labelText := FormatFloat('0.#', FValue);
+    Canvas.Font.Size := 8;
+    Canvas.Font.Color := MD3Colors.OnPrimary;
+    labelRect := Rect(thumbX - 20, 2, thumbX + 20, 18);
+    Canvas.Brush.Color := MD3Colors.Primary;
+    Canvas.RoundRect(labelRect, 4, 4);
+    MD3DrawText(Canvas, labelText, labelRect, MD3Colors.OnPrimary, taCenter, True);
+    Canvas.Brush.Style := bsClear;
+  end;
+end;
+
+end.

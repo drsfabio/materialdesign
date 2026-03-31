@@ -1,0 +1,666 @@
+unit FRMaterialIcons;
+
+{$mode objfpc}{$H+}
+
+{ Ícones SVG vetoriais e botão com renderização via BGRABitmap.
+  Usado internamente pelos componentes TFRMaterial* para botões de
+  limpar (×), pesquisar (lupa) e calendário.
+
+  TFRMaterialIconButton:
+    TSpeedButton com renderização SVG, cache de ícone e efeito hover.
+    Três modos: imClear (X vermelho), imSearch (lupa), imCalendar.
+    Cores Normal/Hover configuráveis; StrokeWidth parametrizável.
+
+  Funções públicas de SVG:
+    FRColorToSVGHex  — converte TColor para '#rrggbb'
+    FRClearIconSVG   — retorna SVG do ícone "X"
+    FRSearchIconSVG  — retorna SVG da lupa
+    FRCalendarIconSVG— retorna SVG do calendário
+    FRRenderSVGIcon  — renderiza string SVG em TBGRABitmap
+
+  Licença: LGPL v3 — mesma do bgracontrols
+}
+
+interface
+
+uses
+  Classes, SysUtils, Controls, Buttons, Graphics,
+  BGRABitmap, BGRABitmapTypes;
+
+type
+  { Modo do ícone exibido no botão }
+  TFRIconMode = (
+    imClear, imSearch, imCalendar, imEyeOpen, imEyeClosed, imCopy, imPlus, imMinus,
+    { Novos ícones MD3 }
+    imHome, imMenu, imArrowBack, imArrowForward, imMoreVert,
+    imCheck, imEdit, imDelete, imShare, imStar,
+    imFavorite, imSettings, imPerson, imNotification, imMail,
+    imDownload, imUpload, imRefresh, imFilter, imAttach, imLink
+  );
+
+  { TFRMaterialIconButton
+    TSpeedButton com renderização SVG vetorial e efeito hover.
+    Suporta múltiplos modos de ícone com cache simplificado. }
+
+  TFRMaterialIconButton = class(TSpeedButton)
+  private
+    FHovered: Boolean;
+    FIconMode: TFRIconMode;
+    FNormalColor: TColor;
+    FHoverColor: TColor;
+    FStrokeWidth: Double;
+    FCacheNormal: TBGRABitmap;
+    FCacheHover: TBGRABitmap;
+    FCacheMode: TFRIconMode;
+    FCacheW: Integer;
+    FCacheH: Integer;
+    procedure RebuildCache;
+    procedure SetIconMode(AValue: TFRIconMode);
+  protected
+    procedure Paint; override;
+    procedure MouseEnter; override;
+    procedure MouseLeave; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    { Descarta o cache para forçar re-renderização (chamar após mudar cores) }
+    procedure InvalidateCache;
+    property IconMode: TFRIconMode read FIconMode write SetIconMode;
+    property NormalColor: TColor read FNormalColor write FNormalColor;
+    property HoverColor: TColor read FHoverColor write FHoverColor;
+    { Espessura do traço SVG; 0 = usa padrão de cada ícone }
+    property StrokeWidth: Double read FStrokeWidth write FStrokeWidth;
+  end;
+
+{ ── Funções públicas de SVG ── }
+
+function FRColorToSVGHex(AColor: TColor): string;
+function FRClearIconSVG(const AHex: string; AStroke: Double = 3.0): string;
+function FRSearchIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+function FRCalendarIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+function FREyeOpenIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FREyeClosedIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRCopyIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRPlusIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+function FRMinusIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+function FRHomeIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRMenuIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+function FRArrowBackIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+function FRArrowForwardIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+function FRMoreVertIconSVG(const AHex: string; AStroke: Double = 0): string;
+function FRCheckIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+function FREditIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRDeleteIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRShareIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRStarIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRFavoriteIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRSettingsIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRPersonIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRNotificationIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRMailIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRDownloadIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+function FRUploadIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+function FRRefreshIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+function FRFilterIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRAttachIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRLinkIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRRenderSVGIcon(const ASVG: string; AW, AH: Integer): TBGRABitmap;
+function FRGetIconSVG(AMode: TFRIconMode; const AHex: string; AStroke: Double): string;
+
+implementation
+
+uses
+  Math, BGRACanvas2D, BGRASVG;
+
+{ ── Helpers internos ── }
+
+function StrokeToStr(AValue: Double): string;
+var
+  FS: TFormatSettings;
+begin
+  FS := DefaultFormatSettings;
+  FS.DecimalSeparator := '.';
+  Result := FormatFloat('0.0', AValue, FS);
+end;
+
+{ ── Funções públicas de SVG ── }
+
+function FRColorToSVGHex(AColor: TColor): string;
+var
+  c: LongInt;
+begin
+  c := ColorToRGB(AColor);
+  Result := Format('#%.2x%.2x%.2x', [c and $FF, (c shr 8) and $FF, (c shr 16) and $FF]);
+end;
+
+function FRClearIconSVG(const AHex: string; AStroke: Double = 3.0): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<line x1="6" y1="6" x2="18" y2="18" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<line x1="18" y1="6" x2="6" y2="18" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '</svg>';
+end;
+
+function FRSearchIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+var
+  sw, swHandle: string;
+begin
+  sw := StrokeToStr(AStroke);
+  swHandle := StrokeToStr(AStroke + 0.4);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<circle cx="10" cy="10" r="7" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<line x1="15.5" y1="15.5" x2="21" y2="21" stroke="' + AHex + '" stroke-width="' + swHandle + '" stroke-linecap="round"/>' +
+    '</svg>';
+end;
+
+function FRCalendarIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+var
+  sw, swPin: string;
+begin
+  sw := StrokeToStr(AStroke);
+  swPin := StrokeToStr(AStroke + 0.4);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="3" y="4" width="18" height="18" rx="2" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<line x1="3" y1="10" x2="21" y2="10" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<line x1="8" y1="2" x2="8" y2="6" stroke="' + AHex + '" stroke-width="' + swPin + '" stroke-linecap="round"/>' +
+    '<line x1="16" y1="2" x2="16" y2="6" stroke="' + AHex + '" stroke-width="' + swPin + '" stroke-linecap="round"/>' +
+    '<rect x="7" y="13" width="3" height="3" rx="0.5" fill="' + AHex + '"/>' +
+    '</svg>';
+end;
+
+function FREyeOpenIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<circle cx="12" cy="12" r="3" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '</svg>';
+end;
+
+function FREyeClosedIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<line x1="1" y1="1" x2="23" y2="23" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '</svg>';
+end;
+
+function FRCopyIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="9" y="9" width="13" height="13" rx="2" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+function FRPlusIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<line x1="12" y1="5" x2="12" y2="19" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<line x1="5" y1="12" x2="19" y2="12" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '</svg>';
+end;
+
+function FRMinusIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<line x1="5" y1="12" x2="19" y2="12" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '</svg>';
+end;
+
+function FRHomeIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M3 12l2-2m0 0l7-7 7 7m-14 0v9a1 1 0 0 0 1 1h3m10-10l2 2m-2-2v9a1 1 0 0 1-1 1h-3m-4 0v-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5m-4 0h4" ' +
+    'fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+function FRMenuIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<line x1="3" y1="6" x2="21" y2="6" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<line x1="3" y1="12" x2="21" y2="12" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<line x1="3" y1="18" x2="21" y2="18" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '</svg>';
+end;
+
+function FRArrowBackIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<line x1="19" y1="12" x2="5" y2="12" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<polyline points="12,19 5,12 12,5" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+function FRArrowForwardIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<line x1="5" y1="12" x2="19" y2="12" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<polyline points="12,5 19,12 12,19" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+function FRMoreVertIconSVG(const AHex: string; AStroke: Double = 0): string;
+var
+  r: string;
+begin
+  if AStroke > 0 then
+    r := StrokeToStr(AStroke)
+  else
+    r := '1.5';
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<circle cx="12" cy="5" r="' + r + '" fill="' + AHex + '"/>' +
+    '<circle cx="12" cy="12" r="' + r + '" fill="' + AHex + '"/>' +
+    '<circle cx="12" cy="19" r="' + r + '" fill="' + AHex + '"/>' +
+    '</svg>';
+end;
+
+function FRCheckIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<polyline points="4,12 9,17 20,6" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+function FREditIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+function FRDeleteIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<polyline points="3,6 5,6 21,6" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+function FRShareIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<circle cx="18" cy="5" r="3" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<circle cx="6" cy="12" r="3" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<circle cx="18" cy="19" r="3" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<line x1="8.59" y1="13.51" x2="15.42" y2="17.49" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<line x1="15.41" y1="6.51" x2="8.59" y2="10.49" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '</svg>';
+end;
+
+function FRStarIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" ' +
+    'fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+function FRFavoriteIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" ' +
+    'fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+function FRSettingsIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<circle cx="12" cy="12" r="3" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 ' +
+    '1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15 ' +
+    '1.65 1.65 0 0 0 3.13 14H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68 ' +
+    '1.65 1.65 0 0 0 10 3.13V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9 ' +
+    '1.65 1.65 0 0 0 20.94 10H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+function FRPersonIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<circle cx="12" cy="7" r="4" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '</svg>';
+end;
+
+function FRNotificationIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<path d="M13.73 21a2 2 0 0 1-3.46 0" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+function FRMailIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="2" y="4" width="20" height="16" rx="2" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<polyline points="22,6 12,13 2,6" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+function FRDownloadIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<polyline points="7,10 12,15 17,10" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<line x1="12" y1="15" x2="12" y2="3" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '</svg>';
+end;
+
+function FRUploadIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<polyline points="17,8 12,3 7,8" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<line x1="12" y1="3" x2="12" y2="15" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '</svg>';
+end;
+
+function FRRefreshIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<polyline points="23,4 23,10 17,10" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<polyline points="1,20 1,14 7,14" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+function FRFilterIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+function FRAttachIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" ' +
+    'fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+function FRLinkIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+function FRGetIconSVG(AMode: TFRIconMode; const AHex: string; AStroke: Double): string;
+begin
+  case AMode of
+    imClear:        if AStroke > 0 then Result := FRClearIconSVG(AHex, AStroke) else Result := FRClearIconSVG(AHex);
+    imSearch:       if AStroke > 0 then Result := FRSearchIconSVG(AHex, AStroke) else Result := FRSearchIconSVG(AHex);
+    imCalendar:     if AStroke > 0 then Result := FRCalendarIconSVG(AHex, AStroke) else Result := FRCalendarIconSVG(AHex);
+    imEyeOpen:      if AStroke > 0 then Result := FREyeOpenIconSVG(AHex, AStroke) else Result := FREyeOpenIconSVG(AHex);
+    imEyeClosed:    if AStroke > 0 then Result := FREyeClosedIconSVG(AHex, AStroke) else Result := FREyeClosedIconSVG(AHex);
+    imCopy:         if AStroke > 0 then Result := FRCopyIconSVG(AHex, AStroke) else Result := FRCopyIconSVG(AHex);
+    imPlus:         if AStroke > 0 then Result := FRPlusIconSVG(AHex, AStroke) else Result := FRPlusIconSVG(AHex);
+    imMinus:        if AStroke > 0 then Result := FRMinusIconSVG(AHex, AStroke) else Result := FRMinusIconSVG(AHex);
+    imHome:         if AStroke > 0 then Result := FRHomeIconSVG(AHex, AStroke) else Result := FRHomeIconSVG(AHex);
+    imMenu:         if AStroke > 0 then Result := FRMenuIconSVG(AHex, AStroke) else Result := FRMenuIconSVG(AHex);
+    imArrowBack:    if AStroke > 0 then Result := FRArrowBackIconSVG(AHex, AStroke) else Result := FRArrowBackIconSVG(AHex);
+    imArrowForward: if AStroke > 0 then Result := FRArrowForwardIconSVG(AHex, AStroke) else Result := FRArrowForwardIconSVG(AHex);
+    imMoreVert:     if AStroke > 0 then Result := FRMoreVertIconSVG(AHex, AStroke) else Result := FRMoreVertIconSVG(AHex);
+    imCheck:        if AStroke > 0 then Result := FRCheckIconSVG(AHex, AStroke) else Result := FRCheckIconSVG(AHex);
+    imEdit:         if AStroke > 0 then Result := FREditIconSVG(AHex, AStroke) else Result := FREditIconSVG(AHex);
+    imDelete:       if AStroke > 0 then Result := FRDeleteIconSVG(AHex, AStroke) else Result := FRDeleteIconSVG(AHex);
+    imShare:        if AStroke > 0 then Result := FRShareIconSVG(AHex, AStroke) else Result := FRShareIconSVG(AHex);
+    imStar:         if AStroke > 0 then Result := FRStarIconSVG(AHex, AStroke) else Result := FRStarIconSVG(AHex);
+    imFavorite:     if AStroke > 0 then Result := FRFavoriteIconSVG(AHex, AStroke) else Result := FRFavoriteIconSVG(AHex);
+    imSettings:     if AStroke > 0 then Result := FRSettingsIconSVG(AHex, AStroke) else Result := FRSettingsIconSVG(AHex);
+    imPerson:       if AStroke > 0 then Result := FRPersonIconSVG(AHex, AStroke) else Result := FRPersonIconSVG(AHex);
+    imNotification: if AStroke > 0 then Result := FRNotificationIconSVG(AHex, AStroke) else Result := FRNotificationIconSVG(AHex);
+    imMail:         if AStroke > 0 then Result := FRMailIconSVG(AHex, AStroke) else Result := FRMailIconSVG(AHex);
+    imDownload:     if AStroke > 0 then Result := FRDownloadIconSVG(AHex, AStroke) else Result := FRDownloadIconSVG(AHex);
+    imUpload:       if AStroke > 0 then Result := FRUploadIconSVG(AHex, AStroke) else Result := FRUploadIconSVG(AHex);
+    imRefresh:      if AStroke > 0 then Result := FRRefreshIconSVG(AHex, AStroke) else Result := FRRefreshIconSVG(AHex);
+    imFilter:       if AStroke > 0 then Result := FRFilterIconSVG(AHex, AStroke) else Result := FRFilterIconSVG(AHex);
+    imAttach:       if AStroke > 0 then Result := FRAttachIconSVG(AHex, AStroke) else Result := FRAttachIconSVG(AHex);
+    imLink:         if AStroke > 0 then Result := FRLinkIconSVG(AHex, AStroke) else Result := FRLinkIconSVG(AHex);
+  else
+    Result := '';
+  end;
+end;
+
+function FRRenderSVGIcon(const ASVG: string; AW, AH: Integer): TBGRABitmap;
+var
+  svg: TBGRASVG;
+  ctx: TBGRACanvas2D;
+  iconSize, margin, offX, offY: Integer;
+begin
+  Result := TBGRABitmap.Create(AW, AH, BGRAPixelTransparent);
+  try
+    iconSize := Min(AW, AH);
+    margin := iconSize div 8;
+    offX := (AW - iconSize) div 2;
+    offY := (AH - iconSize) div 2;
+    svg := TBGRASVG.CreateFromString(ASVG);
+    try
+      ctx := TBGRACanvas2D.Create(Result);
+      try
+        svg.StretchDraw(ctx, offX + margin, offY + margin,
+          iconSize - 2 * margin, iconSize - 2 * margin);
+      finally
+        ctx.Free;
+      end;
+    finally
+      svg.Free;
+    end;
+  except
+    FreeAndNil(Result);
+    raise;
+  end;
+end;
+
+{ ══════════════════════════════════════════════════════════════════════════ }
+{  TFRMaterialIconButton                                                   }
+{ ══════════════════════════════════════════════════════════════════════════ }
+
+constructor TFRMaterialIconButton.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FHovered      := False;
+  FIconMode     := imClear;
+  FNormalColor  := clGray;
+  FHoverColor   := clHighlight;
+  FStrokeWidth  := 0;
+  FCacheNormal  := nil;
+  FCacheHover   := nil;
+  FCacheMode    := imClear;
+  FCacheW       := 0;
+  FCacheH       := 0;
+  Flat := True;
+end;
+
+destructor TFRMaterialIconButton.Destroy;
+begin
+  FreeAndNil(FCacheNormal);
+  FreeAndNil(FCacheHover);
+  inherited Destroy;
+end;
+
+procedure TFRMaterialIconButton.InvalidateCache;
+begin
+  FCacheW := 0;
+  FCacheH := 0;
+  Invalidate;
+end;
+
+procedure TFRMaterialIconButton.SetIconMode(AValue: TFRIconMode);
+begin
+  if FIconMode <> AValue then
+  begin
+    FIconMode := AValue;
+    Invalidate;
+  end;
+end;
+
+procedure TFRMaterialIconButton.RebuildCache;
+var
+  hexNormal, hexHover: string;
+  sw: Double;
+begin
+  FreeAndNil(FCacheNormal);
+  FreeAndNil(FCacheHover);
+  if (Width <= 0) or (Height <= 0) then Exit;
+
+  hexNormal := FRColorToSVGHex(FNormalColor);
+  hexHover  := FRColorToSVGHex(FHoverColor);
+  sw := FStrokeWidth;
+
+  FCacheNormal := FRRenderSVGIcon(FRGetIconSVG(FIconMode, hexNormal, sw), Width, Height);
+  FCacheHover  := FRRenderSVGIcon(FRGetIconSVG(FIconMode, hexHover, sw), Width, Height);
+
+  FCacheMode := FIconMode;
+  FCacheW := Width;
+  FCacheH := Height;
+end;
+
+procedure TFRMaterialIconButton.Paint;
+var
+  bmp: TBGRABitmap;
+begin
+  Canvas.Brush.Color := Parent.Color;
+  Canvas.FillRect(ClientRect);
+
+  if (FCacheW <> Width) or (FCacheH <> Height) or (FCacheMode <> FIconMode) then
+    RebuildCache;
+
+  if FHovered then
+    bmp := FCacheHover
+  else
+    bmp := FCacheNormal;
+
+  if Assigned(bmp) then
+    bmp.Draw(Canvas, 0, 0, False);
+end;
+
+procedure TFRMaterialIconButton.MouseEnter;
+begin
+  FHovered := True;
+  Invalidate;
+  inherited MouseEnter;
+end;
+
+procedure TFRMaterialIconButton.MouseLeave;
+begin
+  FHovered := False;
+  Invalidate;
+  inherited MouseLeave;
+end;
+
+end.

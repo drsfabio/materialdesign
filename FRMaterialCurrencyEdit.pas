@@ -35,7 +35,7 @@ unit FRMaterialCurrencyEdit;
 interface
 
 uses
-  FRMaterialTheme, Classes, Clipbrd, Controls, ExtCtrls, Forms, Graphics,
+  FRMaterialTheme, FRMaterialIcons, Classes, Clipbrd, Controls, ExtCtrls, Forms, Graphics,
   {$IFDEF FPC} LCLType, LResources, {$ENDIF}
   Math, Menus, StdCtrls, SysUtils;
 
@@ -53,7 +53,7 @@ type
     FFocused: Boolean;
     FVariant: TFRMaterialVariant;
     FBorderRadius: Integer;
-    FClearButton: TButton;
+    FClearButton: TFRMaterialIconButton;
     FShowClearButton: Boolean;
     FOnClearButtonClick: TNotifyEvent;
 
@@ -147,7 +147,7 @@ type
     { Acesso direto ao TEdit interno para customizações avançadas }
     property Edit: TEdit read FEdit;
     { Botão "×" — customização de caption, hint, font, etc. }
-    property ClearButton: TButton read FClearButton;
+    property ClearButton: TFRMaterialIconButton read FClearButton;
     { Valor numérico corrente }
     property Value: Currency read GetValue write SetValue;
 
@@ -228,8 +228,7 @@ implementation
 procedure Register;
 begin
   {$IFDEF FPC}
-    // Descomente a linha abaixo para adicionar ícone ao componente:
-    // {$I icons\frmaterialcurrencyedit_icon.lrs}
+    {$I icons\frmaterialcurrencyedit_icon.lrs}
   {$ENDIF}
   RegisterComponents('BGRA Controls', [TFRMaterialCurrencyEdit]);
 end;
@@ -429,9 +428,22 @@ begin
   try
     FClearButton.Visible := ShouldShow;
     if ShouldShow then
-      FEdit.BorderSpacing.Right := FClearButton.Width + 4
+    begin
+      FClearButton.Anchors := [akTop, akRight, akBottom];
+      FClearButton.AnchorSide[akRight].Control  := Self;
+      FClearButton.AnchorSide[akRight].Side     := asrBottom;
+      FClearButton.AnchorSide[akTop].Control    := FEdit;
+      FClearButton.AnchorSide[akTop].Side       := asrTop;
+      FClearButton.AnchorSide[akBottom].Control := FEdit;
+      FClearButton.AnchorSide[akBottom].Side    := asrBottom;
+      FClearButton.BorderSpacing.Right := 4;
+      FEdit.BorderSpacing.Right := FClearButton.Width + 6;
+    end
     else
+    begin
+      FClearButton.Anchors := [];
       FEdit.BorderSpacing.Right := 4;
+    end;
   finally
     EnableAlign;
   end;
@@ -714,13 +726,11 @@ begin
   end else
     FEdit.Align := alClient;
 
-  if Assigned(FClearButton) and FClearButton.Visible then
+  { Dimensiona o botão; âncoras cuidam do posicionamento }
+  if Assigned(FClearButton) then
   begin
+    FClearButton.Width  := FEdit.Height - 2;
     FClearButton.Height := FEdit.Height - 2;
-    FClearButton.Left   := FEdit.Left + FEdit.Width + 2;
-    FClearButton.Top    :=
-      FEdit.Top + (FEdit.Height - FClearButton.Height) div 2;
-    FClearButton.BringToFront;
   end;
 
   inherited DoOnResize;
@@ -846,11 +856,10 @@ begin
     para garantir que Key := #0 chegue à frente de outros handlers }
   FEdit.OnKeyPress := @InternalKeyPress;
 
-  FClearButton          := TButton.Create(Self);
-  FClearButton.Caption  := '×';
+  FClearButton := TFRMaterialIconButton.Create(Self);
+  FClearButton.IconMode := imClear;
   FClearButton.Width    := 22;
   FClearButton.Height   := 22;
-  FClearButton.TabStop  := False;
   FClearButton.Visible  := False;
   FClearButton.Parent   := Self;
   FClearButton.OnClick  := @ClearButtonClick;
