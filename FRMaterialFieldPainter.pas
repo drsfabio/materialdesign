@@ -10,7 +10,7 @@ unit FRMaterialFieldPainter;
 interface
 
 uses
-  Classes, SysUtils, Graphics, Controls, Types,
+  Classes, SysUtils, Graphics, Controls, Types, ExtCtrls,
   BGRABitmap, BGRABitmapTypes,
   FRMaterial3Base, FRMaterialTheme;
 
@@ -49,8 +49,30 @@ type
     
     EditFont: TFont;
     LabelFont: TFont;
-    LabelRight: Integer;    { Posição para o "*" Required }
-    LabelTop: Integer;
+    LabelRight: Integer;    { Posição calculada (caso use) }
+    LabelTop: Integer;      { Posição Top fixa }
+    LabelText: string;      { Texto do label a ser desenhado/animado }
+    LabelProgress: Single;  { 0.0 (inline container) a 1.0 (floating) }
+  end;
+  
+  TFRMDLabelState = (lsInline, lsAnimatingToFloated, lsFloated, lsAnimatingToInline);
+
+  { Animador leve que gerencia o ciclo temporal (0.0 a 1.0) para um TControl }
+  TFRMDFloatingLabelAnimator = class
+  private
+    FControl: TControl;
+    FTimer: TTimer;
+    FProgress: Single;
+    FState: TFRMDLabelState;
+    procedure TimerTick(Sender: TObject);
+  public
+    constructor Create(AControl: TControl);
+    destructor Destroy; override;
+    procedure FloatLabel;
+    procedure InlineLabel;
+    procedure SnapTo(AValue: Single); { Para setup imediato sem animação }
+    property Progress: Single read FProgress;
+    property State: TFRMDLabelState read FState;
   end;
 
   TFRMaterialFieldPainter = class
@@ -67,6 +89,10 @@ var
   LeftPos, RightPos, FieldTop, CR, DecoBottom: Integer;
   PrefixW: Integer;
   bmp: TBGRABitmap;
+  InlineY: Integer;
+  FloatY: Integer;
+  CurrY: Integer;
+  CurrX: Integer;
 begin
   CR := P.BorderRadius * 2;
   DecoBottom := P.Rect.Bottom - P.BottomMargin;
@@ -146,13 +172,49 @@ begin
     end;
   end;
 
-  { Passo 3: Required asterisk ("*") }
-  if P.IsRequired then
+  { Passo 3: Label animado (MD3 Floating Label) e Asterisco Required ("*") }
+  if P.LabelText <> '' then
   begin
     P.Canvas.Font.Assign(P.LabelFont);
-    P.Canvas.Font.Color := P.DecoColor; { Original usa FInvalidColor fixo, vamos parametrizar? }
+    
+    if P.LabelProgress > 0.5 then
+      if P.Canvas.Font.Size > 7 then P.Canvas.Font.Size := P.Canvas.Font.Size - 1;
+      
+    if P.LabelProgress < 1.0 then 
+    begin
+      if not P.IsFocused then
+        P.Canvas.Font.Color := P.HelperColor
+      else
+        P.Canvas.Font.Color := P.DecoColor;
+    end
+    else
+    begin
+      if P.IsFocused and P.IsEnabled then
+        P.Canvas.Font.Color := P.DecoColor
+      else
+        P.Canvas.Font.Color := P.HelperColor;
+    end;
+    
+    { Calcula posições }
+    { Y de repouso (Inline placeholder): centro vertical do campo de texto }
+    { Y Flutuante (Floated): topo da variante reservado para o label }
     P.Canvas.Brush.Style := bsClear;
-    P.Canvas.TextOut(P.LabelRight + 2, P.LabelTop, ' *');
+    
+    InlineY := P.EditTop + (P.EditHeight - P.Canvas.TextHeight(P.LabelText)) div 2;
+    FloatY := P.LabelTop; // Fornecido pelos componentes (geralmente 4 ou topo)
+    if FloatY < 0 then FloatY := 0;
+    
+    CurrY := Round(InlineY + (FloatY - InlineY) * P.LabelProgress);
+    CurrX := P.EditLeft;
+    
+    P.Canvas.TextOut(CurrX, CurrY, P.LabelText);
+    
+    if P.IsRequired then
+    begin
+      P.Canvas.Font.Color := P.DecoColor;
+      P.Canvas.TextOut(CurrX + P.Canvas.TextWidth(P.LabelText) + 2, CurrY, ' *');
+    end;
+    
     P.Canvas.Brush.Style := bsSolid;
   end;
 
@@ -200,6 +262,74 @@ begin
 
     P.Canvas.Brush.Style := bsSolid;
   end;
+end;
+
+{ TFRMDFloatingLabelAnimator }
+
+constructor TFRMDFloatingLabelAnimator.Create(AControl: TControl);
+begin
+  inherited Create;
+  FControl := AControl;
+  FTimer := TTimer.Create(nil);
+  FTimer.Enabled := False;
+  FTimer.Interval := 16; { ~60FPS }
+  FTimer.OnTimer := @TimerTick;
+  FProgress := 1.0;
+  FState := lsFloated;
+end;
+
+destructor TFRMDFloatingLabelAnimator.Destroy;
+begin
+  FTimer.Free;
+  inherited Destroy;
+end;
+
+procedure TFRMDFloatingLabelAnimator.SnapTo(AValue: Single);
+begin
+  FTimer.Enabled := False;
+  FProgress := AValue;
+  if FProgress <= 0.0 then FState := lsInline
+  else FState := lsFloated;
+  if Assigned(FControl) then FControl.Invalidate;
+end;
+
+procedure TFRMDFloatingLabelAnimator.FloatLabel;
+begin
+  if (FState = lsFloated) or (FState = lsAnimatingToFloated) then Exit;
+  FState := lsAnimatingToFloated;
+  FTimer.Enabled := True;
+end;
+
+procedure TFRMDFloatingLabelAnimator.InlineLabel;
+begin
+  if (FState = lsInline) or (FState = lsAnimatingToInline) then Exit;
+  FState := lsAnimatingToInline;
+  FTimer.Enabled := True;
+end;
+
+procedure TFRMDFloatingLabelAnimator.TimerTick(Sender: TObject);
+begin
+  if FState = lsAnimatingToFloated then
+  begin
+    FProgress := FProgress + 0.15;
+    if FProgress >= 1.0 then
+    begin
+      FProgress := 1.0;
+      FState := lsFloated;
+      FTimer.Enabled := False;
+    end;
+  end
+  else if FState = lsAnimatingToInline then
+  begin
+    FProgress := FProgress - 0.15;
+    if FProgress <= 0.0 then
+    begin
+      FProgress := 0.0;
+      FState := lsInline;
+      FTimer.Enabled := False;
+    end;
+  end;
+  if Assigned(FControl) then FControl.Invalidate;
 end;
 
 end.

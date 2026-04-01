@@ -134,6 +134,11 @@ type
 
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    
+  protected
+    FLabelAnimator: TFRMDFloatingLabelAnimator;
+
     { Acesso direto ao TMaskEdit interno para customizações avançadas }
     property MaskEdit: TMaskEdit read FMaskEdit;
     { Botão de limpeza — permite customizar caption, hint, cor, etc. }
@@ -257,6 +262,13 @@ end;
 procedure TFRMaterialMaskEdit.InternalEditChange(Sender: TObject);
 begin
   UpdateClearButton;
+  if Assigned(FLabelAnimator) then
+  begin
+    if (Trim(FMaskEdit.Text) <> '') or FFocused then
+      FLabelAnimator.FloatLabel
+    else
+      FLabelAnimator.InlineLabel;
+  end;
 end;
 
 procedure TFRMaterialMaskEdit.UpdateClearButton;
@@ -574,12 +586,20 @@ procedure TFRMaterialMaskEdit.DoEnter;
 begin
   inherited DoEnter;
   FFocused := True;
+  if Assigned(FLabelAnimator) then FLabelAnimator.FloatLabel;
   Invalidate;
 end;
 
 procedure TFRMaterialMaskEdit.DoExit;
 begin
   FFocused := False;
+  if Assigned(FLabelAnimator) then
+  begin
+    if Trim(FMaskEdit.Text) = '' then
+      FLabelAnimator.InlineLabel
+    else
+      FLabelAnimator.FloatLabel;
+  end;
   Invalidate;
   inherited DoExit;
 end;
@@ -669,10 +689,13 @@ begin
   P.LabelFont := FLabel.Font;
   P.LabelRight := FLabel.Left + Canvas.TextWidth(FLabel.Caption);
   P.LabelTop := FLabel.Top;
+  P.LabelText := FLabel.Caption;
+  if Assigned(FLabelAnimator) then
+    P.LabelProgress := FLabelAnimator.Progress
+  else
+    P.LabelProgress := 1.0;
 
   TFRMaterialFieldPainter.DrawField(P);
-
-  FLabel.Font.Color := DecoColor;
 end;
 
 constructor TFRMaterialMaskEdit.Create(AOwner: TComponent);
@@ -687,8 +710,10 @@ begin
   Self.DisabledColor := $00B8AFA8;
   Self.ParentColor   := True;
 
-  FLabel.Align                := alTop;
+  FLabel.Align                := alNone;
+  FLabel.Visible              := False;
   FLabel.AutoSize             := True;
+  FLabel.Top                  := 4;
   FLabel.BorderSpacing.Around := 0;
   FLabel.BorderSpacing.Bottom := 4;
   FLabel.BorderSpacing.Left   := 4;
@@ -700,6 +725,9 @@ begin
   FLabel.ParentFont           := False;
   FLabel.ParentBiDiMode       := True;
   FLabel.SetSubComponent(True);
+  
+  FLabelAnimator := TFRMDFloatingLabelAnimator.Create(Self);
+  FLabelAnimator.SnapTo(1.0);
 
   FMaskEdit.Align                := alBottom;
   FMaskEdit.AutoSize             := True;
@@ -733,6 +761,12 @@ begin
   FShowClearButton := False;
   FVariant         := mvStandard;
   FBorderRadius    := 0;
+end;
+
+destructor TFRMaterialMaskEdit.Destroy;
+begin
+  if Assigned(FLabelAnimator) then FLabelAnimator.Free;
+  inherited Destroy;
 end;
 
 end.

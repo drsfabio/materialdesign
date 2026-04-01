@@ -82,6 +82,7 @@ type
     procedure InternalValidate;
     procedure InternalMemoChange(Sender: TObject);
   protected
+    FLabelAnimator: TFRMDFloatingLabelAnimator;
     procedure SetColor(AValue: TColor); override;
     procedure SetName(const AValue: TComponentName); override;
     procedure DoEnter; override;
@@ -89,6 +90,7 @@ type
     procedure Paint; override;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
     property Memo: TMemo read FMemo;
   published
     property Align;
@@ -163,8 +165,10 @@ begin
   Self.ParentColor  := True;
   Self.Height       := 120;
 
-  FLabel.Align := alTop;
+  FLabel.Align := alNone;
+  FLabel.Visible := False;
   FLabel.AutoSize := True;
+  FLabel.Top := 4;
   FLabel.BorderSpacing.Around := 0;
   FLabel.BorderSpacing.Bottom := 4;
   FLabel.BorderSpacing.Left := 4;
@@ -175,6 +179,9 @@ begin
   FLabel.Parent := Self;
   FLabel.ParentFont := False;
   FLabel.SetSubComponent(True);
+  
+  FLabelAnimator := TFRMDFloatingLabelAnimator.Create(Self);
+  FLabelAnimator.SnapTo(1.0);
 
   FMemo.Align := alClient;
   FMemo.BorderSpacing.Around := 0;
@@ -230,6 +237,7 @@ procedure TFRMaterialMemoEdit.DoEnter;
 begin
   inherited DoEnter;
   FFocused := True;
+  if Assigned(FLabelAnimator) then FLabelAnimator.FloatLabel;
   Invalidate;
 end;
 
@@ -238,6 +246,15 @@ begin
   FFocused := False;
   if FValidateMode = vmOnExit then
     InternalValidate;
+    
+  if Assigned(FLabelAnimator) then
+  begin
+    if Trim(FMemo.Text) = '' then
+      FLabelAnimator.InlineLabel
+    else
+      FLabelAnimator.FloatLabel;
+  end;
+  
   Invalidate;
   inherited DoExit;
 end;
@@ -431,6 +448,15 @@ procedure TFRMaterialMemoEdit.InternalMemoChange(Sender: TObject);
 begin
   if FValidateMode = vmOnChange then
     InternalValidate;
+    
+  if Assigned(FLabelAnimator) then
+  begin
+    if (Trim(FMemo.Text) <> '') or FFocused then
+      FLabelAnimator.FloatLabel
+    else
+      FLabelAnimator.InlineLabel;
+  end;
+  
   if FShowCharCounter then
     Invalidate;
   { Repassa para o handler do usuário }
@@ -504,10 +530,19 @@ begin
   P.LabelFont := FLabel.Font;
   P.LabelRight := FLabel.Left + Canvas.TextWidth(FLabel.Caption);
   P.LabelTop := FLabel.Top;
+  P.LabelText := FLabel.Caption;
+  if Assigned(FLabelAnimator) then
+    P.LabelProgress := FLabelAnimator.Progress
+  else
+    P.LabelProgress := 1.0;
 
   TFRMaterialFieldPainter.DrawField(P);
+end;
 
-  FLabel.Font.Color := DecoColor;
+destructor TFRMaterialMemoEdit.Destroy;
+begin
+  if Assigned(FLabelAnimator) then FLabelAnimator.Free;
+  inherited Destroy;
 end;
 
 end.

@@ -124,6 +124,7 @@ type
     procedure SetOnUTF8KeyPress(AValue: TUTF8KeyPressEvent);
 
   protected
+    FLabelAnimator: TFRMDFloatingLabelAnimator;
     procedure SetAnchors(const AValue: TAnchors); override;
     procedure SetColor(AValue: TColor); override;
     procedure SetName(const AValue: TComponentName); override;
@@ -134,6 +135,7 @@ type
 
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
     { Retorna a string do item atualmente selecionado, ou '' se nenhum }
     function SelectedText: string;
     { Seleciona o primeiro item cujo texto começa com AText (case-insensitive) }
@@ -254,6 +256,14 @@ end;
 
 procedure TFRMaterialComboEdit.InternalComboChange(Sender: TObject);
 begin
+  if Assigned(FLabelAnimator) then
+  begin
+    if (Trim(FCombo.Text) <> '') or FFocused then
+      FLabelAnimator.FloatLabel
+    else
+      FLabelAnimator.InlineLabel;
+  end;
+
   if Assigned(FUserOnChange) then
     FUserOnChange(Sender);
 end;
@@ -710,12 +720,20 @@ procedure TFRMaterialComboEdit.DoEnter;
 begin
   inherited DoEnter;
   FFocused := True;
+  if Assigned(FLabelAnimator) then FLabelAnimator.FloatLabel;
   Invalidate;
 end;
 
 procedure TFRMaterialComboEdit.DoExit;
 begin
   FFocused := False;
+  if Assigned(FLabelAnimator) then
+  begin
+    if Trim(FCombo.Text) = '' then
+      FLabelAnimator.InlineLabel
+    else
+      FLabelAnimator.FloatLabel;
+  end;
   Invalidate;
   inherited DoExit;
 end;
@@ -793,10 +811,13 @@ begin
   P.LabelFont := FLabel.Font;
   P.LabelRight := FLabel.Left + Canvas.TextWidth(FLabel.Caption);
   P.LabelTop := FLabel.Top;
+  P.LabelText := FLabel.Caption;
+  if Assigned(FLabelAnimator) then
+    P.LabelProgress := FLabelAnimator.Progress
+  else
+    P.LabelProgress := 1.0;
 
   TFRMaterialFieldPainter.DrawField(P);
-
-  FLabel.Font.Color := DecoColor;
 end;
 
 constructor TFRMaterialComboEdit.Create(AOwner: TComponent);
@@ -811,8 +832,10 @@ begin
   Self.DisabledColor := $00B8AFA8;
   Self.ParentColor   := True;
 
-  FLabel.Align                := alTop;
+  FLabel.Align                := alNone;
+  FLabel.Visible              := False;
   FLabel.AutoSize             := True;
+  FLabel.Top                  := 4;
   FLabel.BorderSpacing.Around := 0;
   FLabel.BorderSpacing.Bottom := 4;
   FLabel.BorderSpacing.Left   := 4;
@@ -824,6 +847,9 @@ begin
   FLabel.ParentFont           := False;
   FLabel.ParentBiDiMode       := True;
   FLabel.SetSubComponent(True);
+  
+  FLabelAnimator := TFRMDFloatingLabelAnimator.Create(Self);
+  FLabelAnimator.SnapTo(1.0);
 
   FCombo.Align                := alBottom;
   FCombo.AutoComplete         := True;
@@ -847,6 +873,12 @@ begin
 
   FVariant      := mvStandard;
   FBorderRadius := 0;
+end;
+
+destructor TFRMaterialComboEdit.Destroy;
+begin
+  if Assigned(FLabelAnimator) then FLabelAnimator.Free;
+  inherited Destroy;
 end;
 
 end.

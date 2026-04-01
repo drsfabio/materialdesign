@@ -130,6 +130,7 @@ type
     function IsNeededAdjustSize: Boolean;
 
   protected
+    FLabelAnimator: TFRMDFloatingLabelAnimator;
     procedure SetAnchors(const AValue: TAnchors); override;
     procedure SetColor(AValue: TColor); override;
     procedure SetName(const AValue: TComponentName); override;
@@ -140,9 +141,12 @@ type
 
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
 
     { Zera o campo (equivale a Value := 0) }
     procedure Clear;
+
+  public
 
     { Acesso direto ao TEdit interno para customizações avançadas }
     property Edit: TEdit read FEdit;
@@ -692,6 +696,7 @@ procedure TFRMaterialCurrencyEdit.DoEnter;
 begin
   inherited DoEnter;
   FFocused := True;
+  if Assigned(FLabelAnimator) then FLabelAnimator.FloatLabel;
   Invalidate;
 end;
 
@@ -700,6 +705,13 @@ begin
   FFocused := False;
   { Ajusta o sinal: se o valor for zero, garante que não fique negativo }
   if FCents = 0 then FNegative := False;
+  if Assigned(FLabelAnimator) then
+  begin
+    if Trim(FEdit.Text) = '' then
+      FLabelAnimator.InlineLabel
+    else
+      FLabelAnimator.FloatLabel;
+  end;
   Invalidate;
   inherited DoExit;
 end;
@@ -789,10 +801,13 @@ begin
   P.LabelFont := FLabel.Font;
   P.LabelRight := FLabel.Left + Canvas.TextWidth(FLabel.Caption);
   P.LabelTop := FLabel.Top;
+  P.LabelText := FLabel.Caption;
+  if Assigned(FLabelAnimator) then
+    P.LabelProgress := FLabelAnimator.Progress
+  else
+    P.LabelProgress := 1.0;
 
   TFRMaterialFieldPainter.DrawField(P);
-
-  FLabel.Font.Color := DecoColor;
 end;
 
 constructor TFRMaterialCurrencyEdit.Create(AOwner: TComponent);
@@ -807,8 +822,10 @@ begin
   Self.DisabledColor := $00B8AFA8;
   Self.ParentColor   := True;
 
-  FLabel.Align                := alTop;
+  FLabel.Align                := alNone;
+  FLabel.Visible              := False;
   FLabel.AutoSize             := True;
+  FLabel.Top                  := 4;
   FLabel.BorderSpacing.Around := 0;
   FLabel.BorderSpacing.Bottom := 4;
   FLabel.BorderSpacing.Left   := 4;
@@ -820,6 +837,9 @@ begin
   FLabel.ParentFont           := False;
   FLabel.ParentBiDiMode       := True;
   FLabel.SetSubComponent(True);
+  
+  FLabelAnimator := TFRMDFloatingLabelAnimator.Create(Self);
+  FLabelAnimator.SnapTo(1.0);
 
   FEdit.Align                := alBottom;
   FEdit.AutoSize             := True;
@@ -866,6 +886,12 @@ begin
   FBorderRadius     := 0;
 
   RefreshDisplay; { exibe "R$ 0,00" }
+end;
+
+destructor TFRMaterialCurrencyEdit.Destroy;
+begin
+  if Assigned(FLabelAnimator) then FLabelAnimator.Free;
+  inherited Destroy;
 end;
 
 end.

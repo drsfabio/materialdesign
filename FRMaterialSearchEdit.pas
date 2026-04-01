@@ -66,6 +66,7 @@ type
     procedure UpdateClearButton;
     procedure DoSearch;
   protected
+    FLabelAnimator: TFRMDFloatingLabelAnimator;
     procedure SetColor(AValue: TColor); override;
     procedure SetName(const AValue: TComponentName); override;
     procedure DoEnter; override;
@@ -133,8 +134,10 @@ begin
   Self.DisabledColor := $00B8AFA8;
   Self.ParentColor  := True;
 
-  FLabel.Align := alTop;
+  FLabel.Align := alNone;
+  FLabel.Visible := False;
   FLabel.AutoSize := True;
+  FLabel.Top := 4;
   FLabel.BorderSpacing.Around := 0;
   FLabel.BorderSpacing.Bottom := 4;
   FLabel.BorderSpacing.Left := 4;
@@ -145,6 +148,9 @@ begin
   FLabel.Parent := Self;
   FLabel.ParentFont := False;
   FLabel.SetSubComponent(True);
+  
+  FLabelAnimator := TFRMDFloatingLabelAnimator.Create(Self);
+  FLabelAnimator.SnapTo(1.0);
 
   FEdit.Align := alBottom;
   FEdit.AutoSize := True;
@@ -215,6 +221,7 @@ end;
 
 destructor TFRMaterialSearchEdit.Destroy;
 begin
+  if Assigned(FLabelAnimator) then FLabelAnimator.Free;
   FDebounceTimer.Enabled := False;
   inherited Destroy;
 end;
@@ -243,12 +250,20 @@ procedure TFRMaterialSearchEdit.DoEnter;
 begin
   inherited DoEnter;
   FFocused := True;
+  if Assigned(FLabelAnimator) then FLabelAnimator.FloatLabel;
   Invalidate;
 end;
 
 procedure TFRMaterialSearchEdit.DoExit;
 begin
   FFocused := False;
+  if Assigned(FLabelAnimator) then
+  begin
+    if Trim(FEdit.Text) = '' then
+      FLabelAnimator.InlineLabel
+    else
+      FLabelAnimator.FloatLabel;
+  end;
   Invalidate;
   inherited DoExit;
 end;
@@ -364,6 +379,15 @@ end;
 procedure TFRMaterialSearchEdit.InternalEditChange(Sender: TObject);
 begin
   UpdateClearButton;
+  
+  if Assigned(FLabelAnimator) then
+  begin
+    if (Trim(FEdit.Text) <> '') or FFocused then
+      FLabelAnimator.FloatLabel
+    else
+      FLabelAnimator.InlineLabel;
+  end;
+  
   { Reinicia o debounce }
   FDebounceTimer.Enabled := False;
   FDebounceTimer.Enabled := True;
@@ -459,10 +483,13 @@ begin
   P.LabelFont := FLabel.Font;
   P.LabelRight := FLabel.Left + Canvas.TextWidth(FLabel.Caption);
   P.LabelTop := FLabel.Top;
+  P.LabelText := FLabel.Caption;
+  if Assigned(FLabelAnimator) then
+    P.LabelProgress := FLabelAnimator.Progress
+  else
+    P.LabelProgress := 1.0;
 
   TFRMaterialFieldPainter.DrawField(P);
-
-  FLabel.Font.Color := DecoColor;
 end;
 
 end.

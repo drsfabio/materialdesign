@@ -147,6 +147,7 @@ type
     procedure SetOnEditUTF8KeyPress(AValue: TUTF8KeyPressEvent);
   protected
     FEdit: T;
+    FLabelAnimator: TFRMDFloatingLabelAnimator;
 
     function GetEditAlignment: TAlignment;
     function GetEditAutoSize: Boolean;
@@ -197,6 +198,7 @@ type
     procedure Paint; override;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
     { Expõe o botão de limpeza para customização visual }
     property ClearButton: TFRMaterialIconButton read FClearButton;
     { Expõe o botão de pesquisa para customização visual }
@@ -531,7 +533,16 @@ begin
   { Validação em tempo real se ValidateMode = vmOnChange }
   if FValidateMode = vmOnChange then
     InternalValidate;
-  { Repinta para atualizar o contador de caracteres }
+    
+  if Assigned(FLabelAnimator) then
+  begin
+    if (Trim(FEdit.Text) <> '') or FFocused then
+      FLabelAnimator.FloatLabel
+    else
+      FLabelAnimator.InlineLabel;
+  end;
+  
+  { Repinta para atualizar o contador de caracteres e animador }
   if FShowCharCounter then
     Invalidate;
 end;
@@ -1365,6 +1376,7 @@ procedure TFRMaterialEditBase.DoEnter;
 begin
   inherited DoEnter;
   FFocused := True;
+  if Assigned(FLabelAnimator) then FLabelAnimator.FloatLabel;
   Invalidate;
 end;
 
@@ -1374,6 +1386,15 @@ begin
   { Validação interna no DoExit base — Required, MinLength, OnValidate }
   if FValidateMode = vmOnExit then
     InternalValidate;
+    
+  if Assigned(FLabelAnimator) then
+  begin
+    if Trim(FEdit.Text) = '' then
+      FLabelAnimator.InlineLabel
+    else
+      FLabelAnimator.FloatLabel;
+  end;
+  
   Invalidate;
   inherited DoExit;
 end;
@@ -1516,10 +1537,13 @@ begin
   P.LabelFont := FLabel.Font;
   P.LabelRight := FLabel.Left + Canvas.TextWidth(FLabel.Caption);
   P.LabelTop := FLabel.Top;
+  P.LabelText := FLabel.Caption;
+  if Assigned(FLabelAnimator) then
+    P.LabelProgress := FLabelAnimator.Progress
+  else
+    P.LabelProgress := 1.0;
 
   TFRMaterialFieldPainter.DrawField(P);
-
-  FLabel.Font.Color := DecoColor;
   
   if FSearchButton.Visible and (FSearchButton.NormalColor <> DecoColor) then
   begin
@@ -1540,8 +1564,10 @@ begin
   Self.DisabledColor := $00B8AFA8;
   Self.ParentColor := True;
 
-  FLabel.Align := alTop;
+  FLabel.Align := alNone;
+  FLabel.Visible := False; // Hide logic moved to field painter
   FLabel.AutoSize := True;
+  FLabel.Top := 4;
   FLabel.BorderSpacing.Around := 0;
   FLabel.BorderSpacing.Bottom := 4;
   FLabel.BorderSpacing.Left := 4;
@@ -1553,6 +1579,9 @@ begin
   FLabel.ParentFont := False;
   FLabel.ParentBiDiMode := True;
   FLabel.SetSubComponent(True);
+  
+  FLabelAnimator := TFRMDFloatingLabelAnimator.Create(Self);
+  FLabelAnimator.SnapTo(1.0); // Safe default until populated
 
   FEdit.Align := alBottom;
   FEdit.AutoSelect := True;
@@ -1659,6 +1688,12 @@ begin
   FAutoFocusNext    := False;
 
   FEdit.Text := '';
+end;
+
+destructor TFRMaterialEditBase.Destroy;
+begin
+  if Assigned(FLabelAnimator) then FLabelAnimator.Free;
+  inherited Destroy;
 end;
 
 { TFRMaterialEdit }

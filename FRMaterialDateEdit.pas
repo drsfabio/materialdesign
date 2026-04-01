@@ -127,6 +127,10 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure ClearDate;
+    
+  protected
+    FLabelAnimator: TFRMDFloatingLabelAnimator;
+
     property Edit: TEdit read FEdit;
     property CalendarButton: TFRMaterialIconButton read FCalendarButton;
     property ClearButton: TFRMaterialIconButton read FClearButton;
@@ -390,6 +394,15 @@ begin
   ApplyMask;
   FDate := ParseDate;
   UpdateClearButton;
+  
+  if Assigned(FLabelAnimator) then
+  begin
+    if (Trim(FEdit.Text) <> '') or FFocused then
+      FLabelAnimator.FloatLabel
+    else
+      FLabelAnimator.InlineLabel;
+  end;
+  
   if Assigned(FUserOnChange) then
     FUserOnChange(Self);
 end;
@@ -873,12 +886,20 @@ procedure TFRMaterialDateEdit.DoEnter;
 begin
   inherited DoEnter;
   FFocused := True;
+  if Assigned(FLabelAnimator) then FLabelAnimator.FloatLabel;
   Invalidate;
 end;
 
 procedure TFRMaterialDateEdit.DoExit;
 begin
   FFocused := False;
+  if Assigned(FLabelAnimator) then
+  begin
+    if Trim(FEdit.Text) = '' then
+      FLabelAnimator.InlineLabel
+    else
+      FLabelAnimator.FloatLabel;
+  end;
   Invalidate;
   inherited DoExit;
 end;
@@ -972,10 +993,13 @@ begin
   P.LabelFont := FLabel.Font;
   P.LabelRight := FLabel.Left + Canvas.TextWidth(FLabel.Caption);
   P.LabelTop := FLabel.Top;
+  P.LabelText := FLabel.Caption;
+  if Assigned(FLabelAnimator) then
+    P.LabelProgress := FLabelAnimator.Progress
+  else
+    P.LabelProgress := 1.0;
 
   TFRMaterialFieldPainter.DrawField(P);
-
-  FLabel.Font.Color := DecoColor;
 end;
 
 constructor TFRMaterialDateEdit.Create(AOwner: TComponent);
@@ -990,8 +1014,10 @@ begin
   Self.DisabledColor := $00B8AFA8;
   Self.ParentColor   := True;
 
-  FLabel.Align                := alTop;
+  FLabel.Align                := alNone;
+  FLabel.Visible              := False;
   FLabel.AutoSize             := True;
+  FLabel.Top                  := 4;
   FLabel.BorderSpacing.Around := 0;
   FLabel.BorderSpacing.Bottom := 4;
   FLabel.BorderSpacing.Left   := 4;
@@ -1003,6 +1029,9 @@ begin
   FLabel.ParentFont           := False;
   FLabel.ParentBiDiMode       := True;
   FLabel.SetSubComponent(True);
+  
+  FLabelAnimator := TFRMDFloatingLabelAnimator.Create(Self);
+  FLabelAnimator.SnapTo(1.0);
 
   FEdit.Align                := alBottom;
   FEdit.AutoSize             := True;
@@ -1065,6 +1094,7 @@ end;
 
 destructor TFRMaterialDateEdit.Destroy;
 begin
+  if Assigned(FLabelAnimator) then FLabelAnimator.Free;
   FreeAndNil(FCalendarPopup);
   inherited Destroy;
 end;

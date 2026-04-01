@@ -187,6 +187,9 @@ type
     property OnMouseMove;
     property OnMouseUp;
     property OnResize;
+    
+  protected
+    FLabelAnimator: TFRMDFloatingLabelAnimator;
   end;
 
   { TCheckComboDropDown — Form flutuante com a lista de checkboxes }
@@ -371,6 +374,14 @@ begin
     end;
   finally
     CheckedItems.Free;
+  end;
+  
+  if Assigned(FLabelAnimator) then
+  begin
+    if ((Trim(FDisplayEdit.Text) <> '') and (FDisplayEdit.Text <> FEmptyText)) or FFocused or IsDropDownOpen then
+      FLabelAnimator.FloatLabel
+    else
+      FLabelAnimator.InlineLabel;
   end;
 end;
 
@@ -580,6 +591,8 @@ begin
   FDropDown.Show;
   FDropDown.FCheckList.SetFocus;
 
+  if Assigned(FLabelAnimator) then FLabelAnimator.FloatLabel;
+
   if Assigned(FOnDropDownOpen) then
     FOnDropDownOpen(Self);
 end;
@@ -620,12 +633,20 @@ procedure TFRMaterialCheckComboEdit.DoEnter;
 begin
   inherited DoEnter;
   FFocused := True;
+  if Assigned(FLabelAnimator) then FLabelAnimator.FloatLabel;
   Invalidate;
 end;
 
 procedure TFRMaterialCheckComboEdit.DoExit;
 begin
   FFocused := False;
+  if Assigned(FLabelAnimator) then
+  begin
+    if ((Trim(FDisplayEdit.Text) = '') or (FDisplayEdit.Text = FEmptyText)) and not IsDropDownOpen then
+      FLabelAnimator.InlineLabel
+    else
+      FLabelAnimator.FloatLabel;
+  end;
   Invalidate;
   inherited DoExit;
 end;
@@ -718,14 +739,16 @@ begin
   P.PrefixText := '';
   P.SuffixText := '';
   
-  P.EditFont := FDisplayEdit.Font;
   P.LabelFont := FLabel.Font;
   P.LabelRight := FLabel.Left + Canvas.TextWidth(FLabel.Caption);
   P.LabelTop := FLabel.Top;
+  P.LabelText := FLabel.Caption;
+  if Assigned(FLabelAnimator) then
+    P.LabelProgress := FLabelAnimator.Progress
+  else
+    P.LabelProgress := 1.0;
 
   TFRMaterialFieldPainter.DrawField(P);
-
-  FLabel.Font.Color := DecoColor;
 end;
 
 procedure TFRMaterialCheckComboEdit.KeyDown(var Key: Word; Shift: TShiftState);
@@ -750,8 +773,10 @@ begin
   TStringList(FItems).OnChange := @ItemsChange;
 
   FLabel := TBoundLabel.Create(Self);
-  FLabel.Align                := alTop;
+  FLabel.Align                := alNone;
+  FLabel.Visible              := False;
   FLabel.AutoSize             := True;
+  FLabel.Top                  := 4;
   FLabel.BorderSpacing.Around := 0;
   FLabel.BorderSpacing.Bottom := 4;
   FLabel.BorderSpacing.Left   := 4;
@@ -763,6 +788,9 @@ begin
   FLabel.ParentFont           := False;
   FLabel.ParentBiDiMode       := True;
   FLabel.SetSubComponent(True);
+  
+  FLabelAnimator := TFRMDFloatingLabelAnimator.Create(Self);
+  FLabelAnimator.SnapTo(1.0);
 
   FDisplayEdit := TEdit.Create(Self);
   FDisplayEdit.Align                := alBottom;
@@ -805,6 +833,7 @@ end;
 
 destructor TFRMaterialCheckComboEdit.Destroy;
 begin
+  if Assigned(FLabelAnimator) then FLabelAnimator.Free;
   FItems.Free;
   inherited Destroy;
 end;
