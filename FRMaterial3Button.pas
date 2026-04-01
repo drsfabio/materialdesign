@@ -43,6 +43,7 @@ type
     class function GetControlClassDefaultSize: TSize; override;
   public
     constructor Create(AOwner: TComponent); override;
+    procedure Click; override;
   published
     property ButtonStyle: TFRMDButtonStyle read FButtonStyle write SetButtonStyle default mbsFilled;
     property IconMode: TFRIconMode read FIconMode write SetIconMode default imSearch;
@@ -185,6 +186,11 @@ begin
 end;
 
 { ── TFRMaterialButton ── }
+
+procedure TFRMaterialButton.Click;
+begin
+  inherited Click;
+end;
 
 constructor TFRMaterialButton.Create(AOwner: TComponent);
 begin

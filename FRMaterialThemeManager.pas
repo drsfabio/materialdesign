@@ -29,14 +29,19 @@ type
     FDarkMode : Boolean;
     FSeedColor: TColor;
     FUseSeed  : Boolean;
+    FListeners: TInterfaceList;
     procedure SetPalette(AValue: TFRMDPalette);
     procedure SetDarkMode(AValue: Boolean);
     procedure SetSeedColor(AValue: TColor);
     procedure SetUseSeed(AValue: Boolean);
     procedure ApplyTheme;
-    procedure InvalidateAllControls(AControl: TWinControl);
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    
+    procedure RegisterComponent(AComponent: IFRMaterialComponent);
+    procedure UnregisterComponent(AComponent: IFRMaterialComponent);
+
     { Aplica o tema atual explicitamente (útil após mudanças em cascata) }
     procedure Apply;
   published
@@ -59,40 +64,55 @@ implementation
 constructor TFRMaterialThemeManager.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  FListeners := TInterfaceList.Create;
+  if FRMaterialDefaultThemeManager = nil then
+    FRMaterialDefaultThemeManager := Self;
+    
   FPalette   := mpBaseline;
   FDarkMode  := False;
   FSeedColor := $006750A4; { Material Baseline purple }
   FUseSeed   := False;
 end;
 
-procedure TFRMaterialThemeManager.InvalidateAllControls(AControl: TWinControl);
-var
-  i: Integer;
+destructor TFRMaterialThemeManager.Destroy;
 begin
-  if AControl = nil then Exit;
-  AControl.Invalidate;
-  for i := 0 to AControl.ControlCount - 1 do
-    if AControl.Controls[i] is TWinControl then
-      InvalidateAllControls(TWinControl(AControl.Controls[i]))
-    else
-      AControl.Controls[i].Invalidate;
+  if FRMaterialDefaultThemeManager = Self then
+    FRMaterialDefaultThemeManager := nil;
+  FListeners.Free;
+  inherited Destroy;
+end;
+
+procedure TFRMaterialThemeManager.RegisterComponent(AComponent: IFRMaterialComponent);
+begin
+  if Assigned(FListeners) and (FListeners.IndexOf(AComponent) < 0) then
+    FListeners.Add(AComponent);
+end;
+
+procedure TFRMaterialThemeManager.UnregisterComponent(AComponent: IFRMaterialComponent);
+begin
+  if Assigned(FListeners) then
+    FListeners.Remove(AComponent);
 end;
 
 procedure TFRMaterialThemeManager.ApplyTheme;
 var
   i: Integer;
+  Comp: IFRMaterialComponent;
 begin
-  { Gera o novo esquema de cores }
+  { Gera o novo esquema de cores e popula a global MD3Colors }
   if FUseSeed then
     MD3GenerateScheme(FSeedColor, FDarkMode)
   else
     MD3LoadPalette(FPalette, FDarkMode);
 
-  { Propaga invalidação para todos os forms abertos }
-  if Application <> nil then
-    for i := 0 to Screen.FormCount - 1 do
-      if Screen.Forms[i].Visible then
-        InvalidateAllControls(Screen.Forms[i]);
+  { Propaga invalidação para todos os observers }
+  if Assigned(FListeners) then
+    for i := 0 to FListeners.Count - 1 do
+    begin
+      Comp := IFRMaterialComponent(FListeners[i]);
+      if Assigned(Comp) then
+        Comp.ApplyTheme(Self);
+    end;
 end;
 
 procedure TFRMaterialThemeManager.Apply;

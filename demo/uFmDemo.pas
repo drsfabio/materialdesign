@@ -36,6 +36,7 @@ uses
   FRMaterialSearchEdit,
   FRMaterialSpinEdit,
   FRMaterialTheme,
+  FRMaterialThemeManager,
   FRMaterialMasks,
   FRMaterialIcons, uFmView;
 
@@ -55,6 +56,7 @@ type
     FDarkAction: TFRMaterialAppBarAction;
     FPaletteMenu: TPopupMenu;
     FCurrentPalette: TFRMDPalette;
+    FThemeManager: TFRMaterialThemeManager;
     FStatusBar: TStatusBar;
 
     { Component refs for interactions }
@@ -206,6 +208,10 @@ begin
   Color := MD3Colors.Surface;
   FDarkMode := False;
   FCurrentPalette := mpBaseline;
+  
+  FThemeManager := TFRMaterialThemeManager.Create(Self);
+  FThemeManager.Palette := mpBaseline;
+  FThemeManager.DarkMode := False;
 
   { === Palette popup menu === }
   FPaletteMenu := TPopupMenu.Create(Self);
@@ -1996,14 +2002,12 @@ procedure TFmDemo.ApplyTheme;
 var
   I: Integer;
 begin
-  MD3LoadPalette(FCurrentPalette, FDarkMode);
+  FThemeManager.DarkMode := FDarkMode;
+  FThemeManager.Palette := FCurrentPalette;
+  
   Color := MD3Colors.Surface;
-  FMainAppBar.Invalidate;
-  FMainTabs.Invalidate;
-  FMainNavBar.Invalidate;
   for I := 0 to 10 do
     FContentPanels[I].Color := MD3Colors.Surface;
-  Invalidate;
 end;
 
 procedure TFmDemo.OnMainDarkToggle(Sender: TObject);

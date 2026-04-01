@@ -15,7 +15,7 @@ interface
 uses
   Classes, SysUtils, Controls, Graphics,
   {$IFDEF FPC} LCLType, LCLIntf, {$ENDIF}
-  BGRABitmap, BGRABitmapTypes;
+  BGRABitmap, BGRABitmapTypes, FRMaterialTheme;
 
 type
   { MD3 shape scale }
@@ -144,7 +144,7 @@ type
     Extends TCustomControl (windowed, can receive focus).
     Provides hover/press state tracking. }
 
-  TFRMaterial3Control = class(TCustomControl)
+  TFRMaterial3Control = class(TCustomControl, IFRMaterialComponent)
   private
     FHovered: Boolean;
     FPressed: Boolean;
@@ -157,6 +157,8 @@ type
     function InteractionState: TFRMDInteractionState;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure ApplyTheme(const AThemeManager: TObject); virtual;
     property Hovered: Boolean read FHovered;
     property Pressed: Boolean read FPressed;
   published
@@ -183,7 +185,7 @@ type
 
 implementation
 
-uses Math;
+uses Math, FRMaterialThemeManager;
 
 { ── HSL helpers for palette generation ── }
 
@@ -651,6 +653,22 @@ begin
   FPressed := False;
   ControlStyle := ControlStyle + [csClickEvents, csCaptureMouse];
   TabStop := True;
+  
+  if Assigned(FRMaterialDefaultThemeManager) and (FRMaterialDefaultThemeManager is TFRMaterialThemeManager) then
+    TFRMaterialThemeManager(FRMaterialDefaultThemeManager).RegisterComponent(Self);
+end;
+
+destructor TFRMaterial3Control.Destroy;
+begin
+  if Assigned(FRMaterialDefaultThemeManager) and (FRMaterialDefaultThemeManager is TFRMaterialThemeManager) then
+    TFRMaterialThemeManager(FRMaterialDefaultThemeManager).UnregisterComponent(Self);
+  inherited Destroy;
+end;
+
+procedure TFRMaterial3Control.ApplyTheme(const AThemeManager: TObject);
+begin
+  if not Assigned(AThemeManager) then Exit;
+  Invalidate;
 end;
 
 procedure TFRMaterial3Control.EraseBackground(DC: HDC);

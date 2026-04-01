@@ -40,6 +40,16 @@ type
     ddUltraDense  { -12px — espaço mínimo      }
   );
 
+  { Interface a ser implementada por todo componente que desejar
+    ouvir mudanças globais de tema/paleta. }
+  IFRMaterialComponent = interface
+    ['{6BC17C2F-4A93-4B0F-8761-DCED7B94B5CB}']
+    procedure ApplyTheme(const AThemeManager: TObject);
+  end;
+
+var
+  FRMaterialDefaultThemeManager: TObject = nil;
+
 { Retorna a luminância relativa de AColor segundo o modelo WCAG 2.1 (0..1).
   Use para calcular contraste entre cores de texto e fundo. }
 function MCLuminance(AColor: TColor): Single;

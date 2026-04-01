@@ -5,7 +5,7 @@ unit FRMaterialEdit;
 interface
 
 uses
-  FRMaterialTheme, FRMaterialIcons, FRMaterialMasks, FRMaterial3Base,
+  FRMaterialTheme, FRMaterialThemeManager, FRMaterialIcons, FRMaterialMasks, FRMaterial3Base,
   FRMaterialFieldPainter, BGRABitmap, BGRABitmapTypes,
   Classes, Clipbrd, Controls, Dialogs, ExtCtrls, Forms, Graphics,
   {$IFDEF FPC} LCLType, LResources, {$ENDIF} Math, MaskEdit, Menus, StdCtrls, SysUtils;
@@ -199,6 +199,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    procedure ApplyTheme(const AThemeManager: TObject);
     { Expõe o botão de limpeza para customização visual }
     property ClearButton: TFRMaterialIconButton read FClearButton;
     { Expõe o botão de pesquisa para customização visual }
@@ -1558,11 +1559,20 @@ begin
   FLabel := TBoundLabel.Create(Self);
   inherited Create(AOwner);
 
-  Self.AccentColor := clHighlight;
+  if Assigned(FRMaterialDefaultThemeManager) then
+    Self.ApplyTheme(FRMaterialDefaultThemeManager)
+  else
+  begin
+    Self.AccentColor   := clHighlight;
+    Self.DisabledColor := $00B8AFA8;
+  end;
+  
   Self.BevelOuter := bvNone;
   Self.BorderStyle := bsNone;
-  Self.DisabledColor := $00B8AFA8;
   Self.ParentColor := True;
+  
+  if Assigned(FRMaterialDefaultThemeManager) and (FRMaterialDefaultThemeManager is TFRMaterialThemeManager) then
+    TFRMaterialThemeManager(FRMaterialDefaultThemeManager).RegisterComponent(Self as IFRMaterialComponent);
 
   FLabel.Align := alNone;
   FLabel.Visible := False; // Hide logic moved to field painter
@@ -1692,8 +1702,23 @@ end;
 
 destructor TFRMaterialEditBase.Destroy;
 begin
+  if Assigned(FRMaterialDefaultThemeManager) and (FRMaterialDefaultThemeManager is TFRMaterialThemeManager) then
+    TFRMaterialThemeManager(FRMaterialDefaultThemeManager).UnregisterComponent(Self as IFRMaterialComponent);
+    
   if Assigned(FLabelAnimator) then FLabelAnimator.Free;
   inherited Destroy;
+end;
+
+procedure TFRMaterialEditBase.ApplyTheme(const AThemeManager: TObject);
+begin
+  // As the ThemeManager repopulates the global MD3Colors, we just extract from there!
+  FAccentColor := MD3Colors.Primary;
+  FDisabledColor := MD3Colors.OnSurface; // MD3 uses OnSurface with low opacity for disabled
+  if FVariant = mvFilled then
+    Self.Color := MD3Colors.SurfaceContainerHighest;
+  if Assigned(FSearchButton) then
+    FSearchButton.NormalColor := MD3Colors.Primary;
+  Invalidate;
 end;
 
 { TFRMaterialEdit }

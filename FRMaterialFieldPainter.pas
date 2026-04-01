@@ -138,7 +138,7 @@ begin
   end
   else
   begin
-    P.Canvas.Rectangle(P.Rect);
+    P.Canvas.FillRect(P.Rect);
   end;
 
   { Passo 2: Decoração do campo (Borda/Sublinhado) }
