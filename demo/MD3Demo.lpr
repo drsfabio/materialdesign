@@ -5,7 +5,13 @@ program MD3Demo;
 uses
   {$IFDEF UNIX}cthreads,{$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, uFmDemo, uFmView;
+  Forms, uFmDemo, uFmView, FRMaterial3AppBar, FRMaterial3Base, FRMaterial3Button, FRMaterial3Chip,
+  FRMaterial3Dialog, FRMaterial3Divider, FRMaterial3FAB, FRMaterial3List, FRMaterial3Menu,
+  FRMaterial3Nav, FRMaterial3Progress, FRMaterial3Sheet, FRMaterial3Slider, FRMaterial3Snackbar,
+  FRMaterial3Tabs, FRMaterial3TimePicker, FRMaterial3Toggle, FRMaterial3Tooltip,
+  FRMaterial3TreeView, FRMaterialCheckComboEdit, FRMaterialComboEdit, FRMaterialCurrencyEdit,
+  FRMaterialDateEdit, FRMaterialEdit, FRMaterialIcons, FRMaterialMaskEdit, FRMaterialMasks,
+  FRMaterialMemoEdit, FRMaterialSearchEdit, FRMaterialSpinEdit, FRMaterialTheme, materialdesign;
 
 {$R *.res}
 
@@ -14,6 +20,6 @@ begin
   Application.Scaled := True;
   Application.Initialize;
   Application.CreateForm(TFmDemo, FmDemo);
-  Application.CreateForm(TForm1, Form1);
+  Application.CreateForm(TFmView, FFmView);
   Application.Run;
 end.

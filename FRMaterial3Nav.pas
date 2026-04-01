@@ -40,6 +40,7 @@ type
   public
     constructor Create(AOwner: TComponent);
     function Add: TFRMaterialNavItem;
+    procedure Update(AItem: TCollectionItem); override;
     property Items[Index: Integer]: TFRMaterialNavItem read GetItem write SetItem; default;
   end;
 
@@ -155,6 +156,14 @@ end;
 function TFRMaterialNavItems.Add: TFRMaterialNavItem;
 begin
   Result := TFRMaterialNavItem(inherited Add);
+end;
+
+procedure TFRMaterialNavItems.Update(AItem: TCollectionItem);
+begin
+  inherited Update(AItem);
+  { Notifica o componente pai para redesenhar quando itens mudam em design-time }
+  if FOwner is TControl then
+    TControl(FOwner).Invalidate;
 end;
 
 { ══════════════════════════════════════════════════════════════

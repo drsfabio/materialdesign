@@ -28,6 +28,8 @@ type
     FTimer: TTimer;
     procedure OnTimerFire(Sender: TObject);
     procedure OnActionClick(Sender: TObject);
+  protected
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -131,6 +133,7 @@ begin
   snkPanel.Anchors := [akLeft, akRight, akBottom];
   snkPanel.BringToFront;
   FPanel := snkPanel;
+  FPanel.FreeNotification(Self);
 
   FTimer.Interval := FDuration;
   FTimer.Enabled := True;
@@ -147,6 +150,13 @@ begin
   FMessage := AMessage;
   FActionText := AAction;
   Show;
+end;
+
+procedure TFRMaterialSnackbar.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  inherited;
+  if (Operation = opRemove) and (AComponent = FPanel) then
+    FPanel := nil;
 end;
 
 procedure TFRMaterialSnackbar.Hide;

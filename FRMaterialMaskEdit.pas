@@ -632,7 +632,11 @@ begin
   else
     DecoColor := DisabledColor;
 
-  if Assigned(Parent) and (Parent.Color = Color) then
+  if (FVariant = mvOutlined) then
+  begin
+    LeftPos  := 0;
+    RightPos := Width;
+  end else if Assigned(Parent) and (Parent.Color = Color) then
   begin
     LeftPos := FMaskEdit.Left;
     if FClearButton.Visible then
@@ -697,6 +701,7 @@ begin
   FLabel    := TBoundLabel.Create(Self);
   inherited Create(AOwner);
 
+  Self.BevelOuter    := bvNone;
   Self.AccentColor   := clHighlight;
   Self.BorderStyle   := bsNone;
   Self.DisabledColor := $00B8AFA8;

@@ -103,6 +103,11 @@ function MD3StateOpacity(AState: TFRMDInteractionState): Byte;
 procedure MD3FillRoundRect(ABmp: TBGRABitmap; X1, Y1, X2, Y2: Single;
   ARadius: Integer; AFill: TColor; AAlpha: Byte = 255);
 
+{ Draws a filled rectangle with only the top two corners rounded.
+  Used by mvFilled edit fields per MD3 spec. }
+procedure MD3FillTopRoundRect(ABmp: TBGRABitmap; X1, Y1, X2, Y2: Single;
+  ARadius: Integer; AFill: TColor; AAlpha: Byte = 255);
+
 { Draws a rounded rectangle border with antialiasing. }
 procedure MD3RoundRect(ABmp: TBGRABitmap; X1, Y1, X2, Y2: Single;
   ARadius: Integer; ABorder: TColor; ABorderWidth: Single = 1.0; AAlpha: Byte = 255);
@@ -567,6 +572,24 @@ begin
     ABmp.FillRect(Round(X1), Round(Y1), Round(X2) + 1, Round(Y2) + 1, c, dmDrawWithTransparency)
   else
     ABmp.FillRoundRectAntialias(X1, Y1, X2, Y2, ARadius, ARadius, c);
+end;
+
+procedure MD3FillTopRoundRect(ABmp: TBGRABitmap; X1, Y1, X2, Y2: Single;
+  ARadius: Integer; AFill: TColor; AAlpha: Byte);
+var
+  c: TBGRAPixel;
+  rx: Integer;
+begin
+  c := ColorToBGRA(ColorToRGB(AFill), AAlpha);
+  { Use at least 4px radius per MD3 spec for filled fields }
+  rx := ARadius;
+  if rx <= 0 then rx := 4;
+  { Draw normally rounded rect, then fill bottom corners as squares }
+  ABmp.FillRoundRectAntialias(X1, Y1, X2, Y2, rx, rx, c);
+  { Overdraw bottom-left corner }
+  ABmp.FillRect(Round(X1), Round(Y2) - rx, Round(X1) + rx, Round(Y2) + 1, c, dmDrawWithTransparency);
+  { Overdraw bottom-right corner }
+  ABmp.FillRect(Round(X2) - rx + 1, Round(Y2) - rx, Round(X2) + 1, Round(Y2) + 1, c, dmDrawWithTransparency);
 end;
 
 procedure MD3RoundRect(ABmp: TBGRABitmap; X1, Y1, X2, Y2: Single;

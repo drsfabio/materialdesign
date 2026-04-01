@@ -127,6 +127,7 @@ begin
   FLabel := TBoundLabel.Create(Self);
   inherited Create(AOwner);
 
+  Self.BevelOuter   := bvNone;
   Self.AccentColor  := clHighlight;
   Self.BorderStyle  := bsNone;
   Self.DisabledColor := $00B8AFA8;

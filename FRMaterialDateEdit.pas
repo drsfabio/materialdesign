@@ -1,26 +1,25 @@
-﻿unit FRMaterialDateEdit;
+unit FRMaterialDateEdit;
 
 {$mode objfpc}{$H+}
 
 { TFRMaterialDateEdit
   Componente de edição de data com estilo Material Design.
-  Encapsula TDateEdit (LCL) com:
-    - Label flutuante acima do campo (accentColor no foco)
-    - Sublinhado Material Design
-    - Botão de limpeza nativo opcional (ShowClearButton)
-    - Acesso completo às propriedades/eventos do TDateEdit interno
+  Usa TEdit interno com máscara de data (dd/mm/yyyy ou mm/yyyy),
+  botão SVG de calendário e popup de calendário nativo.
 
-  Requer: EditBtn, Calendar (LCL)
+  Requer: Calendar (LCL), FRMaterialTheme, FRMaterialIcons
   Licença: LGPL v3 — mesma do bgracontrols
 }
 
 interface
 
 uses
-  FRMaterialTheme, FRMaterialIcons, Classes, Calendar, Controls, EditBtn, ExtCtrls, Forms, Graphics,
-  {$IFDEF FPC} LCLType, LResources, {$ENDIF} Menus, StdCtrls, SysUtils;
+  FRMaterial3Base, FRMaterialTheme, FRMaterialIcons, Classes, Calendar, Controls, ExtCtrls, Forms,
+  Graphics, {$IFDEF FPC} LCLType, LResources, {$ENDIF} Menus, StdCtrls, SysUtils;
 
 type
+
+  TFRDateFormat = (dfDDMMYYYY, dfMMYYYY);
 
   { TFRMaterialDateEdit }
 
@@ -29,15 +28,23 @@ type
     FAccentColor: TColor;
     FDisabledColor: TColor;
     FLabel: TBoundLabel;
-    FDateEdit: TDateEdit;
+    FEdit: TEdit;
+    FCalendarButton: TFRMaterialIconButton;
+    FClearButton: TFRMaterialIconButton;
     FFocused: Boolean;
     FVariant: TFRMaterialVariant;
     FBorderRadius: Integer;
-    FClearButton: TFRMaterialIconButton;
+    FDateFormat: TFRDateFormat;
+    FDate: TDateTime;
     FShowClearButton: Boolean;
     FOnClearButtonClick: TNotifyEvent;
-    { Armazena OnChange do usuário; FDateEdit.OnChange é reservado para uso interno }
     FUserOnChange: TNotifyEvent;
+    FUserOnKeyDown: TKeyEvent;
+    FUpdating: Boolean;
+
+    { Calendar popup }
+    FCalendarPopup: TForm;
+    FCalendar: TCalendar;
 
     function IsNeededAdjustSize: Boolean;
 
@@ -45,18 +52,31 @@ type
     function GetShowClearButton: Boolean;
     procedure SetShowClearButton(AValue: Boolean);
     procedure ClearButtonClick(Sender: TObject);
-    procedure InternalDateEditChange(Sender: TObject);
     procedure UpdateClearButton;
 
-    { Propriedades de TDateEdit }
-    function GetCalendarDisplaySettings: TDisplaySettings;
-    procedure SetCalendarDisplaySettings(AValue: TDisplaySettings);
+    { Calendar button }
+    procedure CalendarButtonClick(Sender: TObject);
+    procedure CalendarDblClick(Sender: TObject);
+    procedure CalendarPopupDeactivate(Sender: TObject);
+
+    { Internal edit }
+    procedure InternalEditChange(Sender: TObject);
+    procedure InternalKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure InternalKeyPress(Sender: TObject; var Key: Char);
+    procedure ApplyMask;
+    function ParseDate: TDateTime;
+    procedure RefreshDisplay;
+
+    { Segment navigation }
+    function GetCurrentSegment: Integer;
+    procedure SelectSegment(ASegment: Integer);
+    procedure AdjustSegmentValue(ADelta: Integer);
+    function IsTextComplete: Boolean;
+
+    { Propriedades }
     function GetDate: TDateTime;
     procedure SetDate(AValue: TDateTime);
-    function GetDateOrder: TDateOrder;
-    procedure SetDateOrder(AValue: TDateOrder);
-    function GetDirectInput: Boolean;
-    procedure SetDirectInput(AValue: Boolean);
+    procedure SetDateFormat(AValue: TFRDateFormat);
     function GetEditCursor: TCursor;
     procedure SetEditCursor(AValue: TCursor);
     function GetEditPopupMenu: TPopupMenu;
@@ -73,16 +93,14 @@ type
     procedure SetLabelCaption(const AValue: TCaption);
     function GetLabelSpacing: Integer;
     procedure SetLabelSpacing(AValue: Integer);
+    function GetDirectInput: Boolean;
+    procedure SetDirectInput(AValue: Boolean);
 
-    { Eventos de TDateEdit }
-    function GetOnAcceptDate: TAcceptDateEvent;
-    procedure SetOnAcceptDate(AValue: TAcceptDateEvent);
+    { Eventos }
     function GetOnChange: TNotifyEvent;
     procedure SetOnChange(AValue: TNotifyEvent);
     function GetOnClick: TNotifyEvent;
     procedure SetOnClick(AValue: TNotifyEvent);
-    function GetOnCustomDate: TCustomDateEvent;
-    procedure SetOnCustomDate(AValue: TCustomDateEvent);
     function GetOnEditingDone: TNotifyEvent;
     procedure SetOnEditingDone(AValue: TNotifyEvent);
     function GetOnEnter: TNotifyEvent;
@@ -95,8 +113,6 @@ type
     procedure SetOnKeyPress(AValue: TKeyPressEvent);
     function GetOnKeyUp: TKeyEvent;
     procedure SetOnKeyUp(AValue: TKeyEvent);
-    function GetOnUTF8KeyPress: TUTF8KeyPressEvent;
-    procedure SetOnUTF8KeyPress(AValue: TUTF8KeyPressEvent);
 
   protected
     procedure SetAnchors(const AValue: TAnchors); override;
@@ -109,11 +125,10 @@ type
 
   public
     constructor Create(AOwner: TComponent); override;
-    { Limpa o campo de data }
+    destructor Destroy; override;
     procedure ClearDate;
-    { Acesso direto ao TDateEdit interno para customizações avançadas }
-    property DateEdit: TDateEdit read FDateEdit;
-    { Acesso ao botão de limpeza (caption, hint, cor etc.) }
+    property Edit: TEdit read FEdit;
+    property CalendarButton: TFRMaterialIconButton read FCalendarButton;
     property ClearButton: TFRMaterialIconButton read FClearButton;
 
   published
@@ -122,26 +137,16 @@ type
     property Anchors;
     property BiDiMode;
     property BorderSpacing;
-    { Configurações de exibição do calendário popup }
-    property CalendarDisplaySettings: TDisplaySettings
-      read GetCalendarDisplaySettings write SetCalendarDisplaySettings;
-    { Legenda do label flutuante }
     property Caption: TCaption read GetLabelCaption write SetLabelCaption;
     property Color;
     property Constraints;
     property Cursor: TCursor read GetEditCursor write SetEditCursor default crDefault;
-    { Data selecionada (TDateTime) }
     property Date: TDateTime read GetDate write SetDate;
-    { Ordem de exibição da data (DMY, MDY, YMD, nativa, nenhuma) }
-    property DateOrder: TDateOrder read GetDateOrder write SetDateOrder default doNone;
-    { Permite digitação direta; False = somente via calendário }
+    property DateFormat: TFRDateFormat read FDateFormat write SetDateFormat default dfDDMMYYYY;
     property DirectInput: Boolean read GetDirectInput write SetDirectInput default True;
     property DisabledColor: TColor read FDisabledColor write FDisabledColor;
-    { Variante visual: sublinhado (mvStandard), preenchido (mvFilled) ou contornado (mvOutlined) }
     property Variant: TFRMaterialVariant read FVariant write FVariant default mvStandard;
-    { Raio dos cantos arredondados em pixels; 0 = cantos retos }
     property BorderRadius: Integer read FBorderRadius write FBorderRadius default 0;
-    { Label flutuante acima do campo }
     property EditLabel: TBoundLabel read FLabel;
     property Enabled;
     property Font;
@@ -152,27 +157,18 @@ type
     property ParentFont default False;
     property PopupMenu: TPopupMenu read GetEditPopupMenu write SetEditPopupMenu;
     property ReadOnly: Boolean read GetEditReadOnly write SetEditReadOnly default False;
-    { Exibe botão "×" quando o campo tiver data e não estiver em ReadOnly }
-    property ShowClearButton: Boolean
-      read GetShowClearButton write SetShowClearButton default False;
+    property ShowClearButton: Boolean read GetShowClearButton write SetShowClearButton default False;
     property ShowHint;
     property TabOrder;
     property TabStop: Boolean read GetEditTabStop write SetEditTabStop default True;
-    { Texto bruto do campo (use Date para obter TDateTime) }
     property Text: TCaption read GetEditText write SetEditText;
     property TextHint: TTranslateString read GetEditTextHint write SetEditTextHint;
     property Visible;
 
-    { Disparado quando o usuário confirma uma data no calendário }
-    property OnAcceptDate: TAcceptDateEvent read GetOnAcceptDate write SetOnAcceptDate;
     property OnChange: TNotifyEvent read GetOnChange write SetOnChange;
     property OnChangeBounds;
-    { Disparado após clicar no botão de limpeza (campo já foi limpo) }
-    property OnClearButtonClick: TNotifyEvent
-      read FOnClearButtonClick write FOnClearButtonClick;
+    property OnClearButtonClick: TNotifyEvent read FOnClearButtonClick write FOnClearButtonClick;
     property OnClick: TNotifyEvent read GetOnClick write SetOnClick;
-    { Disparado quando o usuário escolhe "data personalizada" no calendário }
-    property OnCustomDate: TCustomDateEvent read GetOnCustomDate write SetOnCustomDate;
     property OnEditingDone: TNotifyEvent read GetOnEditingDone write SetOnEditingDone;
     property OnEnter: TNotifyEvent read GetOnEnter write SetOnEnter;
     property OnExit: TNotifyEvent read GetOnExit write SetOnExit;
@@ -180,13 +176,14 @@ type
     property OnKeyPress: TKeyPressEvent read GetOnKeyPress write SetOnKeyPress;
     property OnKeyUp: TKeyEvent read GetOnKeyUp write SetOnKeyUp;
     property OnResize;
-    property OnUTF8KeyPress: TUTF8KeyPressEvent
-      read GetOnUTF8KeyPress write SetOnUTF8KeyPress;
   end;
 
 procedure Register;
 
 implementation
+
+uses
+  DateUtils;
 
 procedure Register;
 begin
@@ -196,13 +193,62 @@ begin
   RegisterComponents('BGRA Controls', [TFRMaterialDateEdit]);
 end;
 
-{ TFRMaterialDateEdit }
+{ ── Helpers ── }
+
+function OnlyDigits(const S: string): string;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := 1 to Length(S) do
+    if S[I] in ['0'..'9'] then
+      Result := Result + S[I];
+end;
+
+function FormatDateMask(const ADigits: string; AFormat: TFRDateFormat): string;
+var
+  D: string;
+begin
+  D := ADigits;
+  case AFormat of
+    dfDDMMYYYY:
+    begin
+      { dd/mm/yyyy — max 8 digits }
+      if Length(D) > 8 then D := Copy(D, 1, 8);
+      Result := D;
+      if Length(D) > 2 then
+        Insert('/', Result, 3);
+      if Length(D) > 4 then
+        Insert('/', Result, 6);
+    end;
+    dfMMYYYY:
+    begin
+      { mm/yyyy — max 6 digits }
+      if Length(D) > 6 then D := Copy(D, 1, 6);
+      Result := D;
+      if Length(D) > 2 then
+        Insert('/', Result, 3);
+    end;
+  end;
+end;
+
+function MaxDigitsForFormat(AFormat: TFRDateFormat): Integer;
+begin
+  case AFormat of
+    dfDDMMYYYY: Result := 8;
+    dfMMYYYY:   Result := 6;
+  else
+    Result := 8;
+  end;
+end;
+
+{ ── TFRMaterialDateEdit ── }
 
 function TFRMaterialDateEdit.IsNeededAdjustSize: Boolean;
 begin
   if (Self.Align in [alLeft, alRight, alClient]) then Exit(False);
   if (akTop in Self.Anchors) and (akBottom in Self.Anchors) then Exit(False);
-  Result := True; { TDateEdit tem altura fixa (AutoSize implícito) }
+  Result := True;
 end;
 
 { --- Botão de limpeza --- }
@@ -222,16 +268,9 @@ end;
 procedure TFRMaterialDateEdit.ClearButtonClick(Sender: TObject);
 begin
   ClearDate;
-  FDateEdit.SetFocus;
+  FEdit.SetFocus;
   if Assigned(FOnClearButtonClick) then
     FOnClearButtonClick(Self);
-end;
-
-procedure TFRMaterialDateEdit.InternalDateEditChange(Sender: TObject);
-begin
-  UpdateClearButton;
-  if Assigned(FUserOnChange) then
-    FUserOnChange(Sender);
 end;
 
 procedure TFRMaterialDateEdit.UpdateClearButton;
@@ -239,8 +278,8 @@ var
   ShouldShow: Boolean;
 begin
   ShouldShow := FShowClearButton
-    and (FDateEdit.Text <> '')
-    and not FDateEdit.ReadOnly;
+    and (FEdit.Text <> '')
+    and not FEdit.ReadOnly;
 
   if ShouldShow = FClearButton.Visible then Exit;
 
@@ -250,19 +289,19 @@ begin
     if ShouldShow then
     begin
       FClearButton.Anchors := [akTop, akRight, akBottom];
-      FClearButton.AnchorSide[akRight].Control  := Self;
-      FClearButton.AnchorSide[akRight].Side     := asrBottom;
-      FClearButton.AnchorSide[akTop].Control    := FDateEdit;
+      FClearButton.AnchorSide[akRight].Control  := FCalendarButton;
+      FClearButton.AnchorSide[akRight].Side     := asrTop;
+      FClearButton.AnchorSide[akTop].Control    := FEdit;
       FClearButton.AnchorSide[akTop].Side       := asrTop;
-      FClearButton.AnchorSide[akBottom].Control := FDateEdit;
+      FClearButton.AnchorSide[akBottom].Control := FEdit;
       FClearButton.AnchorSide[akBottom].Side    := asrBottom;
-      FClearButton.BorderSpacing.Right := 4;
-      FDateEdit.BorderSpacing.Right := FClearButton.Width + 6;
+      FClearButton.BorderSpacing.Right := 2;
+      FEdit.BorderSpacing.Right := FClearButton.Width + FCalendarButton.Width + 10;
     end
     else
     begin
       FClearButton.Anchors := [];
-      FDateEdit.BorderSpacing.Right := 4;
+      FEdit.BorderSpacing.Right := FCalendarButton.Width + 6;
     end;
   finally
     EnableAlign;
@@ -272,111 +311,429 @@ end;
 
 procedure TFRMaterialDateEdit.ClearDate;
 begin
-  FDateEdit.Text := '';
+  FDate := 0;
+  FUpdating := True;
+  try
+    FEdit.Text := '';
+  finally
+    FUpdating := False;
+  end;
+  UpdateClearButton;
+  if Assigned(FUserOnChange) then
+    FUserOnChange(Self);
 end;
 
-{ --- Getters/Setters de propriedades --- }
+{ --- Calendar button/popup --- }
 
-function TFRMaterialDateEdit.GetCalendarDisplaySettings: TDisplaySettings;
+procedure TFRMaterialDateEdit.CalendarButtonClick(Sender: TObject);
+var
+  P: TPoint;
 begin
-  Result := FDateEdit.CalendarDisplaySettings;
+  if FEdit.ReadOnly then Exit;
+
+  if Assigned(FCalendarPopup) and FCalendarPopup.Visible then
+  begin
+    FCalendarPopup.Close;
+    Exit;
+  end;
+
+  if not Assigned(FCalendarPopup) then
+  begin
+    FCalendarPopup := TForm.CreateNew(Self);
+    FCalendarPopup.BorderStyle := bsNone;
+    FCalendarPopup.FormStyle := fsStayOnTop;
+    FCalendarPopup.Width := 220;
+    FCalendarPopup.Height := 180;
+    FCalendarPopup.Color := MD3Colors.SurfaceContainerHigh;
+    FCalendarPopup.OnDeactivate := @CalendarPopupDeactivate;
+
+    FCalendar := TCalendar.Create(FCalendarPopup);
+    FCalendar.Parent := FCalendarPopup;
+    FCalendar.Align := alClient;
+    FCalendar.OnDblClick := @CalendarDblClick;
+  end;
+
+  { Set calendar to current date if valid }
+  if FDate > 1 then
+    FCalendar.DateTime := FDate
+  else
+    FCalendar.DateTime := Now;
+
+  { Position popup below the component, clamped to screen bounds }
+  P := Self.ClientToScreen(Point(0, Self.Height));
+  if P.X + FCalendarPopup.Width > Screen.Width then
+    P.X := Screen.Width - FCalendarPopup.Width;
+  if P.Y + FCalendarPopup.Height > Screen.Height then
+    P.Y := P.Y - Self.Height - FCalendarPopup.Height; { flip above }
+  FCalendarPopup.Left := P.X;
+  FCalendarPopup.Top  := P.Y;
+  FCalendarPopup.Show;
 end;
 
-procedure TFRMaterialDateEdit.SetCalendarDisplaySettings(AValue: TDisplaySettings);
+procedure TFRMaterialDateEdit.CalendarDblClick(Sender: TObject);
 begin
-  FDateEdit.CalendarDisplaySettings := AValue;
+  Date := FCalendar.DateTime;
+  FCalendarPopup.Close;
+  FEdit.SetFocus;
 end;
+
+procedure TFRMaterialDateEdit.CalendarPopupDeactivate(Sender: TObject);
+begin
+  FCalendarPopup.Close;
+end;
+
+{ --- Internal edit --- }
+
+procedure TFRMaterialDateEdit.InternalEditChange(Sender: TObject);
+begin
+  if FUpdating then Exit;
+  ApplyMask;
+  FDate := ParseDate;
+  UpdateClearButton;
+  if Assigned(FUserOnChange) then
+    FUserOnChange(Self);
+end;
+
+procedure TFRMaterialDateEdit.InternalKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+var
+  Seg, MaxSeg: Integer;
+begin
+  if IsTextComplete then
+  begin
+    case Key of
+      VK_UP:
+      begin
+        AdjustSegmentValue(1);
+        Key := 0;
+      end;
+      VK_DOWN:
+      begin
+        AdjustSegmentValue(-1);
+        Key := 0;
+      end;
+      VK_LEFT:
+      begin
+        Seg := GetCurrentSegment;
+        if Seg > 0 then
+        begin
+          SelectSegment(Seg - 1);
+          Key := 0;
+        end;
+      end;
+      VK_RIGHT:
+      begin
+        Seg := GetCurrentSegment;
+        case FDateFormat of
+          dfDDMMYYYY: MaxSeg := 2;
+          dfMMYYYY:   MaxSeg := 1;
+        else MaxSeg := 2;
+        end;
+        if Seg < MaxSeg then
+        begin
+          SelectSegment(Seg + 1);
+          Key := 0;
+        end;
+      end;
+    end;
+  end;
+  if Assigned(FUserOnKeyDown) then
+    FUserOnKeyDown(Sender, Key, Shift);
+end;
+
+procedure TFRMaterialDateEdit.InternalKeyPress(Sender: TObject; var Key: Char);
+begin
+  { Allow digits, backspace, and delete }
+  if not (Key in ['0'..'9', #8, #127]) then
+    Key := #0;
+end;
+
+procedure TFRMaterialDateEdit.ApplyMask;
+var
+  Digits, Formatted: string;
+  OldSelStart: Integer;
+begin
+  FUpdating := True;
+  try
+    Digits := OnlyDigits(FEdit.Text);
+    if Length(Digits) > MaxDigitsForFormat(FDateFormat) then
+      Digits := Copy(Digits, 1, MaxDigitsForFormat(FDateFormat));
+    Formatted := FormatDateMask(Digits, FDateFormat);
+    OldSelStart := Length(Formatted);
+    if FEdit.Text <> Formatted then
+    begin
+      FEdit.Text := Formatted;
+      FEdit.SelStart := OldSelStart;
+    end;
+  finally
+    FUpdating := False;
+  end;
+end;
+
+function TFRMaterialDateEdit.ParseDate: TDateTime;
+var
+  Digits: string;
+  D, M, Y: Word;
+begin
+  Result := 0;
+  Digits := OnlyDigits(FEdit.Text);
+  case FDateFormat of
+    dfDDMMYYYY:
+    begin
+      if Length(Digits) <> 8 then Exit;
+      D := StrToIntDef(Copy(Digits, 1, 2), 0);
+      M := StrToIntDef(Copy(Digits, 3, 2), 0);
+      Y := StrToIntDef(Copy(Digits, 5, 4), 0);
+      if (D < 1) or (D > 31) or (M < 1) or (M > 12) or (Y < 1) then Exit;
+      try
+        Result := EncodeDate(Y, M, D);
+      except
+        Result := 0;
+      end;
+    end;
+    dfMMYYYY:
+    begin
+      if Length(Digits) <> 6 then Exit;
+      M := StrToIntDef(Copy(Digits, 1, 2), 0);
+      Y := StrToIntDef(Copy(Digits, 3, 4), 0);
+      if (M < 1) or (M > 12) or (Y < 1) then Exit;
+      try
+        Result := EncodeDate(Y, M, 1);
+      except
+        Result := 0;
+      end;
+    end;
+  end;
+end;
+
+{ --- Segment navigation --- }
+
+function TFRMaterialDateEdit.IsTextComplete: Boolean;
+begin
+  case FDateFormat of
+    dfDDMMYYYY: Result := Length(FEdit.Text) = 10; { dd/mm/yyyy }
+    dfMMYYYY:   Result := Length(FEdit.Text) = 7;  { mm/yyyy }
+  else
+    Result := False;
+  end;
+end;
+
+function TFRMaterialDateEdit.GetCurrentSegment: Integer;
+var
+  Pos: Integer;
+begin
+  Pos := FEdit.SelStart;
+  case FDateFormat of
+    dfDDMMYYYY:
+    begin
+      if Pos < 3 then Result := 0       { Day }
+      else if Pos < 6 then Result := 1  { Month }
+      else Result := 2;                 { Year }
+    end;
+    dfMMYYYY:
+    begin
+      if Pos < 3 then Result := 0       { Month }
+      else Result := 1;                 { Year }
+    end;
+  else
+    Result := 0;
+  end;
+end;
+
+procedure TFRMaterialDateEdit.SelectSegment(ASegment: Integer);
+begin
+  case FDateFormat of
+    dfDDMMYYYY:
+      case ASegment of
+        0: begin FEdit.SelStart := 0; FEdit.SelLength := 2; end;
+        1: begin FEdit.SelStart := 3; FEdit.SelLength := 2; end;
+        2: begin FEdit.SelStart := 6; FEdit.SelLength := 4; end;
+      end;
+    dfMMYYYY:
+      case ASegment of
+        0: begin FEdit.SelStart := 0; FEdit.SelLength := 2; end;
+        1: begin FEdit.SelStart := 3; FEdit.SelLength := 4; end;
+      end;
+  end;
+end;
+
+procedure TFRMaterialDateEdit.AdjustSegmentValue(ADelta: Integer);
+var
+  D, M, Y: Word;
+  Seg: Integer;
+begin
+  if FDate < 1 then
+  begin
+    FDate := SysUtils.Date;
+    RefreshDisplay;
+  end;
+  if FDate < 1 then Exit;
+
+  Seg := GetCurrentSegment;
+  DecodeDate(FDate, Y, M, D);
+
+  case FDateFormat of
+    dfDDMMYYYY:
+      case Seg of
+        0: begin
+             D := D + ADelta;
+             if D < 1 then D := 31;
+             if D > 31 then D := 1;
+           end;
+        1: begin
+             M := M + ADelta;
+             if M < 1 then M := 12;
+             if M > 12 then M := 1;
+           end;
+        2: begin
+             Y := Y + ADelta;
+             if Y < 1 then Y := 9999;
+             if Y > 9999 then Y := 1;
+           end;
+      end;
+    dfMMYYYY:
+      case Seg of
+        0: begin
+             M := M + ADelta;
+             if M < 1 then M := 12;
+             if M > 12 then M := 1;
+           end;
+        1: begin
+             Y := Y + ADelta;
+             if Y < 1 then Y := 9999;
+             if Y > 9999 then Y := 1;
+           end;
+      end;
+  end;
+
+  { Clamp day if it exceeds valid range for new month/year }
+  if D > DaysInAMonth(Y, M) then
+    D := DaysInAMonth(Y, M);
+
+  FDate := EncodeDate(Y, M, D);
+
+  RefreshDisplay;
+  SelectSegment(Seg);
+  UpdateClearButton;
+
+  if Assigned(FUserOnChange) then
+    FUserOnChange(Self);
+end;
+
+procedure TFRMaterialDateEdit.RefreshDisplay;
+var
+  Y, M, D: Word;
+begin
+  FUpdating := True;
+  try
+    if FDate < 1 then
+    begin
+      FEdit.Text := '';
+      Exit;
+    end;
+    DecodeDate(FDate, Y, M, D);
+    case FDateFormat of
+      dfDDMMYYYY:
+        FEdit.Text := Format('%.2d/%.2d/%.4d', [D, M, Y]);
+      dfMMYYYY:
+        FEdit.Text := Format('%.2d/%.4d', [M, Y]);
+    end;
+  finally
+    FUpdating := False;
+  end;
+end;
+
+{ --- Getters/Setters --- }
 
 function TFRMaterialDateEdit.GetDate: TDateTime;
 begin
-  Result := FDateEdit.Date;
+  Result := FDate;
 end;
 
 procedure TFRMaterialDateEdit.SetDate(AValue: TDateTime);
 begin
-  FDateEdit.Date := AValue;
+  if FDate = AValue then Exit;
+  FDate := AValue;
+  RefreshDisplay;
+  UpdateClearButton;
 end;
 
-function TFRMaterialDateEdit.GetDateOrder: TDateOrder;
+procedure TFRMaterialDateEdit.SetDateFormat(AValue: TFRDateFormat);
 begin
-  Result := FDateEdit.DateOrder;
-end;
-
-procedure TFRMaterialDateEdit.SetDateOrder(AValue: TDateOrder);
-begin
-  FDateEdit.DateOrder := AValue;
+  if FDateFormat = AValue then Exit;
+  FDateFormat := AValue;
+  RefreshDisplay;
 end;
 
 function TFRMaterialDateEdit.GetDirectInput: Boolean;
 begin
-  Result := FDateEdit.DirectInput;
+  Result := not FEdit.ReadOnly;
 end;
 
 procedure TFRMaterialDateEdit.SetDirectInput(AValue: Boolean);
 begin
-  FDateEdit.DirectInput := AValue;
+  FEdit.ReadOnly := not AValue;
 end;
 
 function TFRMaterialDateEdit.GetEditCursor: TCursor;
 begin
-  Result := FDateEdit.Cursor;
+  Result := FEdit.Cursor;
 end;
 
 procedure TFRMaterialDateEdit.SetEditCursor(AValue: TCursor);
 begin
-  FDateEdit.Cursor := AValue;
+  FEdit.Cursor := AValue;
 end;
 
 function TFRMaterialDateEdit.GetEditPopupMenu: TPopupMenu;
 begin
   if csDestroying in ComponentState then Exit(nil);
-  Result := FDateEdit.PopupMenu;
+  Result := FEdit.PopupMenu;
 end;
 
 procedure TFRMaterialDateEdit.SetEditPopupMenu(AValue: TPopupMenu);
 begin
-  FDateEdit.PopupMenu := AValue;
+  FEdit.PopupMenu := AValue;
 end;
 
 function TFRMaterialDateEdit.GetEditReadOnly: Boolean;
 begin
-  Result := FDateEdit.ReadOnly;
+  Result := FEdit.ReadOnly;
 end;
 
 procedure TFRMaterialDateEdit.SetEditReadOnly(AValue: Boolean);
 begin
-  FDateEdit.ReadOnly := AValue;
+  FEdit.ReadOnly := AValue;
   UpdateClearButton;
 end;
 
 function TFRMaterialDateEdit.GetEditTabStop: Boolean;
 begin
-  Result := FDateEdit.TabStop;
+  Result := FEdit.TabStop;
 end;
 
 procedure TFRMaterialDateEdit.SetEditTabStop(AValue: Boolean);
 begin
-  FDateEdit.TabStop := AValue;
+  FEdit.TabStop := AValue;
 end;
 
 function TFRMaterialDateEdit.GetEditText: TCaption;
 begin
-  Result := FDateEdit.Text;
+  Result := FEdit.Text;
 end;
 
 procedure TFRMaterialDateEdit.SetEditText(const AValue: TCaption);
 begin
-  FDateEdit.Text := AValue;
+  FEdit.Text := AValue;
 end;
 
 function TFRMaterialDateEdit.GetEditTextHint: TTranslateString;
 begin
-  Result := FDateEdit.TextHint;
+  Result := FEdit.TextHint;
 end;
 
 procedure TFRMaterialDateEdit.SetEditTextHint(const AValue: TTranslateString);
 begin
-  FDateEdit.TextHint := AValue;
+  FEdit.TextHint := AValue;
 end;
 
 function TFRMaterialDateEdit.GetLabelCaption: TCaption;
@@ -401,21 +758,8 @@ begin
   if not (csLoading in ComponentState) then Self.DoOnResize;
 end;
 
-{ --- Getters/Setters de eventos --- }
+{ --- Event getters/setters --- }
 
-function TFRMaterialDateEdit.GetOnAcceptDate: TAcceptDateEvent;
-begin
-  Result := FDateEdit.OnAcceptDate;
-end;
-
-procedure TFRMaterialDateEdit.SetOnAcceptDate(AValue: TAcceptDateEvent);
-begin
-  FDateEdit.OnAcceptDate := AValue;
-end;
-
-{ OnChange é interceptado internamente para controlar o botão de limpeza.
-  O handler do usuário é armazenado em FUserOnChange e chamado dentro de
-  InternalDateEditChange. }
 function TFRMaterialDateEdit.GetOnChange: TNotifyEvent;
 begin
   Result := FUserOnChange;
@@ -428,95 +772,75 @@ end;
 
 function TFRMaterialDateEdit.GetOnClick: TNotifyEvent;
 begin
-  Result := FDateEdit.OnClick;
+  Result := FEdit.OnClick;
 end;
 
 procedure TFRMaterialDateEdit.SetOnClick(AValue: TNotifyEvent);
 begin
-  FDateEdit.OnClick := AValue;
-end;
-
-function TFRMaterialDateEdit.GetOnCustomDate: TCustomDateEvent;
-begin
-  Result := FDateEdit.OnCustomDate;
-end;
-
-procedure TFRMaterialDateEdit.SetOnCustomDate(AValue: TCustomDateEvent);
-begin
-  FDateEdit.OnCustomDate := AValue;
+  FEdit.OnClick := AValue;
 end;
 
 function TFRMaterialDateEdit.GetOnEditingDone: TNotifyEvent;
 begin
-  Result := FDateEdit.OnEditingDone;
+  Result := FEdit.OnEditingDone;
 end;
 
 procedure TFRMaterialDateEdit.SetOnEditingDone(AValue: TNotifyEvent);
 begin
-  FDateEdit.OnEditingDone := AValue;
+  FEdit.OnEditingDone := AValue;
 end;
 
 function TFRMaterialDateEdit.GetOnEnter: TNotifyEvent;
 begin
-  Result := FDateEdit.OnEnter;
+  Result := FEdit.OnEnter;
 end;
 
 procedure TFRMaterialDateEdit.SetOnEnter(AValue: TNotifyEvent);
 begin
-  FDateEdit.OnEnter := AValue;
+  FEdit.OnEnter := AValue;
 end;
 
 function TFRMaterialDateEdit.GetOnExit: TNotifyEvent;
 begin
-  Result := FDateEdit.OnExit;
+  Result := FEdit.OnExit;
 end;
 
 procedure TFRMaterialDateEdit.SetOnExit(AValue: TNotifyEvent);
 begin
-  FDateEdit.OnExit := AValue;
+  FEdit.OnExit := AValue;
 end;
 
 function TFRMaterialDateEdit.GetOnKeyDown: TKeyEvent;
 begin
-  Result := FDateEdit.OnKeyDown;
+  Result := FUserOnKeyDown;
 end;
 
 procedure TFRMaterialDateEdit.SetOnKeyDown(AValue: TKeyEvent);
 begin
-  FDateEdit.OnKeyDown := AValue;
+  FUserOnKeyDown := AValue;
 end;
 
 function TFRMaterialDateEdit.GetOnKeyPress: TKeyPressEvent;
 begin
-  Result := FDateEdit.OnKeyPress;
+  Result := FEdit.OnKeyPress;
 end;
 
 procedure TFRMaterialDateEdit.SetOnKeyPress(AValue: TKeyPressEvent);
 begin
-  FDateEdit.OnKeyPress := AValue;
+  FEdit.OnKeyPress := AValue;
 end;
 
 function TFRMaterialDateEdit.GetOnKeyUp: TKeyEvent;
 begin
-  Result := FDateEdit.OnKeyUp;
+  Result := FEdit.OnKeyUp;
 end;
 
 procedure TFRMaterialDateEdit.SetOnKeyUp(AValue: TKeyEvent);
 begin
-  FDateEdit.OnKeyUp := AValue;
+  FEdit.OnKeyUp := AValue;
 end;
 
-function TFRMaterialDateEdit.GetOnUTF8KeyPress: TUTF8KeyPressEvent;
-begin
-  Result := FDateEdit.OnUTF8KeyPress;
-end;
-
-procedure TFRMaterialDateEdit.SetOnUTF8KeyPress(AValue: TUTF8KeyPressEvent);
-begin
-  FDateEdit.OnUTF8KeyPress := AValue;
-end;
-
-{ --- Métodos protegidos --- }
+{ --- Protected --- }
 
 procedure TFRMaterialDateEdit.SetAnchors(const AValue: TAnchors);
 begin
@@ -528,7 +852,7 @@ end;
 procedure TFRMaterialDateEdit.SetColor(AValue: TColor);
 begin
   inherited SetColor(AValue);
-  FDateEdit.Color := AValue;
+  FEdit.Color := AValue;
 end;
 
 procedure TFRMaterialDateEdit.SetName(const AValue: TComponentName);
@@ -539,8 +863,8 @@ begin
       FLabel.Caption := 'Data';
     if (FLabel.Name = '') or AnsiSameText(FLabel.Name, Name) then
       FLabel.Name := AValue + 'SubLabel';
-    if (FDateEdit.Name = '') or AnsiSameText(FDateEdit.Name, Name) then
-      FDateEdit.Name := AValue + 'SubDateEdit';
+    if (FEdit.Name = '') or AnsiSameText(FEdit.Name, Name) then
+      FEdit.Name := AValue + 'SubEdit';
   end;
   inherited SetName(AValue);
 end;
@@ -565,27 +889,31 @@ var
 begin
   if IsNeededAdjustSize then
   begin
-    FDateEdit.Align := alBottom;
+    FEdit.Align := alBottom;
     AutoSizedHeight :=
       FLabel.Height +
       FLabel.BorderSpacing.Around +
       FLabel.BorderSpacing.Bottom +
       FLabel.BorderSpacing.Top +
-      FDateEdit.Height +
-      FDateEdit.BorderSpacing.Around +
-      FDateEdit.BorderSpacing.Bottom +
-      FDateEdit.BorderSpacing.Top;
+      FEdit.Height +
+      FEdit.BorderSpacing.Around +
+      FEdit.BorderSpacing.Bottom +
+      FEdit.BorderSpacing.Top;
 
     if Self.Height <> AutoSizedHeight then
       Self.Height := AutoSizedHeight;
   end else
-    FDateEdit.Align := alClient;
+    FEdit.Align := alClient;
 
-  { Dimensiona o botão; âncoras cuidam do posicionamento }
   if Assigned(FClearButton) then
   begin
-    FClearButton.Width  := FDateEdit.Height - 2;
-    FClearButton.Height := FDateEdit.Height - 2;
+    FClearButton.Width  := FEdit.Height - 2;
+    FClearButton.Height := FEdit.Height - 2;
+  end;
+  if Assigned(FCalendarButton) then
+  begin
+    FCalendarButton.Width  := FEdit.Height - 2;
+    FCalendarButton.Height := FEdit.Height - 2;
   end;
 
   inherited DoOnResize;
@@ -598,8 +926,8 @@ var
 begin
   inherited Paint;
 
-  if FDateEdit.Color <> Self.Color then
-    FDateEdit.Color := Self.Color;
+  if FEdit.Color <> Self.Color then
+    FEdit.Color := Self.Color;
 
   CR := FBorderRadius * 2;
   if FFocused and Self.Enabled then
@@ -607,20 +935,21 @@ begin
   else
     DecoColor := DisabledColor;
 
-  if Assigned(Parent) and (Parent.Color = Color) then
+  if (FVariant = mvOutlined) then
   begin
-    LeftPos := FDateEdit.Left;
-    if FClearButton.Visible then
-      RightPos := FClearButton.Left + FClearButton.Width
-    else
-      RightPos := FDateEdit.Left + FDateEdit.Width;
+    LeftPos  := 0;
+    RightPos := Width;
+  end else if Assigned(Parent) and (Parent.Color = Color) then
+  begin
+    LeftPos := FEdit.Left;
+    RightPos := FCalendarButton.Left + FCalendarButton.Width;
   end else
   begin
     LeftPos  := 0;
     RightPos := Width;
   end;
 
-  FieldTop := FDateEdit.Top - 2;
+  FieldTop := FEdit.Top - 2;
   if FieldTop < 0 then FieldTop := 0;
 
   Canvas.Pen.Width   := 1;
@@ -668,48 +997,71 @@ end;
 
 constructor TFRMaterialDateEdit.Create(AOwner: TComponent);
 begin
-  FDateEdit := TDateEdit.Create(Self);
-  FLabel    := TBoundLabel.Create(Self);
+  FEdit  := TEdit.Create(Self);
+  FLabel := TBoundLabel.Create(Self);
   inherited Create(AOwner);
 
-  Self.AccentColor  := clHighlight;
-  Self.BorderStyle  := bsNone;
+  Self.BevelOuter    := bvNone;
+  Self.AccentColor   := clHighlight;
+  Self.BorderStyle   := bsNone;
   Self.DisabledColor := $00B8AFA8;
-  Self.ParentColor  := True;
+  Self.ParentColor   := True;
 
-  FLabel.Align                  := alTop;
-  FLabel.AutoSize               := True;
-  FLabel.BorderSpacing.Around   := 0;
-  FLabel.BorderSpacing.Bottom   := 4;
-  FLabel.BorderSpacing.Left     := 4;
-  FLabel.BorderSpacing.Right    := 4;
-  FLabel.BorderSpacing.Top      := 4;
-  FLabel.Font.Color             := $00B8AFA8;
-  FLabel.Font.Style             := [fsBold];
-  FLabel.Parent                 := Self;
-  FLabel.ParentFont             := False;
-  FLabel.ParentBiDiMode         := True;
+  FLabel.Align                := alTop;
+  FLabel.AutoSize             := True;
+  FLabel.BorderSpacing.Around := 0;
+  FLabel.BorderSpacing.Bottom := 4;
+  FLabel.BorderSpacing.Left   := 4;
+  FLabel.BorderSpacing.Right  := 4;
+  FLabel.BorderSpacing.Top    := 4;
+  FLabel.Font.Color           := $00B8AFA8;
+  FLabel.Font.Style           := [fsBold];
+  FLabel.Parent               := Self;
+  FLabel.ParentFont           := False;
+  FLabel.ParentBiDiMode       := True;
   FLabel.SetSubComponent(True);
 
-  FDateEdit.Align                := alBottom;
-  FDateEdit.BorderSpacing.Around := 0;
-  FDateEdit.BorderSpacing.Bottom := 4;
-  FDateEdit.BorderSpacing.Left   := 4;
-  FDateEdit.BorderSpacing.Right  := 4;
-  FDateEdit.BorderSpacing.Top    := 0;
-  FDateEdit.ParentColor          := True;
-  FDateEdit.Parent               := Self;
-  FDateEdit.ParentFont           := True;
-  FDateEdit.ParentBiDiMode       := True;
-  FDateEdit.TabStop              := True;
-  FDateEdit.SetSubComponent(True);
+  FEdit.Align                := alBottom;
+  FEdit.AutoSize             := True;
+  FEdit.AutoSelect           := True;
+  FEdit.BorderSpacing.Around := 0;
+  FEdit.BorderSpacing.Bottom := 4;
+  FEdit.BorderSpacing.Left   := 4;
+  FEdit.BorderSpacing.Right  := 30;
+  FEdit.BorderSpacing.Top    := 0;
+  FEdit.BorderStyle          := bsNone;
+  FEdit.ParentColor          := True;
+  FEdit.Parent               := Self;
+  FEdit.ParentFont           := True;
+  FEdit.ParentBiDiMode       := True;
+  FEdit.TabStop              := True;
+  FEdit.SetSubComponent(True);
+  FEdit.OnKeyDown  := @InternalKeyDown;
+  FEdit.OnKeyPress := @InternalKeyPress;
+  FEdit.AddHandlerOnChange(@InternalEditChange);
+  FEdit.Text := '';
 
-  { Intercepta OnChange para controlar visibilidade do botão de limpeza.
-    O OnChange que o usuário definir é armazenado em FUserOnChange e
-    chamado dentro de InternalDateEditChange. }
-  FDateEdit.OnChange := @InternalDateEditChange;
+  { Botão calendário — ícone SVG }
+  FCalendarButton := TFRMaterialIconButton.Create(Self);
+  FCalendarButton.IconMode    := imCalendar;
+  FCalendarButton.NormalColor := $00B8AFA8;
+  FCalendarButton.HoverColor  := clHighlight;
+  FCalendarButton.Width       := 22;
+  FCalendarButton.Height      := 22;
+  FCalendarButton.Visible     := True;
+  FCalendarButton.Parent      := Self;
+  FCalendarButton.OnClick     := @CalendarButtonClick;
+  FCalendarButton.SetSubComponent(True);
+  FCalendarButton.Anchors     := [akTop, akRight, akBottom];
+  FCalendarButton.AnchorSide[akRight].Control  := Self;
+  FCalendarButton.AnchorSide[akRight].Side     := asrBottom;
+  FCalendarButton.AnchorSide[akTop].Control    := FEdit;
+  FCalendarButton.AnchorSide[akTop].Side       := asrTop;
+  FCalendarButton.AnchorSide[akBottom].Control := FEdit;
+  FCalendarButton.AnchorSide[akBottom].Side    := asrBottom;
+  FCalendarButton.BorderSpacing.Right := 4;
 
-  { Botão de limpeza — ícone SVG "×" vermelho }
+  { Botão de limpeza — ícone SVG "×" }
   FClearButton := TFRMaterialIconButton.Create(Self);
   FClearButton.IconMode := imClear;
   FClearButton.Width    := 22;
@@ -722,6 +1074,16 @@ begin
   FShowClearButton := False;
   FVariant         := mvStandard;
   FBorderRadius    := 0;
+  FDateFormat      := dfDDMMYYYY;
+  FDate            := 0;
+  FUpdating        := False;
+  FCalendarPopup   := nil;
+end;
+
+destructor TFRMaterialDateEdit.Destroy;
+begin
+  FreeAndNil(FCalendarPopup);
+  inherited Destroy;
 end;
 
 end.

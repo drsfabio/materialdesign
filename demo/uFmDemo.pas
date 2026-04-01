@@ -5,7 +5,7 @@ unit uFmDemo;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, ComCtrls, StdCtrls, ExtCtrls,
+  Classes, SysUtils, Forms, Controls, Graphics, LCLType, ComCtrls, StdCtrls, ExtCtrls,
   Menus, StrUtils,
   FRMaterial3Base,
   FRMaterial3Button,
@@ -37,7 +37,7 @@ uses
   FRMaterialSpinEdit,
   FRMaterialTheme,
   FRMaterialMasks,
-  FRMaterialIcons;
+  FRMaterialIcons, uFmView;
 
 type
 
@@ -45,6 +45,7 @@ type
 
   TFmDemo = class(TForm)
     procedure FormCreate(Sender: TObject);
+    procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
   private
     FMainAppBar: TFRMaterialAppBar;
     FMainTabs: TFRMaterialTabs;
@@ -374,6 +375,16 @@ begin
    on E: Exception do
      Application.MessageBox(PChar('Erro no FormCreate: ' + E.Message), 'Erro', 0);
  end;
+end;
+
+procedure TFmDemo.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+var
+  view: TFmView;
+begin
+  if key <> VK_F12 then Exit;
+
+  view := TFmView.Create(self);
+  view.ShowModal;
 end;
 
 { ===== Page: Buttons ===== }
@@ -1005,6 +1016,16 @@ begin
     Caption := 'Data de vencimento';
     Variant := mvFilled;
     ShowClearButton := True;
+  end;
+
+  with TFRMaterialDateEdit.Create(Self) do
+  begin
+    Parent := APage;
+    SetBounds(496, Y, 180, 56);
+    Caption := 'Competência';
+    Variant := mvOutlined;
+    DateFormat := dfMMYYYY;
+    TextHint := 'mm/aaaa';
   end;
 
   { --- TFRMaterialMaskEdit --- }
@@ -2049,11 +2070,16 @@ begin
 end;
 
 procedure TFmDemo.OnButtonClick(Sender: TObject);
+var
+  view: TFmView;
 begin
   if Sender is TFRMaterialButton then
     FStatusBar.SimpleText := 'Clicou: ' + TFRMaterialButton(Sender).Caption
   else
     FStatusBar.SimpleText := 'Clicou: IconButton';
+
+  view := TFmView.Create(Self);
+  view.ShowModal;
 end;
 
 procedure TFmDemo.OnDialogClick(Sender: TObject);

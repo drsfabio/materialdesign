@@ -43,6 +43,8 @@ type
     FMinLength: Integer;
     FValidateMode: TFRValidateMode;
     FOnValidate: TFRValidateEvent;
+    { Armazena OnChange do usuário — FMemo.OnChange é reservado internamente }
+    FUserOnChange: TNotifyEvent;
 
     function GetLines: TStrings;
     procedure SetLines(AValue: TStrings);
@@ -154,6 +156,7 @@ begin
   FLabel := TBoundLabel.Create(Self);
   inherited Create(AOwner);
 
+  Self.BevelOuter   := bvNone;
   Self.AccentColor  := clHighlight;
   Self.BorderStyle  := bsNone;
   Self.DisabledColor := $00B8AFA8;
@@ -331,12 +334,12 @@ end;
 
 function TFRMaterialMemoEdit.GetOnMemoChange: TNotifyEvent;
 begin
-  Result := FMemo.OnChange;
+  Result := FUserOnChange;
 end;
 
 procedure TFRMaterialMemoEdit.SetOnMemoChange(AValue: TNotifyEvent);
 begin
-  FMemo.OnChange := AValue;
+  FUserOnChange := AValue;
 end;
 
 function TFRMaterialMemoEdit.GetOnMemoKeyPress: TKeyPressEvent;
@@ -420,8 +423,8 @@ begin
     State := vsInvalid
   else if Assigned(FOnValidate) then
     FOnValidate(Self, FMemo.Text, State);
-  if State <> vsNone then
-    ValidationState := State;
+  { Sempre atualiza o estado — permite restaurar vsNone quando campo é corrigido }
+  ValidationState := State;
 end;
 
 procedure TFRMaterialMemoEdit.InternalMemoChange(Sender: TObject);
@@ -430,6 +433,9 @@ begin
     InternalValidate;
   if FShowCharCounter then
     Invalidate;
+  { Repassa para o handler do usuário }
+  if Assigned(FUserOnChange) then
+    FUserOnChange(Sender);
 end;
 
 procedure TFRMaterialMemoEdit.Paint;

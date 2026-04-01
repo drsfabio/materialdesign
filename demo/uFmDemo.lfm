@@ -8,4 +8,5 @@ object FmDemo: TFmDemo
   Position = poScreenCenter
   LCLVersion = '4.4.0.0'
   OnCreate = FormCreate
+  OnKeyDown = FormKeyDown
 end

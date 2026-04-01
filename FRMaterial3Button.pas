@@ -16,7 +16,7 @@ interface
 uses
   Classes, SysUtils, Controls, Graphics, Menus,
   {$IFDEF FPC} LCLType, LResources, {$ENDIF}
-  BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialIcons;
+  BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialIcons, FRMaterialTheme;
 
 type
   { Button style variants per MD3 spec }
@@ -32,9 +32,11 @@ type
     FButtonStyle: TFRMDButtonStyle;
     FIconMode: TFRIconMode;
     FShowIcon: Boolean;
+    FDensity: TFRMDDensity;
     procedure SetButtonStyle(AValue: TFRMDButtonStyle);
     procedure SetShowIcon(AValue: Boolean);
     procedure SetIconMode(AValue: TFRIconMode);
+    procedure SetDensity(AValue: TFRMDDensity);
     procedure GetStyleColors(out ABg, AText, ABorder: TColor);
   protected
     procedure Paint; override;
@@ -45,6 +47,8 @@ type
     property ButtonStyle: TFRMDButtonStyle read FButtonStyle write SetButtonStyle default mbsFilled;
     property IconMode: TFRIconMode read FIconMode write SetIconMode default imSearch;
     property ShowIcon: Boolean read FShowIcon write SetShowIcon default False;
+    { Densidade visual: Normal (40px), Compact (36px), Dense (32px), UltraDense (28px) }
+    property Density: TFRMDDensity read FDensity write SetDensity default ddNormal;
     property Caption;
     property Enabled;
     property Font;
@@ -169,9 +173,11 @@ begin
   end;
   if not Enabled then
   begin
-    ABg := MD3Colors.OnSurface;
+    ABg   := MD3Colors.OnSurface;
     AText := MD3Colors.OnSurface;
-    ABorder := clNone;
+    { Outlined keeps its border at reduced opacity per MD3 spec }
+    if FButtonStyle <> mbsOutlined then
+      ABorder := clNone;
   end;
 end;
 
@@ -193,6 +199,15 @@ class function TFRMaterialButton.GetControlClassDefaultSize: TSize;
 begin
   Result.cx := 120;
   Result.cy := 40;
+end;
+
+procedure TFRMaterialButton.SetDensity(AValue: TFRMDDensity);
+begin
+  if FDensity = AValue then Exit;
+  FDensity := AValue;
+  { Ajusta a altura do botão conforme a densidade }
+  Height := 40 + MD3DensityDelta(AValue);
+  Invalidate;
 end;
 
 procedure TFRMaterialButton.SetButtonStyle(AValue: TFRMDButtonStyle);
@@ -243,9 +258,14 @@ begin
     if bgColor <> clNone then
       MD3FillRoundRect(bmp, 0, 0, Width - 1, Height - 1, r, bgColor, bgAlpha);
 
-    { Border for outlined }
+    { Border for outlined — reduced opacity when disabled per MD3 spec }
     if borderColor <> clNone then
-      MD3RoundRect(bmp, 0.5, 0.5, Width - 1.5, Height - 1.5, r, borderColor, 1.0);
+    begin
+      if Enabled then
+        MD3RoundRect(bmp, 0.5, 0.5, Width - 1.5, Height - 1.5, r, borderColor, 1.0)
+      else
+        MD3RoundRect(bmp, 0.5, 0.5, Width - 1.5, Height - 1.5, r, borderColor, 1.0, 30);
+    end;
 
     { State layer }
     if Enabled then
@@ -609,11 +629,10 @@ begin
   { Main text }
   MD3DrawText(Canvas, Caption, mainR, textColor, taCenter, True);
 
-  { Arrow icon (simple down chevron via SVG) }
+  { Arrow icon — chevron down (expand_more) per MD3 spec }
   iconBmp := FRRenderSVGIcon(
-    FRGetIconSVG(imMinus, FRColorToSVGHex(textColor), 2.5), 18, 18);
+    FRGetIconSVG(imExpandMore, FRColorToSVGHex(textColor), 2.5), 18, 18);
   try
-    { Draw rotated — just draw a V shape }
     iconBmp.Draw(Canvas, arrowR.Left + (arrowR.Right - arrowR.Left - 18) div 2,
       (Height - 18) div 2, False);
   finally

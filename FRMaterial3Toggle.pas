@@ -184,13 +184,18 @@ begin
       MD3RoundRect(bmp, 0.5, 0.5, Width - 1.5, Height - 1.5, trackR,
         MD3Colors.Outline, 2.0, IfThen(Enabled, 255, 30));
 
-    { State layer on handle — circular, clips naturally at bitmap edges }
+    { State layer on handle — only for hover/press, not focus }
     if Enabled then
     begin
       op := MD3StateOpacity(InteractionState);
-      if op > 0 then
-        bmp.FillEllipseAntialias(handleX, Height / 2.0, 20, 20,
+      if (op > 0) and (InteractionState in [isHovered, isPressed]) then
+      begin
+        { Clamp center so the 40px circle stays within component bounds }
+        bmp.FillEllipseAntialias(
+          EnsureRange(handleX, 20, Width - 20),
+          Height / 2.0, 20, 20,
           ColorToBGRA(ColorToRGB(stateColor), op));
+      end;
     end;
 
     { Handle }
@@ -320,13 +325,20 @@ begin
       end;
     end;
 
-    { State layer — circular per MD3 spec }
+    { State layer — circular per MD3 spec.
+      Content color depends on state: Primary when checked, OnSurface otherwise. }
     if Enabled then
     begin
       op := MD3StateOpacity(InteractionState);
       if op > 0 then
-        bmp.FillEllipseAntialias(boxX + boxSize / 2.0, boxY + boxSize / 2.0,
-          17, 17, ColorToBGRA(ColorToRGB(MD3Colors.OnSurface), op));
+      begin
+        if FState = cbChecked then
+          bmp.FillEllipseAntialias(boxX + boxSize / 2.0, boxY + boxSize / 2.0,
+            17, 17, ColorToBGRA(ColorToRGB(MD3Colors.Primary), op))
+        else
+          bmp.FillEllipseAntialias(boxX + boxSize / 2.0, boxY + boxSize / 2.0,
+            17, 17, ColorToBGRA(ColorToRGB(MD3Colors.OnSurface), op));
+      end;
     end;
 
     bmp.Draw(Canvas, 0, 0, False);

@@ -1,56 +1,248 @@
-object Form1: TForm1
+object FmView: TFmView
   Left = 350
-  Height = 536
+  Height = 579
   Top = 250
-  Width = 959
-  Caption = 'Form1'
-  ClientHeight = 536
-  ClientWidth = 959
+  Width = 773
+  Caption = 'Visualizador de Componentes FRMaterial'
+  ClientHeight = 579
+  ClientWidth = 773
   LCLVersion = '4.4.0.0'
-  object FRMaterialGroupBox1: TFRMaterialGroupBox
-    Left = 0
-    Height = 536
-    Top = 0
-    Width = 959
-    Align = alClient
-    Caption = 'Teste com Group Box'
-    Color = 16446199
-    Font.Color = 2104093
+  object FRMaterialEdit1: TFRMaterialEdit
+    Left = 8
+    Height = 42
+    Top = 8
+    Width = 170
+    AccentColor = clHighlight
+    Caption = 'Label'
+    DisabledColor = 12103592
+    DoubleBuffered = True
+    EditLabel.Height = 15
+    EditLabel.Width = 160
+    EditLabel.Caption = 'Label'
+    EditLabel.ParentFont = False
+    EditLabel.Font.Color = 12103592
+    EditLabel.Font.Style = [fsBold]
+    ParentColor = True
+    ParentFont = True
+    ShowHint = True
+    TabOrder = 0
+    Edit.Left = 5
+    Edit.Height = 15
+    Edit.Top = 22
+    Edit.Width = 160
+    Edit.Align = alBottom
+    Edit.BorderSpacing.Left = 4
+    Edit.BorderSpacing.Right = 4
+    Edit.BorderSpacing.Bottom = 4
+    Edit.BorderStyle = bsNone
+    Edit.EnableSets = False
+    Edit.MaxLength = 0
+    Edit.ParentColor = True
+    Edit.ParentShowHint = False
+    Edit.ShowHint = True
+    Edit.TabOrder = 0
+    Edit.SpaceChar = '_'
+    NumericValue = 0
+  end
+  object FRMaterialDateEdit1: TFRMaterialDateEdit
+    Left = 8
+    Height = 42
+    Top = 56
+    Width = 170
+    AccentColor = clHighlight
+    Caption = 'Data'
+    DisabledColor = 12103592
+    EditLabel.Height = 15
+    EditLabel.Width = 160
+    EditLabel.Caption = 'Data'
+    EditLabel.ParentFont = False
+    EditLabel.Font.Color = 12103592
+    EditLabel.Font.Style = [fsBold]
+    ParentColor = True
+    ParentFont = True
+    TabOrder = 1
+    Text = '00/00/0000'
+  end
+  object FRMaterialComboEdit1: TFRMaterialComboEdit
+    Left = 8
+    Height = 50
+    Top = 104
+    Width = 170
+    AccentColor = clHighlight
+    AutoCompleteText = [cbactEnabled, cbactEndOfLineComplete, cbactSearchAscending]
+    Caption = 'Selecionar'
+    DisabledColor = 12103592
+    EditLabel.Height = 15
+    EditLabel.Width = 160
+    EditLabel.Caption = 'Selecionar'
+    EditLabel.ParentFont = False
+    EditLabel.Font.Color = 12103592
+    EditLabel.Font.Style = [fsBold]
+    ItemHeight = 15
+    ParentColor = True
+    ParentFont = True
+    TabOrder = 2
+    Text = 'FRMaterialComboEdit1SubCombo'
+  end
+  object FRMaterialCheckComboEdit1: TFRMaterialCheckComboEdit
+    Left = 8
+    Height = 42
+    Top = 160
+    Width = 170
+    AccentColor = clHighlight
+    Caption = 'Selecionar'
+    DisabledColor = 12103592
+    EditLabel.Height = 15
+    EditLabel.Width = 160
+    EditLabel.Caption = 'Selecionar'
+    EditLabel.ParentFont = False
+    EditLabel.Font.Color = 12103592
+    EditLabel.Font.Style = [fsBold]
+    ParentColor = True
+    ParentFont = True
+    TabOrder = 3
+  end
+  object FRMaterialMaskEdit1: TFRMaterialMaskEdit
+    Left = 8
+    Height = 42
+    Top = 208
+    Width = 170
+    AccentColor = clHighlight
+    Caption = 'Label'
+    DisabledColor = 12103592
+    EditLabel.Height = 15
+    EditLabel.Width = 160
+    EditLabel.Caption = 'Label'
+    EditLabel.ParentFont = False
+    EditLabel.Font.Color = 12103592
+    EditLabel.Font.Style = [fsBold]
+    ParentColor = True
+    ParentFont = True
+    TabOrder = 4
+    Text = 'FRMaterialMaskEdit1SubEdit'
+  end
+  object FRMaterialCurrencyEdit1: TFRMaterialCurrencyEdit
+    Left = 8
+    Height = 42
+    Top = 256
+    Width = 170
+    AccentColor = clHighlight
+    Caption = 'Valor'
+    CurrencySymbol = 'R$'
+    DisabledColor = 12103592
+    EditLabel.Height = 15
+    EditLabel.Width = 160
+    EditLabel.Caption = 'Valor'
+    EditLabel.ParentFont = False
+    EditLabel.Font.Color = 12103592
+    EditLabel.Font.Style = [fsBold]
+    ParentColor = True
+    ParentFont = True
+    TabOrder = 5
+  end
+  object FRMaterialSpinEdit1: TFRMaterialSpinEdit
+    Left = 8
+    Height = 50
+    Top = 304
+    Width = 170
+    AccentColor = clHighlight
+    Caption = 'Label'
+    DisabledColor = 12103592
+    EditLabel.Height = 15
+    EditLabel.Width = 160
+    EditLabel.Caption = 'Label'
+    EditLabel.ParentFont = False
+    EditLabel.Font.Color = 12103592
+    EditLabel.Font.Style = [fsBold]
+    ParentColor = True
+    ParentFont = True
+    TabOrder = 6
+    TabStop = False
+  end
+  object FRMaterialSearchEdit1: TFRMaterialSearchEdit
+    Left = 8
+    Height = 50
+    Top = 360
+    Width = 170
+    AccentColor = clHighlight
+    Caption = 'Buscar'
+    DisabledColor = 12103592
+    EditLabel.Height = 15
+    EditLabel.Width = 160
+    EditLabel.Caption = 'Buscar'
+    EditLabel.ParentFont = False
+    EditLabel.Font.Color = 12103592
+    EditLabel.Font.Style = [fsBold]
+    ParentColor = True
+    ParentFont = True
+    TabOrder = 7
+    TabStop = False
+    Text = 'FRMaterialSearchEdit1SubEdit'
+  end
+  object FRMaterialButton1: TFRMaterialButton
+    Left = 8
+    Height = 40
+    Top = 416
+    Width = 168
+    Caption = 'Material Button'
     Font.Height = -13
-    object FRMaterialSwitch1: TFRMaterialSwitch
-      Left = 16
-      Height = 32
-      Top = 40
-      Width = 52
-    end
-    object FRMaterialCheckBox1: TFRMaterialCheckBox
-      Left = 16
-      Height = 24
-      Top = 80
-      Width = 150
-      Caption = 'Marcar e ser feliz'
-      Font.Height = -13
-    end
-    object FRMaterialLinearProgress1: TFRMaterialLinearProgress
-      Left = 16
-      Height = 5
-      Top = 120
-      Width = 200
-    end
-    object FRMaterialListView1: TFRMaterialListView
-      Left = 16
-      Height = 300
-      Top = 144
-      Width = 280
-      Items = <>
-    end
-    object FRMaterialTimePicker1: TFRMaterialTimePicker
-      Left = 16
-      Height = 72
-      Top = 456
-      Width = 220
-      TabStop = True
-      TabOrder = 3
-    end
+    Font.Style = [fsBold]
+  end
+  object FRMaterialSplitButton1: TFRMaterialSplitButton
+    Left = 387
+    Height = 40
+    Top = 253
+    Width = 197
+    Caption = 'FRMaterialSplitButton1'
+    Font.Height = -13
+    Font.Style = [fsBold]
+  end
+  object FRMaterialEdit2: TFRMaterialEdit
+    Left = 387
+    Height = 42
+    Top = 176
+    Width = 197
+    AccentColor = clHighlight
+    Caption = 'Label'
+    DisabledColor = 12103592
+    DoubleBuffered = True
+    EditLabel.Height = 15
+    EditLabel.Width = 187
+    EditLabel.Caption = 'Label'
+    EditLabel.ParentFont = False
+    EditLabel.Font.Color = 12103592
+    EditLabel.Font.Style = [fsBold]
+    ParentColor = True
+    ParentFont = True
+    TabOrder = 10
+    Edit.Left = 5
+    Edit.Height = 15
+    Edit.Top = 22
+    Edit.Width = 187
+    Edit.Align = alBottom
+    Edit.BorderSpacing.Left = 4
+    Edit.BorderSpacing.Right = 4
+    Edit.BorderSpacing.Bottom = 4
+    Edit.BorderStyle = bsNone
+    Edit.EnableSets = False
+    Edit.MaxLength = 0
+    Edit.ParentColor = True
+    Edit.TabOrder = 0
+    Edit.SpaceChar = '_'
+    NumericValue = 0
+  end
+  object FRMaterialChip1: TFRMaterialChip
+    Left = 387
+    Height = 32
+    Top = 312
+    Width = 188
+    Caption = 'FRMaterialChip1'
+    Font.Height = -12
+  end
+  object FRMaterialLoadingIndicator1: TFRMaterialLoadingIndicator
+    Left = 358
+    Height = 20
+    Top = 455
+    Width = 60
   end
 end

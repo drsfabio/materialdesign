@@ -93,7 +93,7 @@ end;
 procedure TFRMaterialSlider.SetValue(AValue: Double);
 begin
   AValue := Math.Max(FMin, Math.Min(FMax, AValue));
-  if FDiscrete and (FSteps > 0) then
+  if FDiscrete and (FSteps > 0) and (FMax > FMin) then
   begin
     AValue := FMin + Round((AValue - FMin) / ((FMax - FMin) / FSteps)) * ((FMax - FMin) / FSteps);
     AValue := Math.Max(FMin, Math.Min(FMax, AValue));

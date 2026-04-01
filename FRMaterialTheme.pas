@@ -1,4 +1,4 @@
-﻿unit FRMaterialTheme;
+unit FRMaterialTheme;
 
 {$mode objfpc}{$H+}
 
@@ -31,6 +31,15 @@ type
     mvOutlined
   );
 
+  { Density scale MD3. Cada nível reduz alturas em 4px.
+    Equiv: 0, -1, -2, -3 na spec MD3. }
+  TFRMDDensity = (
+    ddNormal,     { 0dp  — padrão MD3          }
+    ddCompact,    { -4px — formulários médios  }
+    ddDense,      { -8px — tabelas / grids     }
+    ddUltraDense  { -12px — espaço mínimo      }
+  );
+
 { Retorna a luminância relativa de AColor segundo o modelo WCAG 2.1 (0..1).
   Use para calcular contraste entre cores de texto e fundo. }
 function MCLuminance(AColor: TColor): Single;
@@ -47,6 +56,10 @@ function MCContrastRatio(AFg, ABg: TColor): Single;
     FLabel.Font.Color := MCContrastText(Self.Color);
 }
 function MCContrastText(ABg: TColor): TColor;
+
+{ Retorna o delta em pixels para a escala de densidade.
+  Normal=0, Compact=-4, Dense=-8, UltraDense=-12. }
+function MD3DensityDelta(ADensity: TFRMDDensity): Integer;
 
 implementation
 
@@ -94,6 +107,13 @@ begin
     Result := clWhite
   else
     Result := clBlack;
+end;
+
+function MD3DensityDelta(ADensity: TFRMDDensity): Integer;
+const
+  Deltas: array[TFRMDDensity] of Integer = (0, -4, -8, -12);
+begin
+  Result := Deltas[ADensity];
 end;
 
 end.

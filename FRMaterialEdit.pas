@@ -1,11 +1,13 @@
-﻿unit FRMaterialEdit;
+unit FRMaterialEdit;
 
 {$mode objfpc}{$H+}
 
 interface
 
 uses
-  FRMaterialTheme, FRMaterialIcons, FRMaterialMasks, Classes, Clipbrd, Controls, Dialogs, ExtCtrls, Forms, Graphics,
+  FRMaterialTheme, FRMaterialIcons, FRMaterialMasks, FRMaterial3Base,
+  BGRABitmap, BGRABitmapTypes,
+  Classes, Clipbrd, Controls, Dialogs, ExtCtrls, Forms, Graphics,
   {$IFDEF FPC} LCLType, LResources, {$ENDIF} Math, MaskEdit, Menus, StdCtrls, SysUtils;
 
 type
@@ -45,6 +47,7 @@ type
     FMinLength: Integer;
     FValidateMode: TFRValidateMode;
     FOnValidate: TFRValidateEvent;
+    FDensity: TFRMDDensity;
 
     { Novos campos — Prefixo / Sufixo }
     FPrefixText: string;
@@ -100,6 +103,7 @@ type
     procedure EyeButtonClick(Sender: TObject);
     procedure SetShowCopyButton(AValue: Boolean);
     procedure CopyButtonClick(Sender: TObject);
+    procedure SetDensity(AValue: TFRMDDensity);
 
     { Helpers }
     function GetBottomMargin: Integer;
@@ -241,6 +245,8 @@ type
     property Variant: TFRMaterialVariant read FVariant write FVariant default mvStandard;
     { Raio dos cantos arredondados em pixels; 0 = cantos retos }
     property BorderRadius: Integer read FBorderRadius write FBorderRadius default 0;
+    { Densidade visual: Normal (padrão), Compact (-4px), Dense (-8px), UltraDense (-12px) }
+    property Density: TFRMDDensity read FDensity write SetDensity default ddNormal;
     { Espessura do traço dos ícones SVG (0 = usa padrão de cada ícone) }
     property IconStrokeWidth: Double read GetIconStrokeWidth write SetIconStrokeWidth;
     { Estado atual da validação: vsNone (neutro), vsValid (válido), vsInvalid (inválido) }
@@ -904,6 +910,14 @@ begin
     Result := Canvas.TextHeight('Hg') + 4;
 end;
 
+procedure TFRMaterialEditBase.SetDensity(AValue: TFRMDDensity);
+begin
+  if FDensity = AValue then Exit;
+  FDensity := AValue;
+  if not (csLoading in ComponentState) then DoOnResize;
+  Invalidate;
+end;
+
 function TFRMaterialEditBase.GetDisplayHelperText: string;
 begin
   if (FValidationState = vsInvalid) and (FErrorText <> '') then
@@ -928,8 +942,8 @@ begin
   else if Assigned(FOnValidate) then
     FOnValidate(Self, FEdit.Text, State);
 
-  if State <> vsNone then
-    ValidationState := State;
+  { Sempre atualiza o estado — permite restaurar vsNone quando campo é corrigido }
+  ValidationState := State;
 end;
 
 { --- Getters de propriedades do Edit --- }
@@ -1338,11 +1352,11 @@ begin
     if (FLabel.Name = '') or (AnsiSameText(FLabel.Name, AValue)) then
       FLabel.Name := AValue + 'SubLabel';
 
-    if (FEdit.Text = '') or (AnsiSameText(FEdit.Text, AValue)) then
-      FEdit.Text := AValue;
-
     if (FEdit.Name = '') or (AnsiSameText(FEdit.Name, AValue)) then
+    begin
       FEdit.Name := AValue + 'SubEdit';
+      FEdit.Text := '';
+    end;
   end;
   inherited SetName(AValue);
 end;
@@ -1374,6 +1388,8 @@ begin
   if IsNeededAdjustSize then
   begin
     FEdit.Align := alBottom;
+    { Aplica delta de densidade na altura do edit interno }
+    FEdit.Constraints.MinHeight := Max(18, FEdit.Height + MD3DensityDelta(FDensity));
     AutoSizedHeight :=
       FLabel.Height +
       FLabel.BorderSpacing.Around +
@@ -1431,6 +1447,7 @@ var
   DecoColor, HelperColor: TColor;
   HelperStr, CounterStr, LblCap: string;
   PrefixW: Integer;
+  bmp: TBGRABitmap;
 begin
   inherited Paint;
 
@@ -1454,7 +1471,13 @@ begin
   end;
 
   { Extensão horizontal do sublinhado/borda }
-  if Assigned(Parent) and (Parent.Color = Color) then
+  if (FVariant = mvOutlined) then
+  begin
+    { Outlined always uses full width for the border rectangle }
+    LeftPos  := 0;
+    RightPos := Width;
+  end
+  else if Assigned(Parent) and (Parent.Color = Color) then
   begin
     LeftPos := FEdit.Left;
     { Estende até cobrir a área dos botões de ação quando visíveis }
@@ -1479,10 +1502,16 @@ begin
   Canvas.Brush.Color := Color;
   case FVariant of
     mvFilled:
-      if CR > 0 then
-        Canvas.RoundRect(0, 0, Width, Height, CR, CR)
-      else
-        Canvas.Rectangle(0, 0, Width, Height);
+    begin
+      { MD3 spec: filled variant has top corners rounded, bottom corners square }
+      bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
+      try
+        MD3FillTopRoundRect(bmp, 0, 0, Width - 1, DecoBottom - 1, CR, Color);
+        bmp.Draw(Canvas, 0, 0, False);
+      finally
+        bmp.Free;
+      end;
+    end;
   else
     Canvas.Rectangle(0, 0, Width, Height);
   end;
@@ -1490,17 +1519,7 @@ begin
   { Passo 2: cor do label e decoração do campo }
   Canvas.Pen.Color  := DecoColor;
 
-  { Label — mostra asterisco quando Required }
-  LblCap := FLabel.Caption;
-  if FRequired then
-  begin
-    if (LblCap <> '') and (LblCap[Length(LblCap)] <> '*') then
-      FLabel.Font.Color := DecoColor
-    else
-      FLabel.Font.Color := DecoColor;
-  end
-  else
-    FLabel.Font.Color := DecoColor;
+  FLabel.Font.Color := DecoColor;
 
   { Atualiza cor dos ícones SVG dos botões de ação conforme o estado de foco }
   if FSearchButton.Visible and (FSearchButton.NormalColor <> DecoColor) then
@@ -1611,6 +1630,7 @@ begin
   inherited Create(AOwner);
 
   Self.AccentColor := clHighlight;
+  Self.BevelOuter := bvNone;
   Self.BorderStyle := bsNone;
   Self.DisabledColor := $00B8AFA8;
   Self.ParentColor := True;
@@ -1732,6 +1752,8 @@ begin
   FPasswordMode     := False;
   FShowCopyButton   := False;
   FAutoFocusNext    := False;
+
+  FEdit.Text := '';
 end;
 
 { TFRMaterialEdit }

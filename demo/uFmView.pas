@@ -5,20 +5,28 @@ unit uFmView;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, FRMaterial3Divider, FRMaterial3Toggle,
-  FRMaterial3Progress, FRMaterial3List, FRMaterial3TimePicker;
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, FRMaterialEdit, FRMaterialDateEdit,
+  FRMaterialComboEdit, FRMaterialCheckComboEdit, FRMaterialMaskEdit, FRMaterialCurrencyEdit,
+  FRMaterialSpinEdit, FRMaterialSearchEdit, FRMaterial3Button, FRMaterial3Chip, FRMaterial3Progress;
 
 type
 
-  { TForm1 }
+  { TFmView }
 
-  TForm1 = class(TForm)
-    FRMaterialCheckBox1: TFRMaterialCheckBox;
-    FRMaterialGroupBox1: TFRMaterialGroupBox;
-    FRMaterialLinearProgress1: TFRMaterialLinearProgress;
-    FRMaterialListView1: TFRMaterialListView;
-    FRMaterialSwitch1: TFRMaterialSwitch;
-    FRMaterialTimePicker1: TFRMaterialTimePicker;
+  TFmView = class(TForm)
+    FRMaterialButton1: TFRMaterialButton;
+    FRMaterialCheckComboEdit1: TFRMaterialCheckComboEdit;
+    FRMaterialChip1: TFRMaterialChip;
+    FRMaterialComboEdit1: TFRMaterialComboEdit;
+    FRMaterialCurrencyEdit1: TFRMaterialCurrencyEdit;
+    FRMaterialDateEdit1: TFRMaterialDateEdit;
+    FRMaterialEdit1: TFRMaterialEdit;
+    FRMaterialEdit2: TFRMaterialEdit;
+    FRMaterialLoadingIndicator1: TFRMaterialLoadingIndicator;
+    FRMaterialMaskEdit1: TFRMaterialMaskEdit;
+    FRMaterialSearchEdit1: TFRMaterialSearchEdit;
+    FRMaterialSpinEdit1: TFRMaterialSpinEdit;
+    FRMaterialSplitButton1: TFRMaterialSplitButton;
   private
 
   public
@@ -26,7 +34,7 @@ type
   end;
 
 var
-  Form1: TForm1;
+  FFmView: TFmView;
 
 implementation
 
