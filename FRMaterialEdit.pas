@@ -17,7 +17,7 @@ type
 
   { TFRMaterialEditBase }
 
-  generic TFRMaterialEditBase<T> = class(TCustomPanel)
+  generic TFRMaterialEditBase<T> = class(TCustomPanel, IFRMaterialComponent)
   private
     FAccentColor: TColor;
     FDisabledColor: TColor;

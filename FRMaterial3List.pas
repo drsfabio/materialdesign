@@ -193,16 +193,9 @@ begin
       { leading icon }
       if item.FLeadingIcon <> imClear then
       begin
-        svg := FRGetIconSVG(item.FLeadingIcon, FRColorToSVGHex(MD3Colors.OnSurfaceVariant), 2.0);
-        if svg <> '' then
-        begin
-          iconBmp := FRRenderSVGIcon(svg, 24, 24);
-          try
-            bmp.PutImage(16, yPos + (ih - 24) div 2, iconBmp, dmDrawWithTransparency);
-          finally
-            iconBmp.Free;
-          end;
-        end;
+        iconBmp := FRGetCachedIcon(item.FLeadingIcon, FRColorToSVGHex(MD3Colors.OnSurfaceVariant), 2.0, 24, 24);
+        if iconBmp <> nil then
+          bmp.PutImage(16, yPos + (ih - 24) div 2, iconBmp, dmDrawWithTransparency);
       end;
 
       { divider }

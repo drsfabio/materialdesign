@@ -245,17 +245,13 @@ begin
           chevMode := imExpandMore
         else
           chevMode := imExpandLess;
+
         icoClr := MD3Colors.OnSurfaceVariant;
-        svg := FRGetIconSVG(chevMode, FRColorToSVGHex(icoClr), 2.0);
-        if svg <> '' then
-        begin
-          iconBmp := FRRenderSVGIcon(svg, 18, 18);
-          try
-            bmp.PutImage(xOff, yPos + (FItemHeight - 18) div 2, iconBmp, dmDrawWithTransparency);
-          finally
-            iconBmp.Free;
-          end;
-        end;
+        iconBmp := FRGetCachedIcon(chevMode, FRColorToSVGHex(icoClr), 2.0, 18, 18);
+        
+        if iconBmp <> nil then
+          bmp.PutImage(xOff, yPos + (FItemHeight - 18) div 2, iconBmp, dmDrawWithTransparency);
+
         xOff := xOff + 22;
       end
       else
@@ -268,17 +264,13 @@ begin
           icoClr := MD3Colors.OnSecondaryContainer
         else
           icoClr := MD3Colors.OnSurfaceVariant;
+          
         nodeIcon := Node.FIconMode;
-        svg := FRGetIconSVG(nodeIcon, FRColorToSVGHex(icoClr), 2.0);
-        if svg <> '' then
-        begin
-          iconBmp := FRRenderSVGIcon(svg, 20, 20);
-          try
-            bmp.PutImage(xOff, yPos + (FItemHeight - 20) div 2, iconBmp, dmDrawWithTransparency);
-          finally
-            iconBmp.Free;
-          end;
-        end;
+        iconBmp := FRGetCachedIcon(nodeIcon, FRColorToSVGHex(icoClr), 2.0, 20, 20);
+        
+        if iconBmp <> nil then
+          bmp.PutImage(xOff, yPos + (FItemHeight - 20) div 2, iconBmp, dmDrawWithTransparency);
+          
         xOff := xOff + 28;
       end;
 

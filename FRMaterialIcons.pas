@@ -25,7 +25,7 @@ interface
 
 uses
   Classes, SysUtils, Controls, Buttons, Graphics,
-  BGRABitmap, BGRABitmapTypes;
+  BGRABitmap, BGRABitmapTypes, Generics.Collections;
 
 type
   { Modo do ícone exibido no botão }
@@ -151,6 +151,10 @@ function FRShoppingCartIconSVG(const AHex: string; AStroke: Double = 2.0): strin
 function FRScaleIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRRenderSVGIcon(const ASVG: string; AW, AH: Integer): TBGRABitmap;
 function FRGetIconSVG(AMode: TFRIconMode; const AHex: string; AStroke: Double): string;
+
+{ Busca no Cache Global para evitar a pesada carga de gerar SVG toda vez.
+  Não dê .Free no Bitmap retornado! }
+function FRGetCachedIcon(AMode: TFRIconMode; const AHex: string; AStroke: Double; AW, AH: Integer): TBGRABitmap;
 
 implementation
 
@@ -1089,6 +1093,68 @@ begin
 end;
 
 { ══════════════════════════════════════════════════════════════════════════ }
+{  TFRMDGlobalIconCache                                                    }
+{ ══════════════════════════════════════════════════════════════════════════ }
+
+type
+  TFRMDSVGCacheDict = specialize TObjectDictionary<string, TBGRABitmap>;
+
+  TFRMDGlobalIconCache = class
+  private
+    FDict: TFRMDSVGCacheDict;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    function GetIcon(AMode: TFRIconMode; const AHex: string; AStroke: Double; AW, AH: Integer): TBGRABitmap;
+  end;
+
+var
+  FRGlobalIconCache: TFRMDGlobalIconCache = nil;
+
+constructor TFRMDGlobalIconCache.Create;
+begin
+  inherited Create;
+  { Configurado para donar a propriedade e dar Free aos objetos TBGRABitmap ao Destruir/Remover }
+  FDict := TFRMDSVGCacheDict.Create([doOwnsValues]);
+end;
+
+destructor TFRMDGlobalIconCache.Destroy;
+begin
+  FDict.Free;
+  inherited Destroy;
+end;
+
+function TFRMDGlobalIconCache.GetIcon(AMode: TFRIconMode; const AHex: string; AStroke: Double; AW, AH: Integer): TBGRABitmap;
+var
+  svg, k: string;
+  bmp: TBGRABitmap;
+begin
+  if AMode = imClear then Exit(nil);
+  
+  { Cria a Hash identificadora única da imagem }
+  k := Format('%d_%s_%f_%d_%d', [Ord(AMode), AHex, AStroke, AW, AH]);
+  if FDict.TryGetValue(k, bmp) then
+    Exit(bmp);
+
+  { Se não encontrou, renderiza do zero e faz cache }
+  svg := FRGetIconSVG(AMode, AHex, AStroke);
+  if svg = '' then Exit(nil);
+
+  bmp := FRRenderSVGIcon(svg, AW, AH);
+  if bmp <> nil then
+    FDict.Add(k, bmp);
+
+  Result := bmp;
+end;
+
+function FRGetCachedIcon(AMode: TFRIconMode; const AHex: string; AStroke: Double; AW, AH: Integer): TBGRABitmap;
+begin
+  if FRGlobalIconCache = nil then
+    FRGlobalIconCache := TFRMDGlobalIconCache.Create;
+  Result := FRGlobalIconCache.GetIcon(AMode, AHex, AStroke, AW, AH);
+end;
+
+{ ══════════════════════════════════════════════════════════════════════════ }
 {  TFRMaterialIconButton                                                   }
 { ══════════════════════════════════════════════════════════════════════════ }
 
@@ -1184,5 +1250,12 @@ begin
   Invalidate;
   inherited MouseLeave;
 end;
+
+initialization
+  FRGlobalIconCache := nil;
+
+finalization
+  if Assigned(FRGlobalIconCache) then
+    FRGlobalIconCache.Free;
 
 end.
