@@ -161,6 +161,8 @@ type
     property Pressed: Boolean read FPressed;
   published
     property Anchors;
+    property TabOrder;
+    property TabStop;
   end;
 
   { Base class for visual-only MD3 components (dividers, progress bars, etc.).
