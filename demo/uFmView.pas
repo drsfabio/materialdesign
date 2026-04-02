@@ -9,7 +9,7 @@ uses
   FRMaterialComboEdit, FRMaterialCheckComboEdit, FRMaterialMaskEdit, FRMaterialCurrencyEdit,
   FRMaterialSpinEdit, FRMaterialSearchEdit, FRMaterial3Button, FRMaterial3Chip, FRMaterial3Progress,
   FRMaterial3Divider, FRMaterial3Sheet, FRMaterial3Nav, FRMaterial3AppBar, FRMaterial3Tabs,
-  FRMaterialThemeManager;
+  FRMaterialThemeManager, FRMaterial3Dialog;
 
 type
 
@@ -17,6 +17,7 @@ type
 
   TFmView = class(TForm)
     FRMaterialAppBar1: TFRMaterialAppBar;
+    FRMaterialDialog1: TFRMaterialDialog;
     FRMaterialNavRail1: TFRMaterialNavRail;
     FRMaterialTabs1: TFRMaterialTabs;
     FRMaterialThemeManager1: TFRMaterialThemeManager;

@@ -46,7 +46,13 @@ type
     imPercent, imBank, imCalculator, imCoin,
     { Estoque / Logística }
     imBox, imBarcode, imTruck, imWarehouse,
-    imTag, imShoppingCart, imScale
+    imTag, imShoppingCart, imScale,
+    { Negócios / ERP }
+    imStore, imStorefront, imLocalShipping, imRoute,
+    imInventory, imCashFlow, imAccountBalance, imTax,
+    imInvoice, imHandshake, imFactory, imQrCode,
+    imPrinter, imClipboard, imAssignment,
+    imReport, imFile, imKpi
   );
 
   { TFRMaterialIconButton
@@ -149,6 +155,25 @@ function FRWarehouseIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRTagIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRShoppingCartIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRScaleIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+{ Negócios / ERP }
+function FRStoreIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRStorefrontIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRLocalShippingIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRRouteIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRInventoryIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRCashFlowIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRAccountBalanceIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRTaxIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRInvoiceIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRHandshakeIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRFactoryIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRQrCodeIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRPrinterIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRClipboardIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRAssignmentIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRReportIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRFileIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRKpiIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRRenderSVGIcon(const ASVG: string; AW, AH: Integer): TBGRABitmap;
 function FRGetIconSVG(AMode: TFRIconMode; const AHex: string; AStroke: Double): string;
 
@@ -984,6 +1009,270 @@ begin
     '</svg>';
 end;
 
+{ ── Negócios / ERP ── }
+
+{ imStore — loja (prédio com toldo) }
+function FRStoreIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M3 21V10l1.5-7h15L21 10v11" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linejoin="round"/>' +
+    '<line x1="3" y1="10" x2="21" y2="10" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<path d="M9 21v-7h6v7" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+{ imStorefront — vitrine de loja }
+function FRStorefrontIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M4 7V4h16v3" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linejoin="round"/>' +
+    '<path d="M2 7h20l-1.5 4H3.5L2 7z" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linejoin="round"/>' +
+    '<path d="M4 11v9h16v-9" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linejoin="round"/>' +
+    '<rect x="9" y="14" width="6" height="6" rx="0.5" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '</svg>';
+end;
+
+{ imLocalShipping — caminhão de entrega local }
+function FRLocalShippingIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="1" y="4" width="14" height="11" rx="1" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<path d="M15 8h4l3 4v3h-7V8z" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linejoin="round"/>' +
+    '<circle cx="6" cy="17.5" r="2" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<circle cx="18" cy="17.5" r="2" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '</svg>';
+end;
+
+{ imRoute — rota com marcadores }
+function FRRouteIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<circle cx="6" cy="5" r="3" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<circle cx="18" cy="19" r="3" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<path d="M6 8c0 6 12 4 12 8" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '</svg>';
+end;
+
+{ imInventory — inventário (prancheta com caixas) }
+function FRInventoryIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="3" y="2" width="18" height="20" rx="2" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<line x1="3" y1="8" x2="21" y2="8" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<line x1="10" y1="2" x2="10" y2="8" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<rect x="7" y="12" width="4" height="3" rx="0.5" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<rect x="13" y="12" width="4" height="3" rx="0.5" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '</svg>';
+end;
+
+{ imCashFlow — fluxo de caixa (setas + dinheiro) }
+function FRCashFlowIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<circle cx="12" cy="12" r="3" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<line x1="12" y1="10" x2="12" y2="14" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<path d="M2 12h4" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<path d="M4 10l-2 2 2 2" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<path d="M18 12h4" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<path d="M20 10l2 2-2 2" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<path d="M12 2v4" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<path d="M10 4l2-2 2 2" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<path d="M12 18v4" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<path d="M10 20l2 2 2-2" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+{ imAccountBalance — balança contábil / balanço }
+function FRAccountBalanceIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M12 2L2 7h20L12 2z" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linejoin="round"/>' +
+    '<line x1="2" y1="20" x2="22" y2="20" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<line x1="5" y1="9" x2="5" y2="18" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<line x1="9.5" y1="9" x2="9.5" y2="18" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<line x1="14.5" y1="9" x2="14.5" y2="18" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<line x1="19" y1="9" x2="19" y2="18" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '</svg>';
+end;
+
+{ imTax — tributo/imposto (documento com %) }
+function FRTaxIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linejoin="round"/>' +
+    '<path d="M14 2v6h6" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linejoin="round"/>' +
+    '<circle cx="10" cy="12" r="1.2" fill="' + AHex + '"/>' +
+    '<circle cx="14" cy="17" r="1.2" fill="' + AHex + '"/>' +
+    '<line x1="9" y1="18" x2="15" y2="11" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '</svg>';
+end;
+
+{ imInvoice — nota fiscal / fatura }
+function FRInvoiceIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M4 2h16v20l-3-2-3 2-3-2-3 2V2z" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linejoin="round"/>' +
+    '<line x1="8" y1="7" x2="16" y2="7" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<line x1="8" y1="11" x2="16" y2="11" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<line x1="8" y1="15" x2="12" y2="15" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '</svg>';
+end;
+
+{ imHandshake — aperto de mão (negociação) }
+function FRHandshakeIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M2 11l4-4 4 2 4-4 4 2 4-2" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<path d="M6 13l3 3 3-1 3 3" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<path d="M18 9l-3 3-3-1-3 3" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+{ imFactory — fábrica / indústria }
+function FRFactoryIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M2 21V11l5-4v5l5-4v5l5-4v12H2z" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linejoin="round"/>' +
+    '<rect x="18" y="3" width="4" height="18" rx="0.5" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<line x1="20" y1="3" x2="20" y2="1" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '</svg>';
+end;
+
+{ imQrCode — código QR }
+function FRQrCodeIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<rect x="4.5" y="4.5" width="3" height="3" fill="' + AHex + '"/>' +
+    '<rect x="14" y="2" width="8" height="8" rx="1" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<rect x="16.5" y="4.5" width="3" height="3" fill="' + AHex + '"/>' +
+    '<rect x="2" y="14" width="8" height="8" rx="1" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<rect x="4.5" y="16.5" width="3" height="3" fill="' + AHex + '"/>' +
+    '<rect x="14" y="14" width="3" height="3" fill="' + AHex + '"/>' +
+    '<rect x="19" y="14" width="3" height="3" fill="' + AHex + '"/>' +
+    '<rect x="14" y="19" width="3" height="3" fill="' + AHex + '"/>' +
+    '<rect x="19" y="19" width="3" height="3" fill="' + AHex + '"/>' +
+    '</svg>';
+end;
+
+{ imPrinter — impressora }
+function FRPrinterIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M6 9V2h12v7" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linejoin="round"/>' +
+    '<rect x="2" y="9" width="20" height="8" rx="2" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<path d="M6 17v5h12v-5" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+{ imClipboard — prancheta }
+function FRClipboardIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="8" y="2" width="8" height="4" rx="1" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<rect x="4" y="4" width="16" height="18" rx="2" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<line x1="8" y1="12" x2="16" y2="12" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<line x1="8" y1="16" x2="14" y2="16" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '</svg>';
+end;
+
+{ imAssignment — tarefa/designação (prancheta com check) }
+function FRAssignmentIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="8" y="2" width="8" height="4" rx="1" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<rect x="4" y="4" width="16" height="18" rx="2" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<path d="M9 13l2 2 4-4" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+{ imReport — relatório / gráfico com barras }
+function FRReportIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="3" y="3" width="18" height="18" rx="2" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<rect x="7" y="13" width="2" height="5" rx="0.3" fill="' + AHex + '"/>' +
+    '<rect x="11" y="9" width="2" height="9" rx="0.3" fill="' + AHex + '"/>' +
+    '<rect x="15" y="6" width="2" height="12" rx="0.3" fill="' + AHex + '"/>' +
+    '</svg>';
+end;
+
+{ imFile — arquivo / documento }
+function FRFileIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linejoin="round"/>' +
+    '<path d="M14 2v6h6" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linejoin="round"/>' +
+    '<line x1="8" y1="13" x2="16" y2="13" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<line x1="8" y1="17" x2="14" y2="17" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '</svg>';
+end;
+
+{ imKpi — KPI / indicador (velocímetro) }
+function FRKpiIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M4 18a8 8 0 1116 0" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<line x1="12" y1="18" x2="15" y2="10" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<circle cx="12" cy="18" r="1.5" fill="' + AHex + '"/>' +
+    '<line x1="7" y1="18" x2="17" y2="18" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '</svg>';
+end;
+
 { Uses AStroke if > 0, otherwise falls back to ADefault.
   Avoids the repetitive 'if AStroke > 0 then ... else ...' pattern. }
 function UseStroke(AStroke, ADefault: Double): Double; inline;
@@ -1057,6 +1346,25 @@ begin
     imTag:          Result := FRTagIconSVG(AHex,           UseStroke(AStroke, 2.0));
     imShoppingCart: Result := FRShoppingCartIconSVG(AHex,  UseStroke(AStroke, 2.0));
     imScale:        Result := FRScaleIconSVG(AHex,         UseStroke(AStroke, 2.0));
+    { Negócios / ERP }
+    imStore:         Result := FRStoreIconSVG(AHex,          UseStroke(AStroke, 2.0));
+    imStorefront:    Result := FRStorefrontIconSVG(AHex,     UseStroke(AStroke, 2.0));
+    imLocalShipping: Result := FRLocalShippingIconSVG(AHex,  UseStroke(AStroke, 2.0));
+    imRoute:         Result := FRRouteIconSVG(AHex,          UseStroke(AStroke, 2.0));
+    imInventory:     Result := FRInventoryIconSVG(AHex,      UseStroke(AStroke, 2.0));
+    imCashFlow:      Result := FRCashFlowIconSVG(AHex,       UseStroke(AStroke, 2.0));
+    imAccountBalance:Result := FRAccountBalanceIconSVG(AHex, UseStroke(AStroke, 2.0));
+    imTax:           Result := FRTaxIconSVG(AHex,            UseStroke(AStroke, 2.0));
+    imInvoice:       Result := FRInvoiceIconSVG(AHex,        UseStroke(AStroke, 2.0));
+    imHandshake:     Result := FRHandshakeIconSVG(AHex,      UseStroke(AStroke, 2.0));
+    imFactory:       Result := FRFactoryIconSVG(AHex,        UseStroke(AStroke, 2.0));
+    imQrCode:        Result := FRQrCodeIconSVG(AHex,         UseStroke(AStroke, 2.0));
+    imPrinter:       Result := FRPrinterIconSVG(AHex,        UseStroke(AStroke, 2.0));
+    imClipboard:     Result := FRClipboardIconSVG(AHex,      UseStroke(AStroke, 2.0));
+    imAssignment:    Result := FRAssignmentIconSVG(AHex,     UseStroke(AStroke, 2.0));
+    imReport:        Result := FRReportIconSVG(AHex,         UseStroke(AStroke, 2.0));
+    imFile:          Result := FRFileIconSVG(AHex,           UseStroke(AStroke, 2.0));
+    imKpi:           Result := FRKpiIconSVG(AHex,            UseStroke(AStroke, 2.0));
   else
     Result := '';
   end;

@@ -145,6 +145,7 @@ type
     function GetEditHideSelection: Boolean;
     function GetEditHint: TTranslateString;
     function GetEditMaxLength: Integer;
+    function GetEditNumbersOnly: Boolean;
     function GetEditParentColor: Boolean;
     function GetEditPopupMenu: TPopupMenu;
     function GetEditReadOnly: Boolean;
@@ -167,6 +168,7 @@ type
     procedure SetEditHideSelection(AValue: Boolean);
     procedure SetEditHint(const AValue: TTranslateString);
     procedure SetEditMaxLength(AValue: Integer);
+    procedure SetEditNumbersOnly(AValue: Boolean);
     procedure SetEditParentColor(AValue: Boolean);
     procedure SetEditPopupMenu(AValue: TPopupmenu);
     procedure SetEditReadOnly(AValue: Boolean);
@@ -218,6 +220,7 @@ type
     property Hint: TTranslateString read GetEditHint write SetEditHint;
     property LabelSpacing: Integer read GetLabelSpacing write SetLabelSpacing default 4;
     property MaxLength: Integer read GetEditMaxLength write SetEditMaxLength default 0;
+    property NumbersOnly: Boolean read GetEditNumbersOnly write SetEditNumbersOnly default False;
     property ParentBiDiMode;
     property ParentColor default False;
     property ParentFont default False;
@@ -935,6 +938,11 @@ begin
   result := FEdit.MaxLength;
 end;
 
+function TFRMaterialEditBase.GetEditNumbersOnly: Boolean;
+begin
+  Result := FEdit.NumbersOnly;
+end;
+
 function TFRMaterialEditBase.GetEditParentColor: Boolean;
 begin
   Result := Self.ParentColor;
@@ -1228,6 +1236,11 @@ end;
 procedure TFRMaterialEditBase.SetEditMaxLength(AValue: Integer);
 begin
   FEdit.MaxLength := AValue;
+end;
+
+procedure TFRMaterialEditBase.SetEditNumbersOnly(AValue: Boolean);
+begin
+  FEdit.NumbersOnly := AValue;
 end;
 
 procedure TFRMaterialEditBase.SetEditParentColor(AValue: Boolean);

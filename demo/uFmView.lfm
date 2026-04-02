@@ -12,6 +12,7 @@ object FmView: TFmView
     Height = 515
     Top = 64
     Width = 80
+    Align = alLeft
     TabOrder = 0
     TabStop = True
     Items = <    
@@ -25,45 +26,37 @@ object FmView: TFmView
       end>
     MenuIcon = imClear
     FabIcon = imClear
-    Align = alLeft
   end
   object FRMaterialAppBar1: TFRMaterialAppBar
     Left = 0
     Height = 64
     Top = 0
     Width = 773
+    Align = alTop
     TabOrder = 1
     TabStop = True
     Title = 'Sistema de Componentes'
     NavIcon = imMenu
     Actions = <>
-    Align = alTop
   end
   object FRMaterialTabs1: TFRMaterialTabs
-    Left = 80
-    Height = 515
-    Top = 64
-    Width = 693
+    Left = 254
+    Height = 48
+    Top = 157
+    Width = 400
     TabOrder = 2
     TabStop = True
-    Tabs = <    
-      item
-        Caption = 'Principal'
-        IconMode = imClear
-      end    
-      item
-        Caption = 'Secundário 1'
-        IconMode = imClear
-      end    
-      item
-        Caption = 'Secundário 2'
-        IconMode = imClear
-      end>
-    Align = alClient
+    Tabs = <>
   end
   object FRMaterialThemeManager1: TFRMaterialThemeManager
-    Palette = mpBlue
+    Palette = mpCyan
     Left = 736
     Top = 8
+  end
+  object FRMaterialDialog1: TFRMaterialDialog
+    Title = 'Título'
+    Content = 'Conteúdo da mensagem.'
+    Left = 362
+    Top = 327
   end
 end

@@ -46,9 +46,11 @@ type
     FTabs: TFRMaterialTabItems;
     FTabIndex: Integer;
     FTabStyle: TFRMDTabStyle;
+    FBackgroundImage: TPicture;
     FOnChange: TNotifyEvent;
     procedure SetTabIndex(AValue: Integer);
     function GetTabWidth: Integer;
+    procedure BackgroundImageChanged(Sender: TObject);
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -59,6 +61,7 @@ type
     property Tabs: TFRMaterialTabItems read FTabs write FTabs;
     property TabIndex: Integer read FTabIndex write SetTabIndex default 0;
     property TabStyle: TFRMDTabStyle read FTabStyle write FTabStyle default tsFixed;
+    property BackgroundImage: TPicture read FBackgroundImage write FBackgroundImage;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
     property Align;
     property Anchors;
@@ -106,12 +109,15 @@ begin
   FTabs := TFRMaterialTabItems.Create(Self);
   FTabIndex := 0;
   FTabStyle := tsFixed;
+  FBackgroundImage := TPicture.Create;
+  FBackgroundImage.OnChange := @BackgroundImageChanged;
   Width := 400;
   Height := 48;
 end;
 
 destructor TFRMaterialTabs.Destroy;
 begin
+  FBackgroundImage.Free;
   FTabs.Free;
   inherited Destroy;
 end;
@@ -150,6 +156,12 @@ var
 begin
   bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.Surface));
   try
+    { Background image }
+    if Assigned(FBackgroundImage.Graphic) and (not FBackgroundImage.Graphic.Empty) then
+    begin
+      bmp.Canvas.StretchDraw(Rect(0, 0, Width, Height), FBackgroundImage.Graphic);
+    end;
+
     { bottom line }
     bmp.DrawLineAntialias(0, Height - 1, Width, Height - 1,
       ColorToBGRA(MD3Colors.SurfaceContainerHighest), 1);
@@ -204,6 +216,11 @@ begin
     aRect := Rect(xPos, textY, xPos + tw, Height - 4);
     MD3DrawText(Canvas, tab.FCaption, aRect, textColor, taCenter, True);
   end;
+end;
+
+procedure TFRMaterialTabs.BackgroundImageChanged(Sender: TObject);
+begin
+  Invalidate;
 end;
 
 procedure TFRMaterialTabs.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);

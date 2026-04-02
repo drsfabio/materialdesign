@@ -53,9 +53,15 @@ type
   { Internal scrim + dialog form }
 
   TFRDialogPanel = class(TCustomControl)
+  private
+    FIconBmp: TBGRABitmap;
+    FIconLeft: Integer;
+    FIconTop: Integer;
   protected
     procedure EraseBackground(DC: HDC); override;
     procedure Paint; override;
+  public
+    destructor Destroy; override;
   end;
 
   TFRDialogForm = class(TForm)
@@ -81,15 +87,22 @@ procedure TFRDialogPanel.Paint;
 var
   bmp: TBGRABitmap;
 begin
-  { Fill with black to match the scrim, then draw rounded card on top }
   bmp := TBGRABitmap.Create(Width, Height, BGRA(0, 0, 0, 255));
   try
     bmp.FillRoundRectAntialias(0, 0, Width, Height, 28, 28,
       ColorToBGRA(MD3Colors.SurfaceContainerHigh));
+    if Assigned(FIconBmp) then
+      bmp.PutImage(FIconLeft, FIconTop, FIconBmp, dmDrawWithTransparency);
     bmp.Draw(Canvas, 0, 0, False);
   finally
     bmp.Free;
   end;
+end;
+
+destructor TFRDialogPanel.Destroy;
+begin
+  FreeAndNil(FIconBmp);
+  inherited Destroy;
 end;
 
 { ── TFRDialogForm ── }
@@ -110,8 +123,6 @@ var
   btn: TFRMaterialButton;
   btnX, titleH, contentH, contentTop, dlgHeight, curY: Integer;
   R: TRect;
-  iconBmp: TBGRABitmap;
-  iconImg: TImage;
   iconMode: TFRIconMode;
   hexColor: string;
 
@@ -182,7 +193,7 @@ begin
   FDialogPanel.Top := (Screen.Height - dlgHeight) div 2;
   FDialogPanel.Color := MD3Colors.SurfaceContainerHigh;
 
-  { Icon — centered above title }
+  { Icon — rendered directly on the panel's BGRABitmap }
   if AIcon <> diNone then
   begin
     case AIcon of
@@ -194,23 +205,11 @@ begin
     else
       iconMode := imInfo;
     end;
-    hexColor := '#' + IntToHex(Red(MD3Colors.Primary), 2)
-              + IntToHex(Green(MD3Colors.Primary), 2)
-              + IntToHex(Blue(MD3Colors.Primary), 2);
-    iconBmp := FRRenderSVGIcon(
+    hexColor := FRColorToSVGHex(MD3Colors.Primary);
+    FDialogPanel.FIconBmp := FRRenderSVGIcon(
       FRGetIconSVG(iconMode, hexColor, 2.0), ICON_SIZE, ICON_SIZE);
-    try
-      iconImg := TImage.Create(Self);
-      iconImg.Parent := FDialogPanel;
-      iconImg.Width := ICON_SIZE;
-      iconImg.Height := ICON_SIZE;
-      iconImg.Left := (DLG_WIDTH - ICON_SIZE) div 2;
-      iconImg.Top := PADDING;
-      iconImg.Transparent := True;
-      iconImg.Picture.Bitmap.Assign(iconBmp.Bitmap);
-    finally
-      iconBmp.Free;
-    end;
+    FDialogPanel.FIconLeft := (DLG_WIDTH - ICON_SIZE) div 2;
+    FDialogPanel.FIconTop := PADDING;
   end;
 
   { Title — centered when icon present, left-aligned otherwise }

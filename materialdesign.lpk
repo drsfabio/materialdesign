@@ -13,7 +13,7 @@
     <Description Value="Material Design input components for Lazarus: TEdit, TComboBox, TCheckCombo and TDateEdit wrappers with floating label, accent color, Variant styles (Standard/Filled/Outlined), border radius, search/clear buttons and WCAG 2.1 contrast utilities. Fork of BCMaterial from BGRAControls."/>
     <License Value="LGPL v3"/>
     <Version Major="1"/>
-    <Files Count="34">
+    <Files Count="35">
       <Item1>
         <Filename Value="FRMaterialTheme.pas"/>
         <UnitName Value="FRMaterialTheme"/>
@@ -179,6 +179,11 @@
         <Filename Value="FRMaterialFieldPainter.pas"/>
         <UnitName Value="FRMaterialFieldPainter"/>
       </Item34>
+      <Item35>
+        <Filename Value="FRMaterial3PageControl.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="FRMaterial3PageControl"/>
+      </Item35>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="3">

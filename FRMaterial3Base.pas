@@ -164,6 +164,7 @@ type
   published
     property Align;
     property Anchors;
+    property BorderSpacing;
     property TabOrder;
     property TabStop;
   end;

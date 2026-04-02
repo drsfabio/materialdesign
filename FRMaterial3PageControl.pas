@@ -1,0 +1,538 @@
+unit FRMaterial3PageControl;
+
+{$mode objfpc}{$H+}
+
+{ Material Design 3 — PageControl.
+
+  TFRMaterialPageControl — Tab container with MD3 styling.
+  TFRMaterialTabPage     — Individual page (container for child controls).
+
+  Drop-in replacement workflow for TPageControl/TTabSheet:
+
+    Page := TFRMaterialTabPage.Create(Self);
+    Page.PageControl := MyPageControl;
+    Page.Caption := 'Tab Title';
+    Form.Parent := Page;
+    MyPageControl.ActivePage := Page;
+
+  License: LGPL v3
+}
+
+interface
+
+uses
+  Classes, SysUtils, Controls, Graphics, Forms, Types,
+  {$IFDEF FPC} LCLType, LResources, {$ENDIF}
+  BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialIcons;
+
+type
+  TFRMaterialPageControl = class;
+
+  { ── TFRMaterialTabPage ── }
+
+  TFRMaterialTabPage = class(TCustomControl)
+  private
+    FPageControl: TFRMaterialPageControl;
+    FTabCaption: TCaption;
+    FIconMode: TFRIconMode;
+    FImageIndex: Integer;
+    procedure SetPageControl(AValue: TFRMaterialPageControl);
+    procedure SetTabCaption(const AValue: TCaption);
+    procedure SetIconMode(AValue: TFRIconMode);
+  protected
+    procedure Paint; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  published
+    property PageControl: TFRMaterialPageControl read FPageControl write SetPageControl;
+    property Caption: TCaption read FTabCaption write SetTabCaption;
+    property IconMode: TFRIconMode read FIconMode write SetIconMode default imClear;
+    property ImageIndex: Integer read FImageIndex write FImageIndex default -1;
+    property Color;
+    property Tag;
+  end;
+
+  { Event fired before closing a tab }
+  TFRMDCloseTabEvent = procedure(Sender: TObject; APage: TFRMaterialTabPage;
+    var AllowClose: Boolean) of object;
+
+  { ── TFRMaterialPageControl ── }
+
+  TFRMaterialPageControl = class(TCustomControl)
+  private
+    FPages: TList;
+    FActivePageIndex: Integer;
+    FTabHeight: Integer;
+    FShowCloseButton: Boolean;
+    FBackgroundImage: TPicture;
+    FOnChange: TNotifyEvent;
+    FOnCloseTab: TFRMDCloseTabEvent;
+    FHoverTabIndex: Integer;
+    FHoverClose: Boolean;
+    function GetPageCount: Integer;
+    function GetPage(Index: Integer): TFRMaterialTabPage;
+    function GetActivePage: TFRMaterialTabPage;
+    procedure SetActivePage(AValue: TFRMaterialTabPage);
+    procedure SetActivePageIndex(AValue: Integer);
+    procedure SetShowCloseButton(AValue: Boolean);
+    procedure BackgroundImageChanged(Sender: TObject);
+    function CalcTabWidth: Integer;
+    function TabRect(AIndex: Integer): TRect;
+    function CloseRect(AIndex: Integer): TRect;
+  protected
+    procedure Paint; override;
+    procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseLeave; override;
+    procedure Resize; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure AddPage(APage: TFRMaterialTabPage);
+    procedure RemovePage(APage: TFRMaterialTabPage);
+    function IndexOfPage(APage: TFRMaterialTabPage): Integer;
+    procedure UpdatePageLayout;
+    property PageCount: Integer read GetPageCount;
+    property Pages[Index: Integer]: TFRMaterialTabPage read GetPage;
+    property ActivePage: TFRMaterialTabPage read GetActivePage write SetActivePage;
+  published
+    property ActivePageIndex: Integer read FActivePageIndex write SetActivePageIndex default -1;
+    property TabHeight: Integer read FTabHeight write FTabHeight default 48;
+    property ShowCloseButton: Boolean read FShowCloseButton write SetShowCloseButton default False;
+    property BackgroundImage: TPicture read FBackgroundImage write FBackgroundImage;
+    property OnChange: TNotifyEvent read FOnChange write FOnChange;
+    property OnCloseTab: TFRMDCloseTabEvent read FOnCloseTab write FOnCloseTab;
+    property Align;
+    property Anchors;
+    property BorderSpacing;
+    property Color;
+    property Constraints;
+    property Enabled;
+    property Font;
+    property TabOrder;
+    property TabStop;
+    property Visible;
+  end;
+
+procedure Register;
+
+implementation
+
+uses Math;
+
+{ ── TFRMaterialTabPage ── }
+
+constructor TFRMaterialTabPage.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FPageControl := nil;
+  FIconMode := imClear;
+  FImageIndex := -1;
+  Visible := False;
+end;
+
+destructor TFRMaterialTabPage.Destroy;
+begin
+  if Assigned(FPageControl) then
+    FPageControl.RemovePage(Self);
+  inherited Destroy;
+end;
+
+procedure TFRMaterialTabPage.SetPageControl(AValue: TFRMaterialPageControl);
+begin
+  if FPageControl = AValue then Exit;
+  if Assigned(FPageControl) then
+    FPageControl.RemovePage(Self);
+  FPageControl := AValue;
+  if Assigned(FPageControl) then
+  begin
+    Parent := FPageControl;
+    FPageControl.AddPage(Self);
+  end
+  else
+    Parent := nil;
+end;
+
+procedure TFRMaterialTabPage.SetTabCaption(const AValue: TCaption);
+begin
+  if FTabCaption = AValue then Exit;
+  FTabCaption := AValue;
+  if Assigned(FPageControl) then
+    FPageControl.Invalidate;
+end;
+
+procedure TFRMaterialTabPage.SetIconMode(AValue: TFRIconMode);
+begin
+  if FIconMode = AValue then Exit;
+  FIconMode := AValue;
+  if Assigned(FPageControl) then
+    FPageControl.Invalidate;
+end;
+
+procedure TFRMaterialTabPage.Paint;
+begin
+  Canvas.Brush.Color := MD3Colors.Surface;
+  Canvas.FillRect(ClientRect);
+end;
+
+{ ── TFRMaterialPageControl ── }
+
+constructor TFRMaterialPageControl.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FPages := TList.Create;
+  FActivePageIndex := -1;
+  FTabHeight := 48;
+  FShowCloseButton := False;
+  FHoverTabIndex := -1;
+  FHoverClose := False;
+  FBackgroundImage := TPicture.Create;
+  FBackgroundImage.OnChange := @BackgroundImageChanged;
+  Width := 400;
+  Height := 300;
+end;
+
+destructor TFRMaterialPageControl.Destroy;
+var
+  i: Integer;
+begin
+  { Clear back-references so TabPage destructors don't call RemovePage }
+  for i := FPages.Count - 1 downto 0 do
+    TFRMaterialTabPage(FPages[i]).FPageControl := nil;
+  FPages.Free;
+  FBackgroundImage.Free;
+  inherited Destroy;
+end;
+
+function TFRMaterialPageControl.GetPageCount: Integer;
+begin
+  Result := FPages.Count;
+end;
+
+function TFRMaterialPageControl.GetPage(Index: Integer): TFRMaterialTabPage;
+begin
+  Result := TFRMaterialTabPage(FPages[Index]);
+end;
+
+function TFRMaterialPageControl.GetActivePage: TFRMaterialTabPage;
+begin
+  if (FActivePageIndex >= 0) and (FActivePageIndex < FPages.Count) then
+    Result := TFRMaterialTabPage(FPages[FActivePageIndex])
+  else
+    Result := nil;
+end;
+
+procedure TFRMaterialPageControl.SetActivePage(AValue: TFRMaterialTabPage);
+var
+  idx: Integer;
+begin
+  if AValue = nil then
+    SetActivePageIndex(-1)
+  else
+  begin
+    idx := FPages.IndexOf(AValue);
+    if idx >= 0 then
+      SetActivePageIndex(idx);
+  end;
+end;
+
+procedure TFRMaterialPageControl.SetActivePageIndex(AValue: Integer);
+begin
+  if AValue < -1 then AValue := -1;
+  if AValue >= FPages.Count then AValue := FPages.Count - 1;
+  if FActivePageIndex = AValue then Exit;
+  FActivePageIndex := AValue;
+  UpdatePageLayout;
+  Invalidate;
+  if Assigned(FOnChange) then
+    FOnChange(Self);
+end;
+
+procedure TFRMaterialPageControl.SetShowCloseButton(AValue: Boolean);
+begin
+  if FShowCloseButton = AValue then Exit;
+  FShowCloseButton := AValue;
+  Invalidate;
+end;
+
+procedure TFRMaterialPageControl.BackgroundImageChanged(Sender: TObject);
+begin
+  Invalidate;
+end;
+
+procedure TFRMaterialPageControl.AddPage(APage: TFRMaterialTabPage);
+begin
+  if FPages.IndexOf(APage) >= 0 then Exit;
+  FPages.Add(APage);
+  APage.Parent := Self;
+  if FPages.Count = 1 then
+    SetActivePageIndex(0)
+  else
+  begin
+    UpdatePageLayout;
+    Invalidate;
+  end;
+end;
+
+procedure TFRMaterialPageControl.RemovePage(APage: TFRMaterialTabPage);
+var
+  idx: Integer;
+begin
+  idx := FPages.IndexOf(APage);
+  if idx < 0 then Exit;
+  FPages.Remove(APage);
+  if FActivePageIndex >= FPages.Count then
+    FActivePageIndex := FPages.Count - 1;
+  UpdatePageLayout;
+  Invalidate;
+end;
+
+function TFRMaterialPageControl.IndexOfPage(APage: TFRMaterialTabPage): Integer;
+begin
+  Result := FPages.IndexOf(APage);
+end;
+
+procedure TFRMaterialPageControl.UpdatePageLayout;
+var
+  i, contentTop, contentH: Integer;
+  page: TFRMaterialTabPage;
+begin
+  contentTop := FTabHeight;
+  contentH := Height - FTabHeight;
+  if contentH < 0 then contentH := 0;
+
+  for i := 0 to FPages.Count - 1 do
+  begin
+    page := TFRMaterialTabPage(FPages[i]);
+    page.SetBounds(0, contentTop, Width, contentH);
+    page.Visible := (i = FActivePageIndex);
+  end;
+end;
+
+function TFRMaterialPageControl.CalcTabWidth: Integer;
+begin
+  if FPages.Count = 0 then
+    Result := 0
+  else
+  begin
+    Result := Width div FPages.Count;
+    if Result > 240 then Result := 240;
+    if Result < 60 then Result := 60;
+  end;
+end;
+
+function TFRMaterialPageControl.TabRect(AIndex: Integer): TRect;
+var
+  tw: Integer;
+begin
+  tw := CalcTabWidth;
+  Result := Rect(AIndex * tw, 0, (AIndex + 1) * tw, FTabHeight);
+end;
+
+function TFRMaterialPageControl.CloseRect(AIndex: Integer): TRect;
+var
+  tr: TRect;
+begin
+  tr := TabRect(AIndex);
+  Result := Rect(tr.Right - 26, (FTabHeight - 18) div 2,
+                 tr.Right - 8, (FTabHeight + 18) div 2);
+end;
+
+procedure TFRMaterialPageControl.Paint;
+var
+  bmp: TBGRABitmap;
+  i, tw: Integer;
+  page: TFRMaterialTabPage;
+  tr, aRect: TRect;
+  textColor: TColor;
+  iconBmp: TBGRABitmap;
+begin
+  { Tab bar }
+  bmp := TBGRABitmap.Create(Width, FTabHeight, ColorToBGRA(MD3Colors.Surface));
+  try
+    { Background image on tab bar }
+    if Assigned(FBackgroundImage.Graphic) and (not FBackgroundImage.Graphic.Empty) then
+      bmp.Canvas.StretchDraw(Rect(0, 0, Width, FTabHeight), FBackgroundImage.Graphic);
+
+    { Bottom divider }
+    bmp.DrawLineAntialias(0, FTabHeight - 1, Width, FTabHeight - 1,
+      ColorToBGRA(MD3Colors.SurfaceContainerHighest), 1);
+
+    tw := CalcTabWidth;
+    for i := 0 to FPages.Count - 1 do
+    begin
+      page := TFRMaterialTabPage(FPages[i]);
+      tr := TabRect(i);
+
+      { Hover highlight }
+      if (i = FHoverTabIndex) and (not FHoverClose) then
+        bmp.FillRect(tr.Left, tr.Top, tr.Right, tr.Bottom,
+          ColorToBGRA(MD3Colors.OnSurface, 12), dmDrawWithTransparency);
+
+      { Active indicator }
+      if i = FActivePageIndex then
+        bmp.FillRect(tr.Left + tw div 4, FTabHeight - 3,
+                     tr.Left + tw - tw div 4, FTabHeight,
+          ColorToBGRA(MD3Colors.Primary), dmDrawWithTransparency);
+
+      { Icon }
+      if page.FIconMode <> imClear then
+      begin
+        if i = FActivePageIndex then
+          textColor := MD3Colors.Primary
+        else
+          textColor := MD3Colors.OnSurfaceVariant;
+        iconBmp := FRGetCachedIcon(page.FIconMode, FRColorToSVGHex(textColor), 2.0, 20, 20);
+        bmp.PutImage(tr.Left + (tw - 20) div 2, 8, iconBmp, dmDrawWithTransparency);
+      end;
+
+      { Close button }
+      if FShowCloseButton then
+      begin
+        if (i = FHoverTabIndex) and FHoverClose then
+          textColor := MD3Colors.Error
+        else
+          textColor := MD3Colors.OnSurfaceVariant;
+        iconBmp := FRGetCachedIcon(imClear, FRColorToSVGHex(textColor), 2.0, 14, 14);
+        bmp.PutImage(tr.Right - 24, (FTabHeight - 14) div 2, iconBmp, dmDrawWithTransparency);
+      end;
+    end;
+
+    bmp.Draw(Canvas, 0, 0, False);
+  finally
+    bmp.Free;
+  end;
+
+  { Text labels — second pass on Canvas for crisp font rendering }
+  Canvas.Font.Size := 10;
+  Canvas.Font.Style := [];
+  tw := CalcTabWidth;
+  for i := 0 to FPages.Count - 1 do
+  begin
+    page := TFRMaterialTabPage(FPages[i]);
+    tr := TabRect(i);
+
+    if i = FActivePageIndex then
+      textColor := MD3Colors.Primary
+    else
+      textColor := MD3Colors.OnSurfaceVariant;
+
+    aRect := tr;
+    if FShowCloseButton then
+      aRect.Right := aRect.Right - 28;
+
+    if page.FIconMode <> imClear then
+    begin
+      aRect.Top := 30;
+      aRect.Bottom := FTabHeight - 4;
+    end;
+
+    MD3DrawText(Canvas, page.FTabCaption, aRect, textColor, taCenter, True);
+  end;
+
+  { Content area — only visible when no pages }
+  if FPages.Count = 0 then
+  begin
+    Canvas.Brush.Color := MD3Colors.Surface;
+    Canvas.FillRect(Rect(0, FTabHeight, Width, Height));
+  end;
+end;
+
+procedure TFRMaterialPageControl.MouseDown(Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+var
+  i, tw: Integer;
+  page: TFRMaterialTabPage;
+  allowClose: Boolean;
+begin
+  inherited;
+  if (Button = mbLeft) and (Y < FTabHeight) then
+  begin
+    tw := CalcTabWidth;
+    if tw > 0 then
+    begin
+      i := X div tw;
+      if (i >= 0) and (i < FPages.Count) then
+      begin
+        { Close button click }
+        if FShowCloseButton and PtInRect(CloseRect(i), Point(X, Y)) then
+        begin
+          page := TFRMaterialTabPage(FPages[i]);
+          allowClose := True;
+          if Assigned(FOnCloseTab) then
+            FOnCloseTab(Self, page, allowClose);
+          if allowClose then
+          begin
+            page.FPageControl := nil; { avoid double-remove in Destroy }
+            RemovePage(page);
+            page.Free;
+          end;
+          Exit;
+        end;
+        { Select tab }
+        SetActivePageIndex(i);
+      end;
+    end;
+  end;
+end;
+
+procedure TFRMaterialPageControl.MouseMove(Shift: TShiftState; X, Y: Integer);
+var
+  tw, newHover: Integer;
+  newClose: Boolean;
+begin
+  inherited;
+  if Y < FTabHeight then
+  begin
+    tw := CalcTabWidth;
+    if tw > 0 then
+    begin
+      newHover := X div tw;
+      if (newHover < 0) or (newHover >= FPages.Count) then
+        newHover := -1;
+    end
+    else
+      newHover := -1;
+
+    newClose := False;
+    if FShowCloseButton and (newHover >= 0) then
+      newClose := PtInRect(CloseRect(newHover), Point(X, Y));
+  end
+  else
+  begin
+    newHover := -1;
+    newClose := False;
+  end;
+
+  if (newHover <> FHoverTabIndex) or (newClose <> FHoverClose) then
+  begin
+    FHoverTabIndex := newHover;
+    FHoverClose := newClose;
+    Invalidate;
+  end;
+end;
+
+procedure TFRMaterialPageControl.MouseLeave;
+begin
+  inherited;
+  if (FHoverTabIndex >= 0) or FHoverClose then
+  begin
+    FHoverTabIndex := -1;
+    FHoverClose := False;
+    Invalidate;
+  end;
+end;
+
+procedure TFRMaterialPageControl.Resize;
+begin
+  inherited;
+  UpdatePageLayout;
+end;
+
+procedure Register;
+begin
+  RegisterComponents('BGRA Controls', [TFRMaterialPageControl]);
+end;
+
+end.

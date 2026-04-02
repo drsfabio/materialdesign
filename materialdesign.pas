@@ -15,7 +15,8 @@ uses
   FRMaterial3Progress, FRMaterial3Divider, FRMaterial3Dialog, FRMaterial3Snackbar, 
   FRMaterial3Tooltip, FRMaterial3List, FRMaterial3Menu, FRMaterial3Tabs, FRMaterial3AppBar, 
   FRMaterial3Nav, FRMaterial3TimePicker, FRMaterial3Sheet, FRMaterial3TreeView,
-  FRMaterialThemeManager, FRMaterial3DataGrid, FRMaterialFieldPainter, LazarusPackageIntf;
+  FRMaterialThemeManager, FRMaterial3DataGrid, FRMaterialFieldPainter,
+  FRMaterial3PageControl, LazarusPackageIntf;
 
 implementation
 
@@ -50,6 +51,7 @@ begin
   RegisterUnit('FRMaterial3TreeView', @FRMaterial3TreeView.Register);
   RegisterUnit('FRMaterialThemeManager', @FRMaterialThemeManager.Register);
   RegisterUnit('FRMaterial3DataGrid',    @FRMaterial3DataGrid.Register);
+  RegisterUnit('FRMaterial3PageControl', @FRMaterial3PageControl.Register);
 end;
 
 initialization
