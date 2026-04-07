@@ -91,6 +91,7 @@ begin
   FTimer := TTimer.Create(Self);
   FTimer.Enabled := False;
   FTimer.OnTimer := @OnShowTimer;
+  FAutoHideTimer := TTimer.Create(Self);
   FAutoHideTimer.Enabled := False;
   FAutoHideTimer.Interval := 3000;
   FAutoHideTimer.OnTimer := @OnHideTimer;
