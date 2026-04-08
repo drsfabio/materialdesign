@@ -136,6 +136,7 @@ type
     procedure DoExit; override;
     procedure DoOnResize; override;
     procedure Paint; override;
+    procedure ApplyTheme(const AThemeManager: TObject); override;
 
   public
     constructor Create(AOwner: TComponent); override;
@@ -683,6 +684,36 @@ begin
   { Redireciona o foco para o edit interno }
   if FEdit.CanFocus then
     FEdit.SetFocus;
+end;
+
+procedure TFRMaterialCurrencyEdit.ApplyTheme(const AThemeManager: TObject);
+begin
+  inherited ApplyTheme(AThemeManager);
+
+  if toVariant in SyncWithTheme then
+    FVariant := FRMDGetThemeVariant(AThemeManager);
+
+  FAccentColor   := MD3Colors.Primary;
+  FDisabledColor := MD3Colors.OnSurfaceVariant;
+
+  case FVariant of
+    mvFilled:   Self.Color := MD3Colors.SurfaceContainerHighest;
+    mvOutlined: Self.Color := MD3Colors.Surface;
+  else
+    Self.ParentColor := True;
+  end;
+
+  Self.Font.Color   := MD3Colors.OnSurface;
+  FLabel.Font.Color := MD3Colors.OnSurfaceVariant;
+
+  if Assigned(FClearButton) then
+  begin
+    FClearButton.NormalColor := MD3Colors.OnSurfaceVariant;
+    FClearButton.HoverColor  := MD3Colors.Error;
+    FClearButton.InvalidateCache;
+  end;
+
+  Invalidate;
 end;
 
 procedure TFRMaterialCurrencyEdit.DoExit;
