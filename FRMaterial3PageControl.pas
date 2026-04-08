@@ -21,9 +21,10 @@ unit FRMaterial3PageControl;
 interface
 
 uses
-  Classes, SysUtils, Controls, Graphics, Forms, Types,
+  Classes, SysUtils, Controls, Graphics, Forms, Types, Dialogs,
   {$IFDEF FPC} LCLType, LResources, {$ENDIF}
-  BGRABitmap, BGRABitmapTypes, FRMaterialTheme, FRMaterial3Base, FRMaterialIcons;
+  BGRABitmap, BGRABitmapTypes, FRMaterialTheme, FRMaterial3Base, FRMaterialIcons,
+  ComponentEditors, PropEdits;
 
 type
   TFRTabPosition = (tpTop, tpBottom);
@@ -36,10 +37,12 @@ type
     FPageControl: TFRMaterialPageControl;
     FTabCaption: TCaption;
     FIconMode: TFRIconMode;
+    FShowIcon: Boolean;
     FImageIndex: Integer;
     procedure SetPageControl(AValue: TFRMaterialPageControl);
     procedure SetTabCaption(const AValue: TCaption);
     procedure SetIconMode(AValue: TFRIconMode);
+    procedure SetShowIcon(AValue: Boolean);
   protected
     procedure Paint; override;
     procedure ApplyTheme(const AThemeManager: TObject); virtual;
@@ -50,6 +53,7 @@ type
     property PageControl: TFRMaterialPageControl read FPageControl write SetPageControl;
     property Caption: TCaption read FTabCaption write SetTabCaption;
     property IconMode: TFRIconMode read FIconMode write SetIconMode default imClear;
+    property ShowIcon: Boolean read FShowIcon write SetShowIcon default True;
     property ImageIndex: Integer read FImageIndex write FImageIndex default -1;
     property Color;
     property Tag;
@@ -121,6 +125,15 @@ type
     property Visible;
   end;
 
+  { ── Component Editor — IDE integration ── }
+
+  TFRMaterialPageControlEditor = class(TComponentEditor)
+  public
+    function GetVerbCount: Integer; override;
+    function GetVerb(Index: Integer): string; override;
+    procedure ExecuteVerb(Index: Integer); override;
+  end;
+
 procedure Register;
 
 implementation
@@ -137,6 +150,7 @@ begin
 
   FPageControl := nil;
   FIconMode := imClear;
+  FShowIcon := True;
   FImageIndex := -1;
   Visible := False;
 end;
@@ -184,6 +198,14 @@ procedure TFRMaterialTabPage.SetIconMode(AValue: TFRIconMode);
 begin
   if FIconMode = AValue then Exit;
   FIconMode := AValue;
+  if Assigned(FPageControl) then
+    FPageControl.Invalidate;
+end;
+
+procedure TFRMaterialTabPage.SetShowIcon(AValue: Boolean);
+begin
+  if FShowIcon = AValue then Exit;
+  FShowIcon := AValue;
   if Assigned(FPageControl) then
     FPageControl.Invalidate;
 end;
@@ -444,7 +466,7 @@ begin
       end;
 
       { Icon }
-      if page.FIconMode <> imClear then
+      if page.FShowIcon and (page.FIconMode <> imClear) then
       begin
         if i = FActivePageIndex then
           textColor := MD3Colors.Primary
@@ -499,7 +521,7 @@ begin
     if FShowCloseButton then
       aRect.Right := aRect.Right - 28;
 
-    if page.FIconMode <> imClear then
+    if page.FShowIcon and (page.FIconMode <> imClear) then
     begin
       aRect.Top := tr.Top + 30;
       aRect.Bottom := tr.Top + FTabHeight - 4;
@@ -624,9 +646,80 @@ begin
   UpdatePageLayout;
 end;
 
+{ ── TFRMaterialPageControlEditor ── }
+
+function TFRMaterialPageControlEditor.GetVerbCount: Integer;
+begin
+  Result := 4;
+end;
+
+function TFRMaterialPageControlEditor.GetVerb(Index: Integer): string;
+begin
+  case Index of
+    0: Result := 'Add Page';
+    1: Result := 'Delete Page';
+    2: Result := 'Next Page';
+    3: Result := 'Previous Page';
+  else
+    Result := '';
+  end;
+end;
+
+procedure TFRMaterialPageControlEditor.ExecuteVerb(Index: Integer);
+var
+  PC: TFRMaterialPageControl;
+  Page: TFRMaterialTabPage;
+  ADesigner: TComponentEditorDesigner;
+  PageName, PageCaption: string;
+begin
+  PC := Component as TFRMaterialPageControl;
+  ADesigner := GetDesigner;
+  case Index of
+    0: { Add Page }
+    begin
+      PageName := ADesigner.CreateUniqueComponentName('FRMaterialTabPage');
+      if not InputQuery('Add Page', 'Component Name:', PageName) then Exit;
+      PageCaption := 'Page ' + IntToStr(PC.PageCount + 1);
+      if not InputQuery('Add Page', 'Tab Caption:', PageCaption) then Exit;
+      Page := TFRMaterialTabPage.Create(PC.Owner);
+      Page.Name := PageName;
+      Page.Caption := PageCaption;
+      Page.PageControl := PC;
+      PC.ActivePageIndex := PC.PageCount - 1;
+      ADesigner.Modified;
+    end;
+    1: { Delete Page }
+    begin
+      if PC.PageCount = 0 then Exit;
+      Page := PC.ActivePage;
+      if Page = nil then Exit;
+      Page.PageControl := nil;
+      Page.Free;
+      ADesigner.Modified;
+    end;
+    2: { Next Page }
+    begin
+      if PC.ActivePageIndex < PC.PageCount - 1 then
+      begin
+        PC.ActivePageIndex := PC.ActivePageIndex + 1;
+        ADesigner.Modified;
+      end;
+    end;
+    3: { Previous Page }
+    begin
+      if PC.ActivePageIndex > 0 then
+      begin
+        PC.ActivePageIndex := PC.ActivePageIndex - 1;
+        ADesigner.Modified;
+      end;
+    end;
+  end;
+end;
+
 procedure Register;
 begin
   RegisterComponents('Material Design 3', [TFRMaterialPageControl]);
+  RegisterComponentEditor(TFRMaterialPageControl, TFRMaterialPageControlEditor);
 end;
 
 end.
