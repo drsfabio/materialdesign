@@ -67,6 +67,7 @@ var
 begin
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
+    MD3DrawShadow(bmp, 0, 0, Width - 1, Height - 1, 4, elLevel3);
     MD3FillRoundRect(bmp, 0, 0, Width - 1, Height - 1, 4, MD3Colors.InverseSurface);
     bmp.Draw(Canvas, 0, 0, False);
   finally

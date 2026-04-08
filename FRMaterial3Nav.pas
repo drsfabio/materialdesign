@@ -17,7 +17,7 @@ uses
   Classes, SysUtils, Controls, Graphics,
   {$IFDEF FPC} LResources, {$ENDIF}
   BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialIcons,
-  FRMaterial3PageControl;
+  FRMaterial3PageControl, FRMaterialTheme;
 
 type
   TFRMaterialNavItem = class(TCollectionItem)
@@ -57,6 +57,7 @@ type
     procedure SetPageControl(AValue: TFRMaterialPageControl);
   protected
     procedure Paint; override;
+    procedure DoOnResize; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
@@ -291,6 +292,13 @@ begin
     FPageControl := nil;
 end;
 
+procedure TFRMaterialNavBar.DoOnResize;
+begin
+  inherited DoOnResize;
+  if not (csLoading in ComponentState) then
+    Height := 80 + MD3DensityDelta(Density);
+end;
+
 procedure TFRMaterialNavBar.Paint;
 var
   bmp: TBGRABitmap;
@@ -332,6 +340,7 @@ begin
           DrawMD3Badge(bmp, Canvas, xPos + (iw - 24) div 2, 16, item.FBadge);
       end;
     end;
+    PaintRipple(bmp, MD3Colors.OnSurface);
     bmp.Draw(Canvas, 0, 0, False);
   finally
     bmp.Free;
@@ -472,9 +481,10 @@ begin
       if item.FBadge <> '' then
         DrawMD3Badge(bmp, Canvas, Width - 44, yPos + 16, item.FBadge);
 
-      Inc(yPos, 56);
+      Inc(yPos, 56 + MD3DensityDelta(Density));
     end;
 
+    PaintRipple(bmp, MD3Colors.OnSurface);
     bmp.Draw(Canvas, 0, 0, False);
   finally
     bmp.Free;
@@ -499,9 +509,9 @@ begin
       clr := MD3Colors.OnPrimaryContainer
     else
       clr := MD3Colors.OnSurfaceVariant;
-    aRect := Rect(68, yPos, Width - 16, yPos + 56);
+    aRect := Rect(68, yPos, Width - 16, yPos + 56 + MD3DensityDelta(Density));
     MD3DrawText(Canvas, FItems[i].FCaption, aRect, clr, taLeftJustify, True);
-    Inc(yPos, 56);
+    Inc(yPos, 56 + MD3DensityDelta(Density));
   end;
 end;
 
@@ -634,9 +644,10 @@ begin
       if item.FBadge <> '' then
         DrawMD3Badge(bmp, Canvas, 28, yPos + 8, item.FBadge);
 
-      Inc(yPos, 56);
+      Inc(yPos, 56 + MD3DensityDelta(Density));
     end;
 
+    PaintRipple(bmp, MD3Colors.OnSurface);
     bmp.Draw(Canvas, 0, 0, False);
   finally
     bmp.Free;

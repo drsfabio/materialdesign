@@ -15,7 +15,7 @@ interface
 uses
   Classes, SysUtils, Controls, Graphics,
   {$IFDEF FPC} LResources, {$ENDIF}
-  BGRABitmap, BGRABitmapTypes, FRMaterial3Base;
+  BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialTheme;
 
 type
   TFRMDTimeFormat = (tfHour12, tfHour24);
@@ -37,6 +37,7 @@ type
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure KeyPress(var Key: Char); override;
+    procedure DoOnResize; override;
   public
     constructor Create(AOwner: TComponent); override;
     property TimeStr: string read GetTimeStr;
@@ -70,6 +71,13 @@ begin
   Width := 220;
   Height := 72;
   TabStop := True;
+end;
+
+procedure TFRMaterialTimePicker.DoOnResize;
+begin
+  inherited DoOnResize;
+  if not (csLoading in ComponentState) then
+    Height := 72 + MD3DensityDelta(Density);
 end;
 
 procedure TFRMaterialTimePicker.SetHour(AValue: Integer);

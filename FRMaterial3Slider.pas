@@ -244,6 +244,7 @@ begin
     bmp.FillEllipseAntialias(thumbX, trackY, 10, 10,
       ColorToBGRA(ColorToRGB(thumbColor)));
 
+    PaintRipple(bmp, thumbColor);
     bmp.Draw(Canvas, 0, 0, False);
   finally
     bmp.Free;

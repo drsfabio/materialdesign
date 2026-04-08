@@ -216,6 +216,7 @@ begin
         ColorToBGRA(ColorToRGB(trackColor)), 2.0);
     end;
 
+    PaintRipple(bmp, trackColor);
     bmp.Draw(Canvas, 0, 0, False);
   finally
     bmp.Free;
@@ -352,6 +353,7 @@ begin
       end;
     end;
 
+    PaintRipple(bmp, MD3Colors.Primary);
     bmp.Draw(Canvas, 0, 0, False);
   finally
     bmp.Free;
@@ -465,6 +467,7 @@ begin
       MD3StateLayer(bmp, circX - 18, circY - 18, circX + 18, circY + 18,
         18, MD3Colors.OnSurface, InteractionState);
 
+    PaintRipple(bmp, MD3Colors.Primary);
     bmp.Draw(Canvas, 0, 0, False);
   finally
     bmp.Free;

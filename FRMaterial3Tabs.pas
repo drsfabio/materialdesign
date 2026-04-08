@@ -14,7 +14,7 @@ interface
 uses
   Classes, SysUtils, Controls, Graphics,
   {$IFDEF FPC} LResources, {$ENDIF}
-  BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialIcons;
+  BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialIcons, FRMaterialTheme;
 
 type
   TFRMDTabStyle = (tsFixed, tsScrollable);
@@ -24,9 +24,11 @@ type
   private
     FCaption: string;
     FIconMode: TFRIconMode;
+    FBadge: string;
   published
     property Caption: string read FCaption write FCaption;
     property IconMode: TFRIconMode read FIconMode write FIconMode;
+    property Badge: string read FBadge write FBadge;
   end;
 
   TFRMaterialTabItems = class(TCollection)
@@ -59,6 +61,7 @@ type
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure DoOnResize; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -244,6 +247,7 @@ begin
       end;
     end;
 
+    PaintRipple(bmp, MD3Colors.Primary);
     bmp.Draw(Canvas, 0, 0, False);
   finally
     bmp.Free;
@@ -288,6 +292,13 @@ end;
 procedure TFRMaterialTabs.BackgroundImageChanged(Sender: TObject);
 begin
   Invalidate;
+end;
+
+procedure TFRMaterialTabs.DoOnResize;
+begin
+  inherited DoOnResize;
+  if not (csLoading in ComponentState) then
+    Height := 48 + MD3DensityDelta(Density);
 end;
 
 procedure TFRMaterialTabs.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);

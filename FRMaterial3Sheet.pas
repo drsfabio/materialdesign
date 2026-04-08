@@ -15,7 +15,7 @@ interface
 uses
   Classes, SysUtils, Controls, Graphics, ExtCtrls, Forms,
   {$IFDEF FPC} LResources, {$ENDIF}
-  BGRABitmap, BGRABitmapTypes, FRMaterial3Base;
+  BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialTheme;
 
 type
   TFRMaterialBottomSheet = class(TFRMaterial3Control)
@@ -153,6 +153,7 @@ var
 begin
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
+    MD3DrawShadow(bmp, 0, 0, Width - 1, Height + 28, 28, elLevel1);
     { top corners rounded }
     MD3FillRoundRect(bmp, 0, 0, Width - 1, Height + 28, 28, MD3Colors.SurfaceContainerLow);
 
@@ -254,6 +255,7 @@ var
 begin
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
+    MD3DrawShadow(bmp, 0, 0, Width - 1, Height - 1, 16, elLevel1);
     MD3FillRoundRect(bmp, 0, 0, Width - 1, Height - 1, 16, MD3Colors.SurfaceContainerLow);
     bmp.Draw(Canvas, 0, 0, False);
   finally

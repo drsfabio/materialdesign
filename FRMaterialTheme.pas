@@ -40,6 +40,17 @@ type
     ddUltraDense   { -12px — espaço mínimo   }
   );
 
+  { Elevation levels MD3. Controla intensidade da sombra.
+    Level0=0dp, Level1=1dp, Level2=3dp, Level3=6dp, Level4=8dp, Level5=12dp. }
+  TFRMDElevation = (
+    elLevel0,      { 0dp  — sem sombra            }
+    elLevel1,      { 1dp  — card em repouso        }
+    elLevel2,      { 3dp  — card hover, FAB rest    }
+    elLevel3,      { 6dp  — FAB pressed, snackbar   }
+    elLevel4,      { 8dp  — menu, dialog            }
+    elLevel5       { 12dp — modal sheets            }
+  );
+
   { Opções de sincronização com o ThemeManager global }
   TFRMDSyncOption = (toColor, toDensity, toVariant);
   TFRMDSyncOptions = set of TFRMDSyncOption;
@@ -87,6 +98,9 @@ function MCContrastText(ABg: TColor): TColor;
 { Retorna o delta em pixels para a escala de densidade.
   Normal=0, Compact=-4, Dense=-8, UltraDense=-12. }
 function MD3DensityDelta(ADensity: TFRMDDensity): Integer;
+
+{ Retorna o offset de sombra em pixels para o nível de elevação MD3. }
+function MD3ElevationOffset(ALevel: TFRMDElevation): Integer;
 
 { Registra AComponent no ThemeManager global, se disponível.
   Chame no constructor dos componentes MD3. }
@@ -157,6 +171,13 @@ const
   Deltas: array[TFRMDDensity] of Integer = (0, -4, -8, -12);
 begin
   Result := Deltas[ADensity];
+end;
+
+function MD3ElevationOffset(ALevel: TFRMDElevation): Integer;
+const
+  Offsets: array[TFRMDElevation] of Integer = (0, 1, 3, 6, 8, 12);
+begin
+  Result := Offsets[ALevel];
 end;
 
 procedure FRMDRegisterComponent(AComponent: IFRMaterialComponent);

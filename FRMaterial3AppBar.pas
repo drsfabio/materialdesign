@@ -15,7 +15,7 @@ interface
 uses
   Classes, SysUtils, Controls, Graphics, Menus,
   {$IFDEF FPC} LResources, {$ENDIF}
-  BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialIcons;
+  BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialIcons, FRMaterialTheme;
 
 type
   TFRMDAppBarSize = (absSmall, absMedium, absLarge);
@@ -24,10 +24,12 @@ type
   private
     FIconMode: TFRIconMode;
     FHint: string;
+    FBadge: string;
     FOnClick: TNotifyEvent;
   published
     property IconMode: TFRIconMode read FIconMode write FIconMode;
     property Hint: string read FHint write FHint;
+    property Badge: string read FBadge write FBadge;
     property OnClick: TNotifyEvent read FOnClick write FOnClick;
   end;
 
@@ -58,6 +60,7 @@ type
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure DoOnResize; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -80,6 +83,7 @@ type
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure DoOnResize; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -211,6 +215,7 @@ begin
     bmp.DrawLineAntialias(0, Height - 1, Width, Height - 1,
       ColorToBGRA(MD3Colors.Primary), 2);
 
+    PaintRipple(bmp, MD3Colors.OnSurface);
     bmp.Draw(Canvas, 0, 0, False);
   finally
     bmp.Free;
@@ -238,6 +243,13 @@ begin
   MD3DrawText(Canvas, FTitle, aRect, MD3Colors.OnSurface, taLeftJustify, True);
   Canvas.Font.Style := [];
   Canvas.Font.Size := 10;
+end;
+
+procedure TFRMaterialAppBar.DoOnResize;
+begin
+  inherited DoOnResize;
+  if not (csLoading in ComponentState) then
+    Height := GetBarHeight + MD3DensityDelta(Density);
 end;
 
 procedure TFRMaterialAppBar.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -306,10 +318,18 @@ begin
       bmp.PutImage(xPos + 12, 20, iconBmp, dmDrawWithTransparency);
       Inc(xPos, 48);
     end;
+    PaintRipple(bmp, MD3Colors.OnSurface);
     bmp.Draw(Canvas, 0, 0, False);
   finally
     bmp.Free;
   end;
+end;
+
+procedure TFRMaterialToolbar.DoOnResize;
+begin
+  inherited DoOnResize;
+  if not (csLoading in ComponentState) then
+    Height := 64 + MD3DensityDelta(Density);
 end;
 
 procedure TFRMaterialToolbar.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);

@@ -15,7 +15,7 @@ interface
 uses
   Classes, SysUtils, Controls, Graphics,
   {$IFDEF FPC} LResources, {$ENDIF}
-  BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialIcons;
+  BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialIcons, FRMaterialTheme;
 
 type
   TFRMDChipStyle = (csAssist, csFilter, csInput, csSuggestion);
@@ -37,6 +37,7 @@ type
     procedure SetIconMode(AValue: TFRIconMode);
   protected
     procedure Paint; override;
+    procedure DoOnResize; override;
     procedure Click; override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     class function GetControlClassDefaultSize: TSize; override;
@@ -178,6 +179,13 @@ begin
   inherited;
 end;
 
+procedure TFRMaterialChip.DoOnResize;
+begin
+  inherited DoOnResize;
+  if not (csLoading in ComponentState) then
+    Height := 32 + MD3DensityDelta(Density);
+end;
+
 procedure TFRMaterialChip.Paint;
 var
   bmp, iconBmp: TBGRABitmap;
@@ -215,6 +223,7 @@ begin
     if Enabled then
       MD3StateLayer(bmp, 0, 0, Width - 1, Height - 1, r, textColor, InteractionState);
 
+    PaintRipple(bmp, textColor);
     bmp.Draw(Canvas, 0, 0, False);
   finally
     bmp.Free;

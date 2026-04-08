@@ -15,7 +15,7 @@ interface
 uses
   Classes, SysUtils, Controls, Graphics, Forms,
   {$IFDEF FPC} LResources, {$ENDIF}
-  BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialIcons;
+  BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialIcons, FRMaterialTheme;
 
 type
   TFRMDListItemType = (litOneLine, litTwoLine, litThreeLine);
@@ -135,11 +135,11 @@ end;
 function TFRMaterialListView.GetItemHeight: Integer;
 begin
   case FItemType of
-    litOneLine: Result := 56;
-    litTwoLine: Result := 72;
-    litThreeLine: Result := 88;
+    litOneLine: Result := 56 + MD3DensityDelta(Density);
+    litTwoLine: Result := 72 + MD3DensityDelta(Density);
+    litThreeLine: Result := 88 + MD3DensityDelta(Density);
   else
-    Result := 56;
+    Result := 56 + MD3DensityDelta(Density);
   end;
 end;
 
@@ -204,6 +204,7 @@ begin
           ColorToBGRA(MD3Colors.OutlineVariant), 1);
     end;
 
+    PaintRipple(bmp, MD3Colors.OnSurface);
     bmp.Draw(Canvas, 0, 0, False);
   finally
     bmp.Free;

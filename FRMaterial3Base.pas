@@ -13,7 +13,7 @@ unit FRMaterial3Base;
 interface
 
 uses
-  Classes, SysUtils, Controls, Graphics,
+  Classes, SysUtils, Controls, Graphics, ExtCtrls,
   {$IFDEF FPC} LCLType, LCLIntf, {$ENDIF}
   BGRABitmap, BGRABitmapTypes, FRMaterialTheme, FRMaterialMasks;
 
@@ -120,6 +120,10 @@ procedure MD3StateLayer(ABmp: TBGRABitmap; X1, Y1, X2, Y2: Single;
 procedure MD3DrawText(ACanvas: TCanvas; const AText: string; ARect: TRect;
   AColor: TColor; AHAlign: TAlignment = taCenter; AVCenter: Boolean = True);
 
+{ Desenha sombra MD3 com nível de elevação. }
+procedure MD3DrawShadow(ABmp: TBGRABitmap; X1, Y1, X2, Y2: Single;
+  ARadius: Integer; ALevel: TFRMDElevation);
+
 { Initializes MD3Colors with the Material 3 baseline light scheme. }
 procedure MD3LoadLightScheme;
 
@@ -150,6 +154,14 @@ type
     FPressed: Boolean;
     FDensity: TFRMDDensity;
     FSyncWithTheme: TFRMDSyncOptions;
+    { Ripple animation }
+    FRippleX: Integer;
+    FRippleY: Integer;
+    FRippleProgress: Single;
+    FRippleFading: Boolean;
+    FRippleFadeProgress: Single;
+    FRippleTimer: TTimer;
+    procedure DoRippleTick(Sender: TObject);
   protected
     procedure EraseBackground({%H-}DC: HDC); override;
     procedure MouseEnter; override;
@@ -158,6 +170,8 @@ type
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure SetDensity(AValue: TFRMDDensity); virtual;
     function InteractionState: TFRMDInteractionState;
+    { Desenha o efeito ripple (círculo expandindo do ponto de clique) }
+    procedure PaintRipple(ABmp: TBGRABitmap; ARippleColor: TColor);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -683,6 +697,25 @@ begin
   ACanvas.TextOut(tx, ty, AText);
 end;
 
+{ ── MD3DrawShadow ── }
+
+procedure MD3DrawShadow(ABmp: TBGRABitmap; X1, Y1, X2, Y2: Single;
+  ARadius: Integer; ALevel: TFRMDElevation);
+var
+  off, i, layers: Integer;
+  alpha: Byte;
+begin
+  if ALevel = elLevel0 then Exit;
+  off := MD3ElevationOffset(ALevel);
+  layers := EnsureRange(off, 1, 4);
+  for i := layers downto 1 do
+  begin
+    alpha := EnsureRange(30 div i, 5, 30);
+    MD3FillRoundRect(ABmp, X1 + i, Y1 + i + off, X2 - i, Y2 + off,
+      ARadius, MD3Colors.OnSurface, alpha);
+  end;
+end;
+
 { ── TFRMaterial3Control ── }
 
 constructor TFRMaterial3Control.Create(AOwner: TComponent);
@@ -690,6 +723,10 @@ begin
   inherited Create(AOwner);
   FHovered := False;
   FPressed := False;
+  FRippleProgress := 0;
+  FRippleFading := False;
+  FRippleFadeProgress := 0;
+  FRippleTimer := nil;
   ControlStyle := ControlStyle + [csClickEvents, csCaptureMouse];
   TabStop := True;
 
@@ -698,6 +735,7 @@ end;
 
 destructor TFRMaterial3Control.Destroy;
 begin
+  FreeAndNil(FRippleTimer);
   FRMDUnregisterComponent(Self);
   inherited Destroy;
 end;
@@ -738,6 +776,11 @@ procedure TFRMaterial3Control.MouseLeave;
 begin
   FHovered := False;
   FPressed := False;
+  if FRippleProgress > 0 then
+  begin
+    FRippleFading := True;
+    FRippleFadeProgress := 0;
+  end;
   Invalidate;
   inherited;
 end;
@@ -747,6 +790,22 @@ begin
   if Button = mbLeft then
   begin
     FPressed := True;
+    { Start ripple animation }
+    if not (csDesigning in ComponentState) then
+    begin
+      FRippleX := X;
+      FRippleY := Y;
+      FRippleProgress := 0;
+      FRippleFading := False;
+      FRippleFadeProgress := 0;
+      if FRippleTimer = nil then
+      begin
+        FRippleTimer := TTimer.Create(Self);
+        FRippleTimer.Interval := 16;
+        FRippleTimer.OnTimer := @DoRippleTick;
+      end;
+      FRippleTimer.Enabled := True;
+    end;
     Invalidate;
   end;
   inherited;
@@ -757,6 +816,12 @@ begin
   if Button = mbLeft then
   begin
     FPressed := False;
+    { Start fade-out }
+    if FRippleProgress > 0 then
+    begin
+      FRippleFading := True;
+      FRippleFadeProgress := 0;
+    end;
     Invalidate;
   end;
   inherited;
@@ -774,6 +839,57 @@ begin
     Result := isHovered
   else
     Result := isNormal;
+end;
+
+procedure TFRMaterial3Control.DoRippleTick(Sender: TObject);
+begin
+  if FRippleFading then
+  begin
+    FRippleFadeProgress := FRippleFadeProgress + 0.12;
+    if FRippleFadeProgress >= 1.0 then
+    begin
+      FRippleFadeProgress := 1.0;
+      FRippleFading := False;
+      FRippleProgress := 0;
+      if Assigned(FRippleTimer) then
+        FRippleTimer.Enabled := False;
+    end;
+  end
+  else
+  begin
+    FRippleProgress := FRippleProgress + 0.08;
+    if FRippleProgress >= 1.0 then
+    begin
+      FRippleProgress := 1.0;
+      if not FPressed then
+      begin
+        FRippleFading := True;
+        FRippleFadeProgress := 0;
+      end;
+    end;
+  end;
+  Invalidate;
+end;
+
+procedure TFRMaterial3Control.PaintRipple(ABmp: TBGRABitmap; ARippleColor: TColor);
+var
+  maxR, currentR: Single;
+  alpha: Byte;
+begin
+  if (FRippleProgress <= 0) and (not FRippleFading) then Exit;
+
+  maxR := Sqrt(Sqr(Single(Width)) + Sqr(Single(Height)));
+  currentR := maxR * FRippleProgress;
+
+  if FRippleFading then
+    alpha := EnsureRange(Round(25 * (1.0 - FRippleFadeProgress)), 0, 255)
+  else
+    alpha := 25; { ~10% opacity per MD3 spec }
+
+  if alpha <= 0 then Exit;
+
+  ABmp.FillEllipseAntialias(FRippleX, FRippleY, currentR, currentR,
+    ColorToBGRA(ColorToRGB(ARippleColor), alpha));
 end;
 
 { ── TFRMaterial3Graphic ── }

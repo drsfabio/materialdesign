@@ -15,7 +15,7 @@ interface
 uses
   Classes, SysUtils, Controls, Graphics, Forms,
   {$IFDEF FPC} LCLType, LResources, {$ENDIF}
-  BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialIcons;
+  BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialIcons, FRMaterialTheme;
 
 type
   TFRMaterialTreeNode = class;
@@ -72,6 +72,7 @@ type
     procedure RebuildFlatList;
     procedure CollectNodes(ANodes: TFRMaterialTreeNodes; ALevel: Integer);
     procedure SetSelectedNode(AValue: TFRMaterialTreeNode);
+    function GetEffectiveItemHeight: Integer;
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -170,6 +171,11 @@ begin
   Height := 400;
 end;
 
+function TFRMaterialTreeView.GetEffectiveItemHeight: Integer;
+begin
+  Result := FItemHeight + MD3DensityDelta(Density);
+end;
+
 destructor TFRMaterialTreeView.Destroy;
 begin
   FFlatList.Free;
@@ -212,7 +218,7 @@ end;
 procedure TFRMaterialTreeView.Paint;
 var
   bmp: TBGRABitmap;
-  I, yPos, xOff: Integer;
+  I, yPos, xOff, ih: Integer;
   Node: TFRMaterialTreeNode;
   aRect: TRect;
   clr, icoClr: TColor;
@@ -222,20 +228,21 @@ var
   nodeIcon: TFRIconMode;
 begin
   RebuildFlatList;
+  ih := GetEffectiveItemHeight;
 
   bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.Surface));
   try
     for I := 0 to FFlatList.Count - 1 do
     begin
       Node := TFRMaterialTreeNode(FFlatList[I]);
-      yPos := I * FItemHeight - FScrollOffset;
-      if (yPos + FItemHeight < 0) or (yPos > Height) then Continue;
+      yPos := I * ih - FScrollOffset;
+      if (yPos + ih < 0) or (yPos > Height) then Continue;
 
       xOff := 16 + Node.FLevel * FIndent;
 
       { Selection highlight }
       if Node = FSelectedNode then
-        bmp.FillRoundRectAntialias(8, yPos + 2, Width - 8, yPos + FItemHeight - 2,
+        bmp.FillRoundRectAntialias(8, yPos + 2, Width - 8, yPos + ih - 2,
           14, 14, ColorToBGRA(MD3Colors.SecondaryContainer));
 
       { Expand/collapse chevron for parent nodes }
@@ -250,7 +257,7 @@ begin
         iconBmp := FRGetCachedIcon(chevMode, FRColorToSVGHex(icoClr), 2.0, 18, 18);
         
         if iconBmp <> nil then
-          bmp.PutImage(xOff, yPos + (FItemHeight - 18) div 2, iconBmp, dmDrawWithTransparency);
+          bmp.PutImage(xOff, yPos + (ih - 18) div 2, iconBmp, dmDrawWithTransparency);
 
         xOff := xOff + 22;
       end
@@ -269,17 +276,18 @@ begin
         iconBmp := FRGetCachedIcon(nodeIcon, FRColorToSVGHex(icoClr), 2.0, 20, 20);
         
         if iconBmp <> nil then
-          bmp.PutImage(xOff, yPos + (FItemHeight - 20) div 2, iconBmp, dmDrawWithTransparency);
+          bmp.PutImage(xOff, yPos + (ih - 20) div 2, iconBmp, dmDrawWithTransparency);
           
         xOff := xOff + 28;
       end;
 
       { Divider }
       if FShowDividers and (I < FFlatList.Count - 1) then
-        bmp.DrawLineAntialias(16, yPos + FItemHeight - 1, Width - 1, yPos + FItemHeight - 1,
+        bmp.DrawLineAntialias(16, yPos + ih - 1, Width - 1, yPos + ih - 1,
           ColorToBGRA(MD3Colors.OutlineVariant), 1);
     end;
 
+    PaintRipple(bmp, MD3Colors.OnSurface);
     bmp.Draw(Canvas, 0, 0, False);
   finally
     bmp.Free;
@@ -289,8 +297,8 @@ begin
   for I := 0 to FFlatList.Count - 1 do
   begin
     Node := TFRMaterialTreeNode(FFlatList[I]);
-    yPos := I * FItemHeight - FScrollOffset;
-    if (yPos + FItemHeight < 0) or (yPos > Height) then Continue;
+    yPos := I * ih - FScrollOffset;
+    if (yPos + ih < 0) or (yPos > Height) then Continue;
 
     xOff := 16 + Node.FLevel * FIndent + 22; { past chevron area }
 
@@ -302,7 +310,7 @@ begin
     else
       clr := MD3Colors.OnSurface;
 
-    aRect := Rect(xOff, yPos, Width - 16, yPos + FItemHeight);
+    aRect := Rect(xOff, yPos, Width - 16, yPos + ih);
     Canvas.Font.Size := 10;
     if Node.HasChildren then
       Canvas.Font.Style := [fsBold]
@@ -315,14 +323,15 @@ end;
 
 procedure TFRMaterialTreeView.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  idx, xOff, chevEnd: Integer;
+  idx, xOff, chevEnd, ih: Integer;
   Node: TFRMaterialTreeNode;
 begin
   inherited;
   if Button <> mbLeft then Exit;
 
   RebuildFlatList;
-  idx := (Y + FScrollOffset) div FItemHeight;
+  ih := GetEffectiveItemHeight;
+  idx := (Y + FScrollOffset) div ih;
   if (idx < 0) or (idx >= FFlatList.Count) then Exit;
 
   Node := TFRMaterialTreeNode(FFlatList[idx]);
@@ -352,10 +361,11 @@ end;
 
 function TFRMaterialTreeView.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
 var
-  maxScroll: Integer;
+  maxScroll, ih: Integer;
 begin
   RebuildFlatList;
-  maxScroll := Max(0, FFlatList.Count * FItemHeight - Height);
+  ih := GetEffectiveItemHeight;
+  maxScroll := Max(0, FFlatList.Count * ih - Height);
   FScrollOffset := FScrollOffset - (WheelDelta div 3);
   if FScrollOffset < 0 then FScrollOffset := 0;
   if FScrollOffset > maxScroll then FScrollOffset := maxScroll;

@@ -16,7 +16,7 @@ interface
 uses
   Classes, SysUtils, Controls, Graphics,
   {$IFDEF FPC} LResources, {$ENDIF}
-  BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialIcons;
+  BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialIcons, FRMaterialTheme;
 
 type
   TFRMDFABSize = (fsSmall, fsRegular, fsLarge);
@@ -34,6 +34,7 @@ type
     function GetRadius: Integer;
   protected
     procedure Paint; override;
+    procedure DoOnResize; override;
     class function GetControlClassDefaultSize: TSize; override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -56,6 +57,7 @@ type
     procedure SetShowIcon(AValue: Boolean);
   protected
     procedure Paint; override;
+    procedure DoOnResize; override;
     class function GetControlClassDefaultSize: TSize; override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -219,7 +221,7 @@ begin
     icoColor := MD3Colors.OnPrimaryContainer;
 
     { Shadow }
-    MD3FillRoundRect(bmp, 1, 3, Width - 1, Height, r, MD3Colors.OnSurface, 25);
+    MD3DrawShadow(bmp, 0, 0, Width - 1, Height - 1, r, elLevel2);
 
     { Background }
     MD3FillRoundRect(bmp, 0, 0, Width - 1, Height - 1, r, bgColor);
@@ -228,6 +230,7 @@ begin
     if Enabled then
       MD3StateLayer(bmp, 0, 0, Width - 1, Height - 1, r, icoColor, InteractionState);
 
+    PaintRipple(bmp, icoColor);
     bmp.Draw(Canvas, 0, 0, False);
   finally
     bmp.Free;
@@ -237,6 +240,16 @@ begin
   icoSz := GetIconSize;
   iconBmp := FRGetCachedIcon(FIconMode, FRColorToSVGHex(icoColor), 2.5, icoSz, icoSz);
   iconBmp.Draw(Canvas, (Width - icoSz) div 2, (Height - icoSz) div 2, False);
+end;
+
+procedure TFRMaterialFAB.DoOnResize;
+begin
+  inherited DoOnResize;
+  if not (csLoading in ComponentState) then
+  begin
+    Width := GetFABDimension + MD3DensityDelta(Density);
+    Height := GetFABDimension + MD3DensityDelta(Density);
+  end;
 end;
 
 { ── TFRMaterialExtendedFAB ── }
@@ -272,6 +285,13 @@ begin
   Invalidate;
 end;
 
+procedure TFRMaterialExtendedFAB.DoOnResize;
+begin
+  inherited DoOnResize;
+  if not (csLoading in ComponentState) then
+    Height := 56 + MD3DensityDelta(Density);
+end;
+
 procedure TFRMaterialExtendedFAB.Paint;
 var
   bmp, iconBmp: TBGRABitmap;
@@ -286,7 +306,7 @@ begin
     contentColor := MD3Colors.OnPrimaryContainer;
 
     { Shadow }
-    MD3FillRoundRect(bmp, 1, 3, Width - 1, Height, r, MD3Colors.OnSurface, 25);
+    MD3DrawShadow(bmp, 0, 0, Width - 1, Height - 1, r, elLevel2);
 
     { Background }
     MD3FillRoundRect(bmp, 0, 0, Width - 1, Height - 1, r, bgColor);
@@ -295,6 +315,7 @@ begin
     if Enabled then
       MD3StateLayer(bmp, 0, 0, Width - 1, Height - 1, r, contentColor, InteractionState);
 
+    PaintRipple(bmp, contentColor);
     bmp.Draw(Canvas, 0, 0, False);
   finally
     bmp.Free;
@@ -434,11 +455,13 @@ begin
 
     { Main FAB at bottom }
     fabY := Height - 56;
-    MD3FillRoundRect(bmp, 1, fabY + 3, 56, fabY + 56, r, MD3Colors.OnSurface, 25);
+    MD3DrawShadow(bmp, 0, fabY, 55, fabY + 55, r, elLevel2);
     MD3FillRoundRect(bmp, 0, fabY, 55, fabY + 55, r, bgColor);
 
     if Enabled then
       MD3StateLayer(bmp, 0, fabY, 55, fabY + 55, r, contentColor, InteractionState);
+
+    PaintRipple(bmp, contentColor);
 
     bmp.Draw(Canvas, 0, 0, False);
   finally

@@ -278,6 +278,7 @@ begin
     if Enabled then
       MD3StateLayer(bmp, 0, 0, Width - 1, Height - 1, r, textColor, InteractionState);
 
+    PaintRipple(bmp, textColor);
     bmp.Draw(Canvas, 0, 0, False);
   finally
     bmp.Free;
@@ -445,6 +446,7 @@ begin
     if Enabled then
       MD3StateLayer(bmp, 0, 0, Width - 1, Height - 1, r, iconColor, InteractionState);
 
+    PaintRipple(bmp, iconColor);
     bmp.Draw(Canvas, 0, 0, False);
   finally
     bmp.Free;
@@ -616,6 +618,7 @@ begin
         MD3StateLayer(bmp, 0, 0, sep, Height - 1, r, textColor, InteractionState);
     end;
 
+    PaintRipple(bmp, textColor);
     bmp.Draw(Canvas, 0, 0, False);
   finally
     bmp.Free;
