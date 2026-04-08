@@ -98,6 +98,8 @@ var
   FloatY: Integer;
   CurrY: Integer;
   CurrX: Integer;
+  LabelH, PenW: Integer;
+  NotchLeft, NotchRight: Integer;
 begin
   CR := P.BorderRadius * 2;
   DecoBottom := P.Rect.Bottom - P.BottomMargin;
@@ -107,8 +109,26 @@ begin
   LeftPos  := P.Rect.Left;
   RightPos := P.Rect.Right;
 
-  FieldTop := P.EditTop - 2;
-  if FieldTop < 0 then FieldTop := 0;
+  { MD3 Outlined: a borda começa na metade do label flutuante, criando o
+    efeito visual de "notch" onde o label senta sobre a borda superior.
+    Standard/Filled: o sublinhado fica na base do TEdit. }
+  if P.Variant = mvOutlined then
+  begin
+    if P.LabelText <> '' then
+    begin
+      P.Canvas.Font.Assign(P.LabelFont);
+      if P.Canvas.Font.Size > 7 then P.Canvas.Font.Size := P.Canvas.Font.Size - 1;
+      LabelH := P.Canvas.TextHeight(P.LabelText);
+      FieldTop := P.LabelTop + LabelH div 2;
+    end
+    else
+      FieldTop := P.Rect.Top;
+  end
+  else
+  begin
+    FieldTop := P.EditTop - 2;
+    if FieldTop < 0 then FieldTop := 0;
+  end;
 
   { Passo 1: Preenchimento do fundo }
   P.Canvas.Pen.Width   := 1;
@@ -156,16 +176,34 @@ begin
     begin
       P.Canvas.Brush.Style := bsClear;
       if P.IsLocked then
-        P.Canvas.Pen.Width := 1
+        PenW := 1
       else if P.IsFocused and P.IsEnabled then
-        P.Canvas.Pen.Width := 2
+        PenW := 2
       else
-        P.Canvas.Pen.Width := 1;
+        PenW := 1;
+      P.Canvas.Pen.Width := PenW;
         
       if CR > 0 then
         P.Canvas.RoundRect(LeftPos, FieldTop, RightPos, DecoBottom - 1, CR, CR)
       else
         P.Canvas.Rectangle(LeftPos, FieldTop, RightPos, DecoBottom - 1);
+
+      { MD3 Notch: apaga a borda superior onde o label flutuante fica,
+        criando o visual de "recorte" característico do Outlined }
+      if (P.LabelText <> '') and (P.LabelProgress > 0.3) then
+      begin
+        P.Canvas.Font.Assign(P.LabelFont);
+        if P.Canvas.Font.Size > 7 then P.Canvas.Font.Size := P.Canvas.Font.Size - 1;
+        NotchLeft  := P.EditLeft - 4;
+        NotchRight := P.EditLeft + P.Canvas.TextWidth(P.LabelText);
+        if P.IsRequired then
+          NotchRight := NotchRight + P.Canvas.TextWidth(' *') + 2;
+        NotchRight := NotchRight + 4;
+        P.Canvas.Pen.Color   := P.BgColor;
+        P.Canvas.Brush.Color := P.BgColor;
+        P.Canvas.Brush.Style := bsSolid;
+        P.Canvas.FillRect(NotchLeft, FieldTop - 1, NotchRight, FieldTop + PenW + 1);
+      end;
         
       P.Canvas.Pen.Width   := 1;
       P.Canvas.Brush.Style := bsSolid;

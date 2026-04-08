@@ -14,7 +14,7 @@ unit FRMaterialDateEdit;
 interface
 
 uses
-  FRMaterial3Base, FRMaterialTheme, FRMaterialIcons, FRMaterialFieldPainter, FRMaterialInternalEdits, Classes, Calendar, Controls, ExtCtrls, Forms,
+  FRMaterial3Base, FRMaterialTheme, FRMaterialIcons, FRMaterialMasks, FRMaterialFieldPainter, FRMaterialInternalEdits, Classes, Calendar, Controls, ExtCtrls, Forms,
   Graphics, {$IFDEF FPC} LCLType, LResources, {$ENDIF} Menus, StdCtrls, SysUtils;
 
 type
@@ -39,12 +39,18 @@ type
     FUserOnChange: TNotifyEvent;
     FUserOnKeyDown: TKeyEvent;
     FUpdating: Boolean;
+    FLeftPanelWidth: Integer;
+    FRightPanelWidth: Integer;
 
     { Calendar popup }
     FCalendarPopup: TForm;
     FCalendar: TCalendar;
 
     function IsNeededAdjustSize: Boolean;
+    procedure SetVariant(AValue: TFRMaterialVariant);
+    procedure AnchorButtons;
+    function GetBottomMargin: Integer;
+    function GetDisplayHelperText: string;
 
     { Botão de limpeza }
     function GetShowClearButton: Boolean;
@@ -149,7 +155,7 @@ type
     property DirectInput: Boolean read GetDirectInput write SetDirectInput default True;
     property PopupMenu: TPopupMenu read GetEditPopupMenu write SetEditPopupMenu;
     property ReadOnly: Boolean read GetEditReadOnly write SetEditReadOnly default False;
-    property Variant: TFRMaterialVariant read FVariant write FVariant default mvStandard;
+    property Variant: TFRMaterialVariant read FVariant write SetVariant default mvStandard;
     property BorderRadius: Integer read FBorderRadius write FBorderRadius default 0;
     property EditLabel: TBoundLabel read FLabel;
     property Enabled;
@@ -253,6 +259,88 @@ begin
   Result := True;
 end;
 
+procedure TFRMaterialDateEdit.SetVariant(AValue: TFRMaterialVariant);
+begin
+  if FVariant = AValue then Exit;
+  FVariant := AValue;
+  Invalidate;
+end;
+
+procedure TFRMaterialDateEdit.AnchorButtons;
+var
+  RightCursor, CenterY, FieldH: Integer;
+begin
+  if csLoading in ComponentState then Exit;
+
+  FLeftPanelWidth  := 4;
+  FRightPanelWidth := 4;
+  RightCursor := 4;
+
+  FCalendarButton.Anchors := [];
+  FClearButton.Anchors    := [];
+
+  { --- Right Panel: CalendarButton, depois ClearButton --- }
+
+  { 1. CalendarButton (sempre visível) }
+  FCalendarButton.Anchors := [akRight];
+  FCalendarButton.AnchorSide[akRight].Control := Self;
+  FCalendarButton.AnchorSide[akRight].Side    := asrBottom;
+  FCalendarButton.BorderSpacing.Right := RightCursor;
+
+  Inc(RightCursor, FCalendarButton.Width + 2);
+  Inc(FRightPanelWidth, FCalendarButton.Width + 2);
+
+  { 2. ClearButton }
+  if FShowClearButton and FClearButton.Visible then
+  begin
+    FClearButton.Anchors := [akRight];
+    FClearButton.AnchorSide[akRight].Control := Self;
+    FClearButton.AnchorSide[akRight].Side    := asrBottom;
+    FClearButton.BorderSpacing.Right := RightCursor;
+
+    Inc(FRightPanelWidth, FClearButton.Width + 4);
+  end;
+
+  { Aplica as margens calculadas ao FEdit }
+  FEdit.BorderSpacing.Left  := FLeftPanelWidth;
+  FEdit.BorderSpacing.Right := FRightPanelWidth;
+
+  { Centraliza botões verticalmente no container (excl. BottomMargin) }
+  FieldH := Self.Height - GetBottomMargin;
+  if FieldH < 1 then FieldH := Self.Height;
+
+  CenterY := (FieldH - FCalendarButton.Height) div 2;
+  if CenterY < 0 then CenterY := 0;
+  FCalendarButton.Top := CenterY;
+
+  if FClearButton.Visible then
+  begin
+    CenterY := (FieldH - FClearButton.Height) div 2;
+    if CenterY < 0 then CenterY := 0;
+    FClearButton.Top := CenterY;
+  end;
+end;
+
+function TFRMaterialDateEdit.GetBottomMargin: Integer;
+begin
+  Result := 0;
+  if (FHelperText <> '') or (FErrorText <> '') then
+  begin
+    if HandleAllocated then
+      Result := Canvas.TextHeight('Hg') + 4
+    else
+      Result := 18;
+  end;
+end;
+
+function TFRMaterialDateEdit.GetDisplayHelperText: string;
+begin
+  if (FValidationState = vsInvalid) and (FErrorText <> '') then
+    Result := FErrorText
+  else
+    Result := FHelperText;
+end;
+
 { --- Botão de limpeza --- }
 
 function TFRMaterialDateEdit.GetShowClearButton: Boolean;
@@ -288,23 +376,7 @@ begin
   DisableAlign;
   try
     FClearButton.Visible := ShouldShow;
-    if ShouldShow then
-    begin
-      FClearButton.Anchors := [akTop, akRight, akBottom];
-      FClearButton.AnchorSide[akRight].Control  := FCalendarButton;
-      FClearButton.AnchorSide[akRight].Side     := asrTop;
-      FClearButton.AnchorSide[akTop].Control    := FEdit;
-      FClearButton.AnchorSide[akTop].Side       := asrTop;
-      FClearButton.AnchorSide[akBottom].Control := FEdit;
-      FClearButton.AnchorSide[akBottom].Side    := asrBottom;
-      FClearButton.BorderSpacing.Right := 2;
-      FEdit.BorderSpacing.Right := FClearButton.Width + FCalendarButton.Width + 10;
-    end
-    else
-    begin
-      FClearButton.Anchors := [];
-      FEdit.BorderSpacing.Right := FCalendarButton.Width + 6;
-    end;
+    AnchorButtons;
   finally
     EnableAlign;
   end;
@@ -905,10 +977,19 @@ end;
 procedure TFRMaterialDateEdit.DoOnResize;
 var
   AutoSizedHeight: LongInt;
+  BottomExtra, BtnSize: Integer;
 begin
+  BottomExtra := GetBottomMargin;
+
+  FEdit.Align := alBottom;
+
+  if BottomExtra > 0 then
+    FEdit.BorderSpacing.Bottom := BottomExtra + 4
+  else
+    FEdit.BorderSpacing.Bottom := 4;
+
   if IsNeededAdjustSize then
   begin
-    FEdit.Align := alBottom;
     AutoSizedHeight :=
       FLabel.Height +
       FLabel.BorderSpacing.Around +
@@ -917,30 +998,36 @@ begin
       FEdit.Height +
       FEdit.BorderSpacing.Around +
       FEdit.BorderSpacing.Bottom +
-      FEdit.BorderSpacing.Top;
+      FEdit.BorderSpacing.Top +
+      BottomExtra;
 
     if Self.Height <> AutoSizedHeight then
       Self.Height := AutoSizedHeight;
-  end else
-    FEdit.Align := alClient;
+  end;
+
+  BtnSize := (Self.Height - BottomExtra) div 2;
+  if BtnSize < 20 then BtnSize := 20;
 
   if Assigned(FClearButton) then
   begin
-    FClearButton.Width  := FEdit.Height - 2;
-    FClearButton.Height := FEdit.Height - 2;
+    FClearButton.Width  := BtnSize;
+    FClearButton.Height := BtnSize;
   end;
   if Assigned(FCalendarButton) then
   begin
-    FCalendarButton.Width  := FEdit.Height - 2;
-    FCalendarButton.Height := FEdit.Height - 2;
+    FCalendarButton.Width  := BtnSize;
+    FCalendarButton.Height := BtnSize;
   end;
+
+  AnchorButtons;
 
   inherited DoOnResize;
 end;
 
 procedure TFRMaterialDateEdit.Paint;
 var
-  DecoColor: TColor;
+  DecoColor, HelperColor: TColor;
+  HelperStr: string;
   P: TFRMDFieldPaintParams;
   ActionRightPos: Integer;
 begin
@@ -949,10 +1036,23 @@ begin
   if FEdit.Color <> Self.Color then
     FEdit.Color := Self.Color;
 
-  if FFocused and Self.Enabled then
-    DecoColor := AccentColor
+  { Prioridade: validação > foco > inativo }
+  case ValidationState of
+    vsValid:   DecoColor := AccentColor;
+    vsInvalid: DecoColor := clRed;
   else
-    DecoColor := DisabledColor;
+    if FFocused and Self.Enabled then
+      DecoColor := AccentColor
+    else
+      DecoColor := DisabledColor;
+  end;
+
+  if ValidationState = vsInvalid then
+    HelperColor := clRed
+  else
+    HelperColor := DisabledColor;
+
+  HelperStr := GetDisplayHelperText;
 
   ActionRightPos := FCalendarButton.Left + FCalendarButton.Width;
   if Assigned(FClearButton) and FClearButton.Visible then
@@ -967,22 +1067,26 @@ begin
   P.BorderRadius := BorderRadius;
 
   P.DecoColor := DecoColor;
-  P.HelperColor := DisabledColor;
+  P.HelperColor := HelperColor;
   P.DisabledColor := DisabledColor;
 
   P.IsFocused := FFocused;
   P.IsEnabled := Enabled;
   P.IsRequired := Required;
+  P.IsLocked := False;
 
   P.EditLeft := FEdit.Left;
   P.EditTop := FEdit.Top;
   P.EditWidth := FEdit.Width;
   P.EditHeight := FEdit.Height;
 
-  P.ActionRight := ActionRightPos;
-  P.BottomMargin := 0;
+  P.LeftPanelWidth := FLeftPanelWidth;
+  P.RightPanelWidth := FRightPanelWidth;
 
-  P.HelperText := HelperText;
+  P.ActionRight := ActionRightPos;
+  P.BottomMargin := GetBottomMargin;
+
+  P.HelperText := HelperStr;
   P.CharCounterText := '';
   P.PrefixText := '';
   P.SuffixText := '';
@@ -1033,7 +1137,7 @@ begin
   FEdit.BorderSpacing.Around := 0;
   FEdit.BorderSpacing.Bottom := 4;
   FEdit.BorderSpacing.Left   := 4;
-  FEdit.BorderSpacing.Right  := 30;
+  FEdit.BorderSpacing.Right  := 4;
   FEdit.BorderSpacing.Top    := 0;
   FEdit.BorderStyle          := bsNone;
   FEdit.ParentColor          := True;
@@ -1058,14 +1162,6 @@ begin
   FCalendarButton.Parent      := Self;
   FCalendarButton.OnClick     := @CalendarButtonClick;
   FCalendarButton.SetSubComponent(True);
-  FCalendarButton.Anchors     := [akTop, akRight, akBottom];
-  FCalendarButton.AnchorSide[akRight].Control  := Self;
-  FCalendarButton.AnchorSide[akRight].Side     := asrBottom;
-  FCalendarButton.AnchorSide[akTop].Control    := FEdit;
-  FCalendarButton.AnchorSide[akTop].Side       := asrTop;
-  FCalendarButton.AnchorSide[akBottom].Control := FEdit;
-  FCalendarButton.AnchorSide[akBottom].Side    := asrBottom;
-  FCalendarButton.BorderSpacing.Right := 4;
 
   { Botão de limpeza — ícone SVG "×" }
   FClearButton := TFRMaterialIconButton.Create(Self);
@@ -1084,6 +1180,8 @@ begin
   FDate            := 0;
   FUpdating        := False;
   FCalendarPopup   := nil;
+  FLeftPanelWidth  := 4;
+  FRightPanelWidth := 4;
 end;
 
 destructor TFRMaterialDateEdit.Destroy;

@@ -1481,6 +1481,14 @@ begin
   { Sempre alBottom para que o FEdit não cubra o label pintado pelo FieldPainter }
   FEdit.Align := alBottom;
 
+  { Reserva espaço inferior para helper/error text e char counter.
+    Quando BottomExtra > 0 o FEdit deve terminar acima do DecoBottom
+    para não sobrepor o texto de validação pintado pelo FieldPainter. }
+  if BottomExtra > 0 then
+    FEdit.BorderSpacing.Bottom := BottomExtra + 4
+  else
+    FEdit.BorderSpacing.Bottom := 4;
+
   if IsNeededAdjustSize then
   begin
     { Aplica delta de densidade na altura do edit interno }

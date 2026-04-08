@@ -23,6 +23,7 @@ type
     FRMaterialCircularProgress1: TFRMaterialCircularProgress;
     FRMaterialDateEdit1: TFRMaterialDateEdit;
     FRMaterialDivider1: TFRMaterialDivider;
+    FRMaterialEdit1: TFRMaterialEdit;
     FRMaterialLinearProgress1: TFRMaterialLinearProgress;
     FRMaterialLinearProgress2: TFRMaterialLinearProgress;
     FRMaterialLoadingIndicator1: TFRMaterialLoadingIndicator;

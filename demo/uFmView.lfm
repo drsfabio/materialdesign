@@ -89,15 +89,16 @@ object FmView: TFmView
     Actions = <>
   end
   object FRMaterialDateEdit1: TFRMaterialDateEdit
-    Left = 574
+    Left = 528
     Height = 42
-    Top = 356
+    Top = 384
     Width = 162
     TabOrder = 4
     SyncWithTheme = []
     AccentColor = clHighlight
     DisabledColor = 12103592
     Caption = 'Data'
+    Variant = mvOutlined
     EditLabel.Height = 15
     EditLabel.Width = 26
     EditLabel.Caption = 'Data'
@@ -169,6 +170,46 @@ object FmView: TFmView
     Caption = 'FRMaterialButton2'
     Font.Height = -13
     Font.Style = [fsBold]
+  end
+  object FRMaterialEdit1: TFRMaterialEdit
+    Left = 129
+    Height = 51
+    Top = 524
+    Width = 181
+    TabOrder = 10
+    SyncWithTheme = []
+    AccentColor = 10768487
+    DisabledColor = 5195081
+    Caption = 'Label'
+    Color = 16775166
+    DoubleBuffered = True
+    EditLabel.Height = 15
+    EditLabel.Width = 29
+    EditLabel.Caption = 'Label'
+    EditLabel.ParentFont = False
+    EditLabel.Font.Color = 5195081
+    EditLabel.Font.Style = [fsBold]
+    Font.Color = 2104093
+    Variant = mvOutlined
+    Edit.Left = 4
+    Edit.Height = 24
+    Edit.Top = 23
+    Edit.Width = 173
+    Edit.Align = alBottom
+    Edit.BorderSpacing.Left = 4
+    Edit.BorderSpacing.Right = 4
+    Edit.BorderSpacing.Bottom = 4
+    Edit.BorderStyle = bsNone
+    Edit.Constraints.MinHeight = 24
+    Edit.EnableSets = False
+    Edit.Font.Color = 2104093
+    Edit.Font.Height = -15
+    Edit.MaxLength = 0
+    Edit.ParentColor = True
+    Edit.ParentFont = False
+    Edit.TabOrder = 0
+    Edit.SpaceChar = '_'
+    NumericValue = 0
   end
   object FRMaterialThemeManager1: TFRMaterialThemeManager
     Palette = mpCyan
