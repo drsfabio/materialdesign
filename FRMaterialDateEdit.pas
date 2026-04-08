@@ -41,6 +41,7 @@ type
     FUpdating: Boolean;
     FLeftPanelWidth: Integer;
     FRightPanelWidth: Integer;
+    FAutoFontSize: Boolean;
 
     { Calendar popup }
     FCalendarPopup: TForm;
@@ -165,6 +166,7 @@ type
     property ParentBiDiMode;
     property ParentColor default False;
     property ParentFont default False;
+    property AutoFontSize: Boolean read FAutoFontSize write FAutoFontSize default True;
     property ShowClearButton: Boolean read GetShowClearButton write SetShowClearButton default False;
     property ShowHint;
     property TabOrder;
@@ -191,7 +193,7 @@ procedure Register;
 implementation
 
 uses
-  DateUtils;
+  DateUtils, Math;
 
 procedure Register;
 begin
@@ -1008,6 +1010,11 @@ begin
   BtnSize := (Self.Height - BottomExtra) div 2;
   if BtnSize < 20 then BtnSize := 20;
 
+  { Responsividade: adaptar Font.Size proporcionalmente à altura do componente.
+    Referência MD3: Height 54 → Font.Size 12.  Mínimo 8, máximo 16. }
+  if FAutoFontSize then
+    FEdit.Font.Size := EnsureRange(Self.Height * 12 div 54, 8, 16);
+
   if Assigned(FClearButton) then
   begin
     FClearButton.Width  := BtnSize;
@@ -1182,6 +1189,7 @@ begin
   FCalendarPopup   := nil;
   FLeftPanelWidth  := 4;
   FRightPanelWidth := 4;
+  FAutoFontSize    := True;
 end;
 
 destructor TFRMaterialDateEdit.Destroy;

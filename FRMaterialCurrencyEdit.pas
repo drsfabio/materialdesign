@@ -50,6 +50,7 @@ type
     FFocused: Boolean;
     FVariant: TFRMaterialVariant;
     FBorderRadius: Integer;
+    FAutoFontSize: Boolean;
     FClearButton: TFRMaterialIconButton;
     FShowClearButton: Boolean;
     FOnClearButtonClick: TNotifyEvent;
@@ -174,6 +175,7 @@ type
     property PopupMenu: TPopupMenu read GetEditPopupMenu write SetEditPopupMenu;
     property ReadOnly: Boolean read GetEditReadOnly write SetEditReadOnly default False;
     property ShowClearButton: Boolean read GetShowClearButton write SetShowClearButton default False;
+    property AutoFontSize: Boolean read FAutoFontSize write FAutoFontSize default True;
     property ShowHint;
     property TabOrder;
     property TabStop: Boolean read GetEditTabStop write SetEditTabStop default True;
@@ -725,6 +727,11 @@ begin
     FClearButton.Height := FEdit.Height - 2;
   end;
 
+  { Responsividade: adaptar Font.Size proporcionalmente à altura do componente.
+    Referência MD3: Height 54 → Font.Size 12.  Mínimo 8, máximo 16. }
+  if FAutoFontSize then
+    FEdit.Font.Size := EnsureRange(Self.Height * 12 div 54, 8, 16);
+
   inherited DoOnResize;
 end;
 
@@ -861,6 +868,7 @@ begin
   FShowClearButton  := False;
   FVariant          := mvStandard;
   FBorderRadius     := 0;
+  FAutoFontSize     := True;
 
   RefreshDisplay; { exibe "R$ 0,00" }
 end;

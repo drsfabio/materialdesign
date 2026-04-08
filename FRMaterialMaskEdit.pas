@@ -59,6 +59,7 @@ type
     FFocused: Boolean;
     FVariant: TFRMaterialVariant;
     FBorderRadius: Integer;
+    FAutoFontSize: Boolean;
     FClearButton: TFRMaterialIconButton;
     FShowClearButton: Boolean;
     FOnClearButtonClick: TNotifyEvent;
@@ -187,6 +188,7 @@ type
     { Exibe botão "×" quando o campo tem texto e não está em ReadOnly }
     property ShowClearButton: Boolean
       read GetShowClearButton write SetShowClearButton default False;
+    property AutoFontSize: Boolean read FAutoFontSize write FAutoFontSize default True;
     property ShowHint;
     property TabOrder;
     property TabStop: Boolean read GetEditTabStop write SetEditTabStop default True;
@@ -220,6 +222,8 @@ type
 procedure Register;
 
 implementation
+
+uses Math;
 
 procedure Register;
 begin
@@ -634,6 +638,11 @@ begin
     FClearButton.Height := FMaskEdit.Height - 2;
   end;
 
+  { Responsividade: adaptar Font.Size proporcionalmente à altura do componente.
+    Referência MD3: Height 54 → Font.Size 12.  Mínimo 8, máximo 16. }
+  if FAutoFontSize then
+    FMaskEdit.Font.Size := EnsureRange(Self.Height * 12 div 54, 8, 16);
+
   inherited DoOnResize;
 end;
 
@@ -764,6 +773,7 @@ begin
   FShowClearButton := False;
   FVariant         := mvStandard;
   FBorderRadius    := 0;
+  FAutoFontSize    := True;
 end;
 
 destructor TFRMaterialMaskEdit.Destroy;

@@ -36,6 +36,7 @@ type
     FPlusButton: TFRMaterialIconButton;
     FVariant: TFRMaterialVariant;
     FBorderRadius: Integer;
+    FAutoFontSize: Boolean;
     FValidationState: TFRValidationState;
     FValidColor: TColor;
     FInvalidColor: TColor;
@@ -93,6 +94,7 @@ type
     property MinValue: Int64 read FMinValue write SetMinValue default 0;
     property ParentColor default False;
     property ParentFont default False;
+    property AutoFontSize: Boolean read FAutoFontSize write FAutoFontSize default True;
     property ShowHint;
     property TabOrder;
     property TabStop default True;
@@ -110,6 +112,8 @@ type
 procedure Register;
 
 implementation
+
+uses Math;
 
 procedure Register;
 begin
@@ -213,6 +217,7 @@ begin
 
   FVariant         := mvStandard;
   FBorderRadius    := 0;
+  FAutoFontSize    := True;
   FValidationState := vsNone;
   FValidColor      := $0000B300;
   FInvalidColor    := $000000FF;
@@ -279,6 +284,12 @@ begin
   FPlusButton.Height  := BtnSize;
   FEdit.BorderSpacing.Left  := BtnSize + 8;
   FEdit.BorderSpacing.Right := BtnSize + 8;
+
+  { Responsividade: adaptar Font.Size proporcionalmente à altura do componente.
+    Referência MD3: Height 54 → Font.Size 12.  Mínimo 8, máximo 16. }
+  if FAutoFontSize then
+    FEdit.Font.Size := EnsureRange(Self.Height * 12 div 54, 8, 16);
+
   inherited DoOnResize;
 end;
 

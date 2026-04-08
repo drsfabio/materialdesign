@@ -37,6 +37,7 @@ type
     FClearButton: TFRMaterialIconButton;
     FVariant: TFRMaterialVariant;
     FBorderRadius: Integer;
+    FAutoFontSize: Boolean;
     FDebounceTimer: TTimer;
     FDebounceInterval: Integer;
     FOnSearch: TFRSearchEvent;
@@ -97,6 +98,7 @@ type
     property ParentColor default False;
     property ParentFont default False;
     property ReadOnly: Boolean read GetEditReadOnly write SetEditReadOnly default False;
+    property AutoFontSize: Boolean read FAutoFontSize write FAutoFontSize default True;
     property ShowHint;
     property TabOrder;
     property TabStop default True;
@@ -112,6 +114,8 @@ type
 procedure Register;
 
 implementation
+
+uses Math;
 
 procedure Register;
 begin
@@ -218,6 +222,7 @@ begin
 
   FVariant          := mvStandard;
   FBorderRadius     := 0;
+  FAutoFontSize     := True;
   FDebounceInterval := 400;
   FIconStrokeWidth  := 0;
 end;
@@ -292,6 +297,12 @@ begin
   FClearButton.Height  := BtnSize;
   FEdit.BorderSpacing.Left  := BtnSize + 8;
   FEdit.BorderSpacing.Right := BtnSize + 8;
+
+  { Responsividade: adaptar Font.Size proporcionalmente à altura do componente.
+    Referência MD3: Height 54 → Font.Size 12.  Mínimo 8, máximo 16. }
+  if FAutoFontSize then
+    FEdit.Font.Size := EnsureRange(Self.Height * 12 div 54, 8, 16);
+
   inherited DoOnResize;
 end;
 
