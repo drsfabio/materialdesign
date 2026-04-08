@@ -130,6 +130,7 @@ type
     procedure DoExit; override;
     procedure DoOnResize; override;
     procedure Paint; override;
+    procedure ApplyTheme(const AThemeManager: TObject); override;
 
   public
     constructor Create(AOwner: TComponent); override;
@@ -800,6 +801,28 @@ begin
     P.LabelProgress := 1.0;
 
   TFRMaterialFieldPainter.DrawField(P);
+end;
+
+procedure TFRMaterialComboEdit.ApplyTheme(const AThemeManager: TObject);
+begin
+  inherited ApplyTheme(AThemeManager);
+
+  if toVariant in SyncWithTheme then
+    FVariant := FRMDGetThemeVariant(AThemeManager);
+
+  FAccentColor   := MD3Colors.Primary;
+  FDisabledColor := MD3Colors.OnSurfaceVariant;
+
+  case FVariant of
+    mvFilled:   Self.Color := MD3Colors.SurfaceContainerHighest;
+    mvOutlined: Self.Color := MD3Colors.Surface;
+  else
+    Self.ParentColor := True;
+  end;
+
+  Self.Font.Color  := MD3Colors.OnSurface;
+  FLabel.Font.Color := MD3Colors.OnSurfaceVariant;
+  Invalidate;
 end;
 
 constructor TFRMaterialComboEdit.Create(AOwner: TComponent);

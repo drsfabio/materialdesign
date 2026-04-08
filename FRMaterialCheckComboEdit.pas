@@ -94,6 +94,7 @@ type
     procedure DoExit; override;
     procedure DoOnResize; override;
     procedure Paint; override;
+    procedure ApplyTheme(const AThemeManager: TObject); override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
 
   public
@@ -742,6 +743,28 @@ begin
     P.LabelProgress := 1.0;
 
   TFRMaterialFieldPainter.DrawField(P);
+end;
+
+procedure TFRMaterialCheckComboEdit.ApplyTheme(const AThemeManager: TObject);
+begin
+  inherited ApplyTheme(AThemeManager);
+
+  if toVariant in SyncWithTheme then
+    FVariant := FRMDGetThemeVariant(AThemeManager);
+
+  FAccentColor   := MD3Colors.Primary;
+  FDisabledColor := MD3Colors.OnSurfaceVariant;
+
+  case FVariant of
+    mvFilled:   Self.Color := MD3Colors.SurfaceContainerHighest;
+    mvOutlined: Self.Color := MD3Colors.Surface;
+  else
+    Self.ParentColor := True;
+  end;
+
+  Self.Font.Color  := MD3Colors.OnSurface;
+  FLabel.Font.Color := MD3Colors.OnSurfaceVariant;
+  Invalidate;
 end;
 
 procedure TFRMaterialCheckComboEdit.KeyDown(var Key: Word; Shift: TShiftState);

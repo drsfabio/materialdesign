@@ -487,6 +487,28 @@ end;
 procedure TFRMaterialSpinEdit.ApplyTheme(const AThemeManager: TObject);
 begin
   if not Assigned(AThemeManager) then Exit;
+
+  FAccentColor   := MD3Colors.Primary;
+  FDisabledColor := MD3Colors.OnSurfaceVariant;
+
+  case FVariant of
+    mvFilled:   Self.Color := MD3Colors.SurfaceContainerHighest;
+    mvOutlined: Self.Color := MD3Colors.Surface;
+  else
+    Self.ParentColor := True;
+  end;
+
+  Self.Font.Color   := MD3Colors.OnSurface;
+  FEdit.Font.Color  := MD3Colors.OnSurface;
+  FLabel.Font.Color := MD3Colors.OnSurfaceVariant;
+
+  FMinusButton.NormalColor := MD3Colors.OnSurfaceVariant;
+  FMinusButton.HoverColor  := MD3Colors.Primary;
+  FMinusButton.InvalidateCache;
+  FPlusButton.NormalColor  := MD3Colors.OnSurfaceVariant;
+  FPlusButton.HoverColor   := MD3Colors.Primary;
+  FPlusButton.InvalidateCache;
+
   Invalidate;
 end;
 

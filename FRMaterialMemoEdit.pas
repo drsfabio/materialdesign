@@ -560,6 +560,21 @@ end;
 procedure TFRMaterialMemoEdit.ApplyTheme(const AThemeManager: TObject);
 begin
   if not Assigned(AThemeManager) then Exit;
+
+  FAccentColor   := MD3Colors.Primary;
+  FDisabledColor := MD3Colors.OnSurfaceVariant;
+
+  case FVariant of
+    mvFilled:   Self.Color := MD3Colors.SurfaceContainerHighest;
+    mvOutlined: Self.Color := MD3Colors.Surface;
+  else
+    Self.ParentColor := True;
+  end;
+
+  Self.Font.Color   := MD3Colors.OnSurface;
+  FMemo.Font.Color  := MD3Colors.OnSurface;
+  FLabel.Font.Color := MD3Colors.OnSurfaceVariant;
+
   Invalidate;
 end;
 
