@@ -638,10 +638,10 @@ begin
     FClearButton.Height := FMaskEdit.Height - 2;
   end;
 
-  { Responsividade: adaptar Font.Size proporcionalmente à altura do componente.
-    Referência MD3: Height 54 → Font.Size 12.  Mínimo 8, máximo 16. }
+  { Responsividade: adaptar Font.Size proporcionalmente à altura e densidade.
+    Referência MD3: Height 56 → Font.Size 12.  Mínimo 8, máximo 16. }
   if FAutoFontSize then
-    FMaskEdit.Font.Size := EnsureRange(Self.Height * 12 div 54, 8, 16);
+    FMaskEdit.Font.Size := MD3FontSizeForField(Self.Height, ddNormal);
 
   inherited DoOnResize;
 end;

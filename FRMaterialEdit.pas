@@ -1541,10 +1541,10 @@ begin
   { Recalcula o layout dos painéis (Left, Center, Right) }
   AnchorButtons;
 
-  { Responsividade: adaptar Font.Size proporcionalmente à altura do componente.
-    Referência MD3: Height 54 → Font.Size 12.  Mínimo 8, máximo 16. }
+  { Responsividade: adaptar Font.Size proporcionalmente à altura e densidade.
+    Referência MD3: Height 56 → Font.Size 12.  Mínimo 8, máximo 16. }
   if FAutoFontSize then
-    FEdit.Font.Size := EnsureRange(Self.Height * 12 div 54, 8, 16);
+    FEdit.Font.Size := MD3FontSizeForField(Self.Height, Density);
 
   inherited DoOnResize;
 end;

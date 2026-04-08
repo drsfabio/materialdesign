@@ -99,6 +99,13 @@ function MCContrastText(ABg: TColor): TColor;
   Normal=0, Compact=-4, Dense=-8, UltraDense=-12. }
 function MD3DensityDelta(ADensity: TFRMDDensity): Integer;
 
+{ Calcula o Font.Size ideal para um campo de entrada com a altura informada.
+  Referência MD3: Height 56 → Font.Size 12 (body-large).
+  Aplica redução proporcional para densidades maiores:
+  Normal=0, Compact=-1, Dense=-2, UltraDense=-3.
+  Resultado clamped entre 8 e 16. }
+function MD3FontSizeForField(AHeight: Integer; ADensity: TFRMDDensity): Integer;
+
 { Retorna o offset de sombra em pixels para o nível de elevação MD3. }
 function MD3ElevationOffset(ALevel: TFRMDElevation): Integer;
 
@@ -171,6 +178,20 @@ const
   Deltas: array[TFRMDDensity] of Integer = (0, -4, -8, -12);
 begin
   Result := Deltas[ADensity];
+end;
+
+function MD3FontSizeForField(AHeight: Integer; ADensity: TFRMDDensity): Integer;
+const
+  { Redução de fonte por nível de densidade (Normal=0, Compact=-1, Dense=-1, UltraDense=-2) }
+  FontDeltas: array[TFRMDDensity] of Integer = (0, -1, -1, -2);
+begin
+  { Base: proporcional à altura. Ref MD3: Height 56 → Size 12 }
+  Result := AHeight * 12 div 56;
+  { Aplica delta de densidade }
+  Result := Result + FontDeltas[ADensity];
+  { Clamp entre 8 e 16 }
+  if Result < 8 then Result := 8;
+  if Result > 16 then Result := 16;
 end;
 
 function MD3ElevationOffset(ALevel: TFRMDElevation): Integer;

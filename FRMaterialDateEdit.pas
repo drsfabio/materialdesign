@@ -1010,10 +1010,10 @@ begin
   BtnSize := (Self.Height - BottomExtra) div 2;
   if BtnSize < 20 then BtnSize := 20;
 
-  { Responsividade: adaptar Font.Size proporcionalmente à altura do componente.
-    Referência MD3: Height 54 → Font.Size 12.  Mínimo 8, máximo 16. }
+  { Responsividade: adaptar Font.Size proporcionalmente à altura e densidade.
+    Referência MD3: Height 56 → Font.Size 12.  Mínimo 8, máximo 16. }
   if FAutoFontSize then
-    FEdit.Font.Size := EnsureRange(Self.Height * 12 div 54, 8, 16);
+    FEdit.Font.Size := MD3FontSizeForField(Self.Height, Density);
 
   if Assigned(FClearButton) then
   begin
