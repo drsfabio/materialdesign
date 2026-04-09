@@ -60,12 +60,14 @@ type
     property ImageIndex: Integer read FImageIndex write FImageIndex default -1;
     property Anchors;
     property Color;
+    property ParentColor;
     property Constraints;
     property Cursor;
     property Font;
     property ParentFont;
     property PopupMenu;
     property ShowHint;
+    property ParentShowHint;
     property Tag;
     property Visible;
   end;
@@ -129,6 +131,7 @@ type
     property Anchors;
     property BorderSpacing;
     property Color;
+    property ParentColor;
     property Constraints;
     property Cursor;
     property Enabled;
@@ -136,6 +139,7 @@ type
     property ParentFont;
     property PopupMenu;
     property ShowHint;
+    property ParentShowHint;
     property TabOrder;
     property TabStop;
     property Visible;

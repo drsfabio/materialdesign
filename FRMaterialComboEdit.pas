@@ -177,6 +177,7 @@ type
     { Ordena os itens alfabeticamente }
     property Sorted: Boolean read GetSorted write SetSorted default False;
     property ShowHint;
+    property ParentShowHint;
     { csDropDown = editável (default); csDropDownList = somente seleção (como <select>) }
     property Style: TComboBoxStyle
       read GetComboStyle write SetComboStyle default csDropDown;

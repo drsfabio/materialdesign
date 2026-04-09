@@ -100,6 +100,7 @@ type
     property ParentFont;
     property PopupMenu;
     property ShowHint;
+    property ParentShowHint;
     property TabOrder;
     property TabStop;
     property Visible;

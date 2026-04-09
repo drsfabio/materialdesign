@@ -170,6 +170,7 @@ type
     property AutoFontSize: Boolean read FAutoFontSize write FAutoFontSize default True;
     property ShowClearButton: Boolean read GetShowClearButton write SetShowClearButton default False;
     property ShowHint;
+    property ParentShowHint;
     property TabOrder;
     property TabStop: Boolean read GetEditTabStop write SetEditTabStop default True;
     property Text: TCaption read GetEditText write SetEditText;

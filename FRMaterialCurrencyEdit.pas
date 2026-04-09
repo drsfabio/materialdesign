@@ -180,6 +180,7 @@ type
     property ShowClearButton: Boolean read GetShowClearButton write SetShowClearButton default False;
     property AutoFontSize: Boolean read FAutoFontSize write FAutoFontSize default True;
     property ShowHint;
+    property ParentShowHint;
     property TabOrder;
     property TabStop: Boolean read GetEditTabStop write SetEditTabStop default True;
     property Variant: TFRMaterialVariant read FVariant write FVariant default mvStandard;

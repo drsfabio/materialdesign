@@ -78,6 +78,7 @@ type
     property ParentFont;
     property PopupMenu;
     property ShowHint;
+    property ParentShowHint;
     property Visible;
   end;
 
@@ -115,6 +116,7 @@ type
     property ParentFont;
     property PopupMenu;
     property ShowHint;
+    property ParentShowHint;
     property Visible;
   end;
 
@@ -158,6 +160,7 @@ type
     property ParentFont;
     property PopupMenu;
     property ShowHint;
+    property ParentShowHint;
     property Visible;
   end;
 

@@ -42,6 +42,7 @@ type
     property Enabled;
     property PopupMenu;
     property ShowHint;
+    property ParentShowHint;
     property TabOrder;
     property TabStop;
     property Visible;
@@ -82,6 +83,7 @@ type
     property Enabled;
     property PopupMenu;
     property ShowHint;
+    property ParentShowHint;
     property TabOrder;
     property TabStop;
     property Visible;
@@ -119,6 +121,7 @@ type
     property Enabled;
     property PopupMenu;
     property ShowHint;
+    property ParentShowHint;
     property TabOrder;
     property TabStop;
     property Visible;

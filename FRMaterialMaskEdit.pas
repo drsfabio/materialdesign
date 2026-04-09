@@ -190,6 +190,7 @@ type
       read GetShowClearButton write SetShowClearButton default False;
     property AutoFontSize: Boolean read FAutoFontSize write FAutoFontSize default True;
     property ShowHint;
+    property ParentShowHint;
     property TabOrder;
     property TabStop: Boolean read GetEditTabStop write SetEditTabStop default True;
     { Texto sem os literais da máscara (somente os caracteres digitados pelo usuário).

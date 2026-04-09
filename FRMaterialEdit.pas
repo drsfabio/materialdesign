@@ -468,6 +468,7 @@ type
     property Variant;
     property BorderRadius;
     property ShowHint;
+    property ParentShowHint;
     property Tag;
     property TabOrder;
     property TabStop;

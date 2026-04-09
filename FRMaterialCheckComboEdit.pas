@@ -152,6 +152,7 @@ type
     property ParentColor default False;
     property ParentFont default False;
     property ShowHint;
+    property ParentShowHint;
     { Ordena a lista de itens }
     property Sorted: Boolean read GetSorted write SetSorted default False;
     property TabOrder;

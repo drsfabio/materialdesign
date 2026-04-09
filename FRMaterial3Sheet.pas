@@ -46,6 +46,7 @@ type
     property Enabled;
     property PopupMenu;
     property ShowHint;
+    property ParentShowHint;
     property Visible;
   end;
 
@@ -74,6 +75,7 @@ type
     property Enabled;
     property PopupMenu;
     property ShowHint;
+    property ParentShowHint;
     property Visible;
   end;
 

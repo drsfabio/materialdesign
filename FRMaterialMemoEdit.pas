@@ -131,6 +131,7 @@ type
     property OnValidate: TFRValidateEvent read FOnValidate write FOnValidate;
     property PopupMenu;
     property ShowHint;
+    property ParentShowHint;
     property TabOrder;
     property TabStop default True;
     property Visible;

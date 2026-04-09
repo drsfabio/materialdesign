@@ -98,6 +98,7 @@ type
     property AutoFontSize: Boolean read FAutoFontSize write FAutoFontSize default True;
     property PopupMenu;
     property ShowHint;
+    property ParentShowHint;
     property TabOrder;
     property TabStop default True;
     property Value: Int64 read FValue write SetValue default 0;

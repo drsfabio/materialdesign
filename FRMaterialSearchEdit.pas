@@ -102,6 +102,7 @@ type
     property ReadOnly: Boolean read GetEditReadOnly write SetEditReadOnly default False;
     property AutoFontSize: Boolean read FAutoFontSize write FAutoFontSize default True;
     property ShowHint;
+    property ParentShowHint;
     property TabOrder;
     property TabStop default True;
     property Text: TCaption read GetEditText write SetEditText;
