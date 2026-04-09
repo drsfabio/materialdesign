@@ -1,10 +1,12 @@
 # Material Design 3 Component Library for Lazarus
 
+> **v2.0** — Abril 2026
+
 Componentes Material Design 3 completos para Lazarus / Free Pascal, integrados ao pacote [BGRAControls](https://github.com/bgrabitmap/bgracontrols). Licenciado sob **LGPL v3**.
 
 ## Visão geral
 
-Este pacote fornece **45 componentes visuais** + 6 unidades utilitárias que implementam a especificação Material Design 3 (Material You), incluindo:
+Este pacote fornece **49 componentes visuais** + 6 unidades utilitárias que implementam a especificação Material Design 3 (Material You), incluindo:
 
 - **Botões** — Button, ButtonIcon, SplitButton, FAB, ExtendedFAB, FABMenu
 - **Controles** — Switch, CheckBox, RadioButton, Chip, SegmentedButton
@@ -14,6 +16,8 @@ Este pacote fornece **45 componentes visuais** + 6 unidades utilitárias que imp
 - **Dados** — Tabs, ListView, TreeView, DataGrid, PageControl, VirtualDataGrid
 - **Navegação** — AppBar, Toolbar, NavBar, NavDrawer, NavRail
 - **Superfícies** — Dialog, Snackbar, Tooltip, Menu, GroupBox, Divider, BottomSheet, SideSheet
+- **Containers** — Card (Filled, Outlined, Elevated)
+- **Indicadores** — Badge (Dot, Count), Carousel, DatePicker
 
 ### Resumo de componentes
 
@@ -64,6 +68,10 @@ Este pacote fornece **45 componentes visuais** + 6 unidades utilitárias que imp
 | 43 | `TFRMaterialDataGrid` | `FRMaterial3DataGrid` | Tabela de dados baseada em TStringGrid com tema MD3 |
 | 44 | `TFRMaterialPageControl` | `FRMaterial3PageControl` | PageControl com abas MD3, close button e ícones |
 | 45 | `TFRMaterialVirtualDataGrid` | `FRMaterial3VirtualDataGrid` | Grid virtual (VirtualStringTree) com sort, filtro e edição inline |
+| 46 | `TFRMaterialCard` | `FRMaterial3Card` | Card MD3 — Filled, Outlined, Elevated — container com ripple |
+| 47 | `TFRMaterialBadge` | `FRMaterial3Badge` | Badge — indicador dot ou contagem (99+) |
+| 48 | `TFRMaterialCarousel` | `FRMaterial3Carousel` | Carousel horizontal com auto-play e indicadores |
+| 49 | `TFRMaterialDatePicker` | `FRMaterial3DatePicker` | Seletor de data com calendário mensal completo |
 
 ### Unidades utilitárias
 
@@ -357,6 +365,58 @@ Grid virtual baseado em `TLazVirtualStringTree` com sort automático, filtro por
 | `OnEditApplyValue` | `TFRMDEditApplyEvent` | Disparado para salvar valor editado |
 | `OnEditGetValue` | `TFRMDEditGetValueEvent` | Disparado para obter valor da célula para edição |
 
+### TFRMaterialCard
+
+Card MD3 com 3 estilos visuais. Funciona como container — aceita controles filhos arrastados no IDE.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `CardStyle` | `TFRMDCardStyle` | `cssFilled`, `cssOutlined`, `cssElevated` |
+| `BorderRadius` | `Integer` | Raio dos cantos (padrão: 12px) |
+| `ContentPadding` | `Integer` | Padding interno (padrão: 16px) |
+| `HeaderImage` | `TPicture` | Imagem no topo do card |
+| `HeaderHeight` | `Integer` | Altura da imagem de cabeçalho |
+| `Clickable` | `Boolean` | Habilita ripple e estado de hover |
+| `OnCardClick` | `TNotifyEvent` | Disparado ao clicar no card |
+
+### TFRMaterialBadge
+
+Indicador de status pequeno anexado a outro controle.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `BadgeMode` | `TFRMDBadgeMode` | `bmDot` (6×6 círculo) ou `bmCount` (pill com número) |
+| `Value` | `Integer` | Valor numérico exibido (modo Count) |
+| `MaxValue` | `Integer` | Valor máximo antes de mostrar "99+" (padrão: 99) |
+| `AttachTo` | `TControl` | Controle alvo — badge se posiciona automaticamente |
+| `OffsetX` / `OffsetY` | `Integer` | Ajuste fino de posição |
+
+### TFRMaterialCarousel
+
+Rotador horizontal de itens com animação suave e auto-play.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `Items` | `TFRMaterialCarouselItems` | Coleção de itens (Image, Title, Subtitle) |
+| `ActiveIndex` | `Integer` | Índice do item visível |
+| `AutoPlay` | `Boolean` | Avançar automaticamente |
+| `AutoPlayInterval` | `Integer` | Intervalo em ms (padrão: 3000) |
+| `ShowIndicators` | `Boolean` | Exibir dots de página |
+| `BorderRadius` | `Integer` | Raio dos cantos (padrão: 12px) |
+| `OnChange` | `TFRCarouselChangeEvent` | Disparado ao mudar de item |
+
+### TFRMaterialDatePicker
+
+Seletor de data com calendário mensal completo no estilo MD3.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `Date` | `TDate` | Data selecionada |
+| `MinDate` / `MaxDate` | `TDate` | Intervalo de datas permitidas |
+| `ShowToday` | `Boolean` | Destacar o dia atual com contorno |
+| `Year` / `Month` / `Day` | `Integer` | Componentes da data (somente leitura) |
+| `OnChange` | `TNotifyEvent` | Disparado ao selecionar uma data |
+
 ### TFRMaterialMemoEdit
 
 Editor multilinha com floating label, char counter e estilo MD3.
@@ -449,7 +509,7 @@ Caso o BGRABitmapPack ainda não esteja disponível no seu IDE, instale-o primei
 
 2. **Compilar**  
    Na janela do Editor de Pacotes, clique em **Compilar**.  
-   As 36 units devem compilar sem erros.
+   As 40 units devem compilar sem erros.
 
 3. **Instalar**  
    Ainda no Editor de Pacotes, clique em **Usar → Instalar**.  
@@ -457,7 +517,7 @@ Caso o BGRABitmapPack ainda não esteja disponível no seu IDE, instale-o primei
 
 4. **Verificar**  
    Após o IDE reiniciar, abra a **Paleta de Componentes** e procure pela aba **BGRA Controls**.  
-   Você deverá ver os 45 componentes listados acima.
+   Você deverá ver os 49 componentes listados acima.
 
 ### Adicionando ao projeto sem instalar na paleta
 
@@ -500,6 +560,10 @@ uses
   FRMaterial3DataGrid,   { DataGrid (TStringGrid) }
   FRMaterial3PageControl, { PageControl com abas }
   FRMaterial3VirtualDataGrid, { Grid virtual com filtro/sort }
+  FRMaterial3Card,       { Card (Filled, Outlined, Elevated) }
+  FRMaterial3Badge,      { Badge (Dot, Count) }
+  FRMaterial3Carousel,   { Carousel horizontal }
+  FRMaterial3DatePicker,  { Seletor de data calendário }
   FRMaterialThemeManager, { Gerenciador de tema }
   FRMaterialIcons;       { Ícones SVG }
 ```

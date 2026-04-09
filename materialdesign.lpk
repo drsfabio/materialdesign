@@ -12,8 +12,8 @@
     </CompilerOptions>
     <Description Value="Material Design input components for Lazarus: TEdit, TComboBox, TCheckCombo and TDateEdit wrappers with floating label, accent color, Variant styles (Standard/Filled/Outlined), border radius, search/clear buttons and WCAG 2.1 contrast utilities. Fork of BCMaterial from BGRAControls."/>
     <License Value="LGPL v3"/>
-    <Version Major="1"/>
-    <Files Count="36">
+    <Version Major="2"/>
+    <Files Count="40">
       <Item1>
         <Filename Value="FRMaterialTheme.pas"/>
         <UnitName Value="FRMaterialTheme"/>
@@ -189,6 +189,26 @@
         <HasRegisterProc Value="True"/>
         <UnitName Value="FRMaterial3VirtualDataGrid"/>
       </Item36>
+      <Item37>
+        <Filename Value="FRMaterial3Card.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="FRMaterial3Card"/>
+      </Item37>
+      <Item38>
+        <Filename Value="FRMaterial3Badge.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="FRMaterial3Badge"/>
+      </Item38>
+      <Item39>
+        <Filename Value="FRMaterial3Carousel.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="FRMaterial3Carousel"/>
+      </Item39>
+      <Item40>
+        <Filename Value="FRMaterial3DatePicker.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="FRMaterial3DatePicker"/>
+      </Item40>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="4">

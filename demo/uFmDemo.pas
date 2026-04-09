@@ -30,6 +30,10 @@ uses
   FRMaterial3DataGrid,
   FRMaterial3PageControl,
   FRMaterial3VirtualDataGrid,
+  FRMaterial3Card,
+  FRMaterial3Badge,
+  FRMaterial3Carousel,
+  FRMaterial3DatePicker,
   FRMaterialEdit,
   FRMaterialComboEdit,
   FRMaterialCheckComboEdit,
@@ -56,7 +60,7 @@ type
     FMainAppBar: TFRMaterialAppBar;
     FMainTabs: TFRMaterialTabs;
     FMainNavBar: TFRMaterialNavBar;
-    FContentPanels: array[0..12] of TScrollBox;
+    FContentPanels: array[0..14] of TScrollBox;
     FDarkMode: Boolean;
     FDarkAction: TFRMaterialAppBarAction;
     FPaletteMenu: TPopupMenu;
@@ -83,6 +87,8 @@ type
     FDataGrid: TFRMaterialDataGrid;
     FPageControl: TFRMaterialPageControl;
     FVirtualGrid: TFRMaterialVirtualDataGrid;
+    FDatePicker: TFRMaterialDatePicker;
+    FCarousel: TFRMaterialCarousel;
 
     procedure CreatePageButtons(APage: TWinControl);
     procedure CreatePageFABs(APage: TWinControl);
@@ -97,6 +103,8 @@ type
     procedure CreatePageSurfaces(APage: TWinControl);
     procedure CreatePagePageControl(APage: TWinControl);
     procedure CreatePageVirtualGrid(APage: TWinControl);
+    procedure CreatePageCards(APage: TWinControl);
+    procedure CreatePageCarouselDate(APage: TWinControl);
 
     function AddLabel(AParent: TWinControl; X, Y: Integer; const AText: string;
       ABold: Boolean = False): TLabel;
@@ -154,6 +162,9 @@ type
     procedure OnPageControlChange(Sender: TObject);
     procedure OnVGridSortColumn(Sender: TObject; ACol: Integer;
       var ADirection: TFRMDSortDirection);
+    procedure OnCardClick(Sender: TObject);
+    procedure OnDatePickerChange(Sender: TObject);
+    procedure OnCarouselChange(Sender: TObject; AIndex: Integer);
   public
   end;
 
@@ -165,7 +176,7 @@ implementation
 {$R *.lfm}
 
 const
-  PAGE_COUNT = 13;
+  PAGE_COUNT = 15;
   PAD = 16;
   GAP_Y = 12;
   ROW_H = 56;
@@ -228,7 +239,8 @@ const
   CPageNames: array[0..PAGE_COUNT-1] of string = (
     'Buttons', 'FABs', 'Toggles', 'Chips', 'Edits',
     'Inputs', 'Progress', 'Listas & Tabs', 'Tree & DataGrid',
-    'Navegação', 'Superfícies', 'PageControl', 'VirtualDataGrid');
+    'Navegação', 'Superfícies', 'PageControl', 'VirtualDataGrid',
+    'Cards & Badges', 'Carousel & DatePicker');
 var
   I: Integer;
   NI: TFRMaterialNavItem;
@@ -314,6 +326,9 @@ begin
   NI := TFRMaterialNavItem(FMainNavBar.Items.Add);
   NI.Caption := 'Layout';
   NI.IconMode := imDashboard;
+  NI := TFRMaterialNavItem(FMainNavBar.Items.Add);
+  NI.Caption := 'Novos';
+  NI.IconMode := imPlus;
   FMainNavBar.ItemIndex := 0;
 
   { === Content panels === }
@@ -344,6 +359,8 @@ begin
   CreatePageSurfaces(FContentPanels[10]);
   CreatePagePageControl(FContentPanels[11]);
   CreatePageVirtualGrid(FContentPanels[12]);
+  CreatePageCards(FContentPanels[13]);
+  CreatePageCarouselDate(FContentPanels[14]);
 
   { Initialize tabs for first nav group }
   UpdateMainTabs;
@@ -1722,19 +1739,20 @@ end;
 
 procedure TFmDemo.UpdateMainTabs;
 const
-  CTabNames: array[0..4, 0..2] of string = (
+  CTabNames: array[0..5, 0..2] of string = (
     ('Buttons', 'FABs', ''),
     ('Toggles', 'Chips', ''),
     ('Edits', 'Inputs', 'Progress'),
     ('Listas & Tabs', 'Tree & Data', 'VirtualDataGrid'),
-    ('Navegação', 'Superfícies', 'PageControl'));
-  CTabCount: array[0..4] of Integer = (2, 2, 3, 3, 3);
+    ('Navegação', 'Superfícies', 'PageControl'),
+    ('Cards & Badges', 'Carousel & DatePicker', ''));
+  CTabCount: array[0..5] of Integer = (2, 2, 3, 3, 3, 2);
 var
   Nav, I: Integer;
   OldHandler: TNotifyEvent;
 begin
   Nav := FMainNavBar.ItemIndex;
-  if (Nav < 0) or (Nav > 4) then Nav := 0;
+  if (Nav < 0) or (Nav > 5) then Nav := 0;
   OldHandler := FMainTabs.OnChange;
   FMainTabs.OnChange := nil;
   FMainTabs.Tabs.Clear;
@@ -1777,12 +1795,12 @@ end;
 
 procedure TFmDemo.OnMainTabChange(Sender: TObject);
 const
-  CPageBase: array[0..4] of Integer = (0, 2, 4, 7, 10);
+  CPageBase: array[0..5] of Integer = (0, 2, 4, 7, 10, 13);
 var
   Nav, PageIdx: Integer;
 begin
   Nav := FMainNavBar.ItemIndex;
-  if (Nav < 0) or (Nav > 4) then Nav := 0;
+  if (Nav < 0) or (Nav > 5) then Nav := 0;
   PageIdx := CPageBase[Nav] + FMainTabs.TabIndex;
   if PageIdx > PAGE_COUNT - 1 then PageIdx := PAGE_COUNT - 1;
   ShowPage(PageIdx);
@@ -1790,12 +1808,12 @@ end;
 
 procedure TFmDemo.OnMainNavChange(Sender: TObject);
 const
-  CPageBase: array[0..4] of Integer = (0, 2, 4, 7, 10);
+  CPageBase: array[0..5] of Integer = (0, 2, 4, 7, 10, 13);
 var
   Nav: Integer;
 begin
   Nav := FMainNavBar.ItemIndex;
-  if (Nav < 0) or (Nav > 4) then Nav := 0;
+  if (Nav < 0) or (Nav > 5) then Nav := 0;
   UpdateMainTabs;
   ShowPage(CPageBase[Nav]);
 end;
@@ -2134,6 +2152,217 @@ begin
   end
   else
     FTreeSelLabel.Caption := 'Nenhum nó selecionado';
+end;
+
+{ ===== Page: Cards & Badges ===== }
+
+procedure TFmDemo.CreatePageCards(APage: TWinControl);
+var
+  Y, X: Integer;
+  Card: TFRMaterialCard;
+  Badge: TFRMaterialBadge;
+  Btn: TFRMaterialButton;
+  Lbl: TLabel;
+begin
+  { --- Section: Card styles --- }
+  Y := AddSection(APage, PAD, 'TFRMaterialCard — Filled / Outlined / Elevated');
+
+  { Filled Card }
+  Card := TFRMaterialCard.Create(Self);
+  Card.Parent := APage;
+  Card.SetBounds(PAD, Y, 240, 140);
+  Card.CardStyle := cssFilled;
+  Card.Clickable := True;
+  Card.OnCardClick := @OnCardClick;
+  Card.Tag := 1;
+  Lbl := TLabel.Create(Self);
+  Lbl.Parent := Card;
+  Lbl.SetBounds(0, 8, 200, 20);
+  Lbl.Caption := 'Filled Card';
+  Lbl.Font.Size := 11; Lbl.Font.Style := [fsBold]; Lbl.Font.Color := MD3Colors.OnSurface; Lbl.Transparent := True;
+  AddLabel(Card, 0, 36, 'Fundo SurfaceContainerHighest');
+  AddLabel(Card, 0, 56, 'Sem borda, sem sombra');
+  AddLabel(Card, 0, 84, 'Clique para testar o ripple!');
+
+  { Outlined Card }
+  X := PAD + 256;
+  Card := TFRMaterialCard.Create(Self);
+  Card.Parent := APage;
+  Card.SetBounds(X, Y, 240, 140);
+  Card.CardStyle := cssOutlined;
+  Card.Clickable := True;
+  Card.OnCardClick := @OnCardClick;
+  Card.Tag := 2;
+  Lbl := TLabel.Create(Self);
+  Lbl.Parent := Card;
+  Lbl.SetBounds(0, 8, 200, 20);
+  Lbl.Caption := 'Outlined Card';
+  Lbl.Font.Size := 11; Lbl.Font.Style := [fsBold]; Lbl.Font.Color := MD3Colors.OnSurface; Lbl.Transparent := True;
+  AddLabel(Card, 0, 36, 'Fundo Surface');
+  AddLabel(Card, 0, 56, 'Borda Outline 1px');
+  AddLabel(Card, 0, 84, 'Estilo clássico e limpo');
+
+  { Elevated Card }
+  X := X + 256;
+  Card := TFRMaterialCard.Create(Self);
+  Card.Parent := APage;
+  Card.SetBounds(X, Y, 240, 140);
+  Card.CardStyle := cssElevated;
+  Card.Clickable := True;
+  Card.OnCardClick := @OnCardClick;
+  Card.Tag := 3;
+  Lbl := TLabel.Create(Self);
+  Lbl.Parent := Card;
+  Lbl.SetBounds(0, 8, 200, 20);
+  Lbl.Caption := 'Elevated Card';
+  Lbl.Font.Size := 11; Lbl.Font.Style := [fsBold]; Lbl.Font.Color := MD3Colors.OnSurface; Lbl.Transparent := True;
+  AddLabel(Card, 0, 36, 'Fundo SurfaceContainerLow');
+  AddLabel(Card, 0, 56, 'Sombra Level1');
+  AddLabel(Card, 0, 84, 'Elevação sutil');
+
+  { --- Section: Card as container --- }
+  Y := Y + 160;
+  Y := AddSection(APage, Y, 'Card como Container (aceita filhos no IDE)');
+
+  Card := TFRMaterialCard.Create(Self);
+  Card.Parent := APage;
+  Card.SetBounds(PAD, Y, Min(ContentW(APage), 500), 120);
+  Card.Anchors := [akLeft, akTop, akRight];
+  Card.CardStyle := cssOutlined;
+  Card.ContentPadding := 16;
+  Lbl := TLabel.Create(Self);
+  Lbl.Parent := Card;
+  Lbl.SetBounds(0, 4, 400, 20);
+  Lbl.Caption := 'Pedido #1042 — João Silva';
+  Lbl.Font.Size := 11; Lbl.Font.Style := [fsBold]; Lbl.Font.Color := MD3Colors.OnSurface; Lbl.Transparent := True;
+  AddLabel(Card, 0, 30, 'Total: R$ 3.487,50 — 12 itens — Aguardando aprovação');
+  with TFRMaterialButton.Create(Self) do
+  begin
+    Parent := Card; SetBounds(0, 60, 120, 36); Caption := 'Aprovar';
+    ButtonStyle := mbsFilled; ShowIcon := True; IconMode := imCheck;
+  end;
+  with TFRMaterialButton.Create(Self) do
+  begin
+    Parent := Card; SetBounds(130, 60, 120, 36); Caption := 'Recusar';
+    ButtonStyle := mbsOutlined; ShowIcon := True; IconMode := imClear;
+  end;
+
+  { --- Section: Badges --- }
+  Y := Y + 140;
+  Y := AddSection(APage, Y, 'TFRMaterialBadge — Dot & Count');
+
+  { Badge dot on a button }
+  Btn := TFRMaterialButton.Create(Self);
+  Btn.Parent := APage;
+  Btn.SetBounds(PAD, Y, 160, BTN_H);
+  Btn.Caption := 'Notificações';
+  Btn.ButtonStyle := mbsTonal;
+  Btn.ShowIcon := True; Btn.IconMode := imNotification;
+  Badge := TFRMaterialBadge.Create(Self);
+  Badge.Parent := APage;
+  Badge.BadgeMode := bmDot;
+  Badge.AttachTo := Btn;
+
+  { Badge count on another button }
+  Btn := TFRMaterialButton.Create(Self);
+  Btn.Parent := APage;
+  Btn.SetBounds(PAD + 180, Y, 160, BTN_H);
+  Btn.Caption := 'Mensagens';
+  Btn.ButtonStyle := mbsOutlined;
+  Btn.ShowIcon := True; Btn.IconMode := imMail;
+  Badge := TFRMaterialBadge.Create(Self);
+  Badge.Parent := APage;
+  Badge.BadgeMode := bmCount;
+  Badge.Value := 7;
+  Badge.AttachTo := Btn;
+
+  { Badge count = 120 → shows 99+ }
+  Btn := TFRMaterialButton.Create(Self);
+  Btn.Parent := APage;
+  Btn.SetBounds(PAD + 360, Y, 160, BTN_H);
+  Btn.Caption := 'Pendências';
+  Btn.ButtonStyle := mbsElevated;
+  Btn.ShowIcon := True; Btn.IconMode := imWarning;
+  Badge := TFRMaterialBadge.Create(Self);
+  Badge.Parent := APage;
+  Badge.BadgeMode := bmCount;
+  Badge.Value := 120;
+  Badge.MaxValue := 99;
+  Badge.AttachTo := Btn;
+
+  Y := Y + ROW_H + 8;
+  AddLabel(APage, PAD, Y, 'Badges: Dot (sem texto), Count = 7, Count = 120 (mostra 99+)');
+end;
+
+procedure TFmDemo.OnCardClick(Sender: TObject);
+begin
+  FStatusBar.SimpleText := Format('Card %d clicado!', [TFRMaterialCard(Sender).Tag]);
+end;
+
+{ ===== Page: Carousel & DatePicker ===== }
+
+procedure TFmDemo.CreatePageCarouselDate(APage: TWinControl);
+var
+  Y: Integer;
+  Item: TFRMaterialCarouselItem;
+begin
+  { --- Section: Carousel --- }
+  Y := AddSection(APage, PAD, 'TFRMaterialCarousel — Arraste ou aguarde auto-play');
+
+  FCarousel := TFRMaterialCarousel.Create(Self);
+  FCarousel.Parent := APage;
+  FCarousel.SetBounds(PAD, Y, Min(ContentW(APage), 600), 220);
+  FCarousel.Anchors := [akLeft, akTop, akRight];
+  FCarousel.AutoPlay := True;
+  FCarousel.AutoPlayInterval := 4000;
+  FCarousel.ShowIndicators := True;
+  FCarousel.BorderRadius := 16;
+  FCarousel.OnChange := @OnCarouselChange;
+
+  { Items with just titles (no images loaded — carousel paints colored bg) }
+  Item := FCarousel.Items.Add;
+  Item.Title := 'Dashboard';
+  Item.Subtitle := 'Visão geral do sistema ERP';
+  Item := FCarousel.Items.Add;
+  Item.Title := 'Pedidos';
+  Item.Subtitle := '23 pedidos aguardando aprovação';
+  Item := FCarousel.Items.Add;
+  Item.Title := 'Estoque';
+  Item.Subtitle := '8.432 itens em estoque';
+  Item := FCarousel.Items.Add;
+  Item.Title := 'Financeiro';
+  Item.Subtitle := 'R$ 142.350,80 em vendas no mês';
+  Item := FCarousel.Items.Add;
+  Item.Title := 'Relatórios';
+  Item.Subtitle := 'Análises e indicadores de desempenho';
+
+  { --- Section: DatePicker --- }
+  Y := Y + 240;
+  Y := AddSection(APage, Y, 'TFRMaterialDatePicker — Seleção de data');
+
+  FDatePicker := TFRMaterialDatePicker.Create(Self);
+  FDatePicker.Parent := APage;
+  FDatePicker.SetBounds(PAD, Y, 320, 360);
+  FDatePicker.Date := Now;
+  FDatePicker.ShowToday := True;
+  FDatePicker.OnChange := @OnDatePickerChange;
+
+  AddLabel(APage, PAD + 340, Y + 8, 'Navegue pelos meses com as setas.', True);
+  AddLabel(APage, PAD + 340, Y + 32, 'O dia atual é destacado com contorno.');
+  AddLabel(APage, PAD + 340, Y + 52, 'A data selecionada fica preenchida em Primary.');
+  AddLabel(APage, PAD + 340, Y + 84, 'Suporta MinDate / MaxDate para');
+  AddLabel(APage, PAD + 340, Y + 104, 'restringir intervalo de datas.');
+end;
+
+procedure TFmDemo.OnDatePickerChange(Sender: TObject);
+begin
+  FStatusBar.SimpleText := 'Data selecionada: ' + FormatDateTime('dd/mm/yyyy', FDatePicker.Date);
+end;
+
+procedure TFmDemo.OnCarouselChange(Sender: TObject; AIndex: Integer);
+begin
+  if (AIndex >= 0) and (AIndex < FCarousel.Items.Count) then
+    FStatusBar.SimpleText := 'Carousel: ' + FCarousel.Items[AIndex].Title;
 end;
 
 end.

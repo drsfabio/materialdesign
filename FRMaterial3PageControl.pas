@@ -51,6 +51,7 @@ type
     destructor Destroy; override;
     function GetParentComponent: TComponent; override;
     function HasParent: Boolean; override;
+    procedure SetParentComponent(AParent: TComponent); override;
   published
     property PageControl: TFRMaterialPageControl read FPageControl write SetPageControl;
     property Caption: TCaption read FTabCaption write SetTabCaption;
@@ -151,6 +152,7 @@ begin
   
   FRMDRegisterComponent(Self);
 
+  ControlStyle := ControlStyle + [csAcceptsControls];
   FPageControl := nil;
   FIconMode := imClear;
   FShowIcon := True;
@@ -235,6 +237,14 @@ begin
     Result := inherited HasParent;
 end;
 
+procedure TFRMaterialTabPage.SetParentComponent(AParent: TComponent);
+begin
+  if AParent is TFRMaterialPageControl then
+    SetPageControl(TFRMaterialPageControl(AParent))
+  else
+    inherited SetParentComponent(AParent);
+end;
+
 { ── TFRMaterialPageControl ── }
 
 constructor TFRMaterialPageControl.Create(AOwner: TComponent);
@@ -243,6 +253,7 @@ begin
   
   FRMDRegisterComponent(Self);
 
+  ControlStyle := ControlStyle + [csAcceptsControls];
   FPages := TList.Create;
   FActivePageIndex := -1;
   FTabHeight := 48;
