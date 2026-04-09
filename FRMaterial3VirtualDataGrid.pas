@@ -850,6 +850,10 @@ begin
   Hover   := PaintInfo.IsHoverIndex;
   Pressed := PaintInfo.IsDownIndex;
 
+  { Guard: Column can be nil for the header background area beyond columns }
+  if Column = nil then
+    Exit;
+
   divClr := ColorToRGB(MD3Colors.OutlineVariant);
   hasFilter := HasActiveFilter(Column.Index);
 

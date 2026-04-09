@@ -85,11 +85,13 @@ type
     property Caption;
     property Color;
     property Constraints;
+    property Cursor;
     property Enabled;
     property Font;
     property ParentColor;
     property ParentFont;
     property ParentShowHint;
+    property PopupMenu;
     property ShowHint;
     property TabOrder;
     property TabStop;

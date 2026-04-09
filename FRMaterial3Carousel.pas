@@ -108,8 +108,8 @@ type
     destructor Destroy; override;
     procedure Next;
     procedure Previous;
-    property ActiveIndex: Integer read FActiveIndex write SetActiveIndex;
   published
+    property ActiveIndex: Integer read FActiveIndex write SetActiveIndex;
     property Items: TFRMaterialCarouselItems read FItems write SetItems;
     property AutoPlay: Boolean read FAutoPlay write SetAutoPlay default True;
     property AutoPlayInterval: Integer read FAutoPlayInterval write SetAutoPlayInterval default 5000;
@@ -118,11 +118,29 @@ type
     property OnChange: TFRCarouselChangeEvent read FOnChange write FOnChange;
     property Align;
     property Anchors;
+    property BorderSpacing;
     property Caption;
+    property Color;
+    property Constraints;
+    property Cursor;
     property Enabled;
     property Font;
+    property ParentColor;
+    property ParentFont;
+    property ParentShowHint;
+    property PopupMenu;
+    property ShowHint;
+    property TabOrder;
+    property TabStop;
     property Visible;
     property OnClick;
+    property OnDblClick;
+    property OnMouseDown;
+    property OnMouseUp;
+    property OnMouseMove;
+    property OnMouseEnter;
+    property OnMouseLeave;
+    property OnResize;
   end;
 
 procedure Register;

@@ -108,8 +108,8 @@ type
     procedure UpdatePageLayout;
     property PageCount: Integer read GetPageCount;
     property Pages[Index: Integer]: TFRMaterialTabPage read GetPage;
-    property ActivePage: TFRMaterialTabPage read GetActivePage write SetActivePage;
   published
+    property ActivePage: TFRMaterialTabPage read GetActivePage write SetActivePage;
     property ActivePageIndex: Integer read FActivePageIndex write SetActivePageIndex default -1;
     property TabHeight: Integer read FTabHeight write FTabHeight default 48;
     property ShowCloseButton: Boolean read FShowCloseButton write SetShowCloseButton default False;

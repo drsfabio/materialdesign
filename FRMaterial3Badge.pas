@@ -62,6 +62,7 @@ type
     property AttachTo: TControl read FAttachTo write SetAttachTo;
     property OffsetX: Integer read FOffsetX write SetOffsetX default 0;
     property OffsetY: Integer read FOffsetY write SetOffsetY default 0;
+    property Constraints;
     property Visible;
   end;
 
