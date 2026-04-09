@@ -49,11 +49,13 @@ type
   TFRMaterialAppBar = class(TFRMaterial3Control)
   private
     FTitle: string;
+    FSubtitle: string;
     FNavIcon: TFRIconMode;
     FActions: TFRMaterialAppBarActions;
     FBarSize: TFRMDAppBarSize;
     FOnNavClick: TNotifyEvent;
     procedure SetTitle(const AValue: string);
+    procedure SetSubtitle(const AValue: string);
     procedure SetBarSize(AValue: TFRMDAppBarSize);
     procedure SetActions(AValue: TFRMaterialAppBarActions);
     function GetBarHeight: Integer;
@@ -66,6 +68,7 @@ type
     destructor Destroy; override;
   published
     property Title: string read FTitle write SetTitle;
+    property Subtitle: string read FSubtitle write SetSubtitle;
     property NavIcon: TFRIconMode read FNavIcon write FNavIcon;
     property Actions: TFRMaterialAppBarActions read FActions write SetActions;
     property BarSize: TFRMDAppBarSize read FBarSize write SetBarSize default absSmall;
@@ -149,7 +152,7 @@ constructor TFRMaterialAppBar.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FTitle := 'Title';
-  //FNavIcon := nil;
+  FSubtitle := '';
   FActions := TFRMaterialAppBarActions.Create(Self);
   FBarSize := absSmall;
   Width := 400;
@@ -183,6 +186,15 @@ begin
   end;
 end;
 
+procedure TFRMaterialAppBar.SetSubtitle(const AValue: string);
+begin
+  if FSubtitle <> AValue then
+  begin
+    FSubtitle := AValue;
+    Invalidate;
+  end;
+end;
+
 procedure TFRMaterialAppBar.SetBarSize(AValue: TFRMDAppBarSize);
 begin
   if FBarSize <> AValue then
@@ -206,6 +218,10 @@ var
   i, xAct: Integer;
   titleLeft: Integer;
   baseH, padX, icoY, icoSz: Integer;
+  BadgeText: string;
+  bc: TBGRAPixel;
+  tw, bw, bh, bx, by: Integer;
+  titleH, subH: Integer;
 begin
   baseH := GetBarHeight;
   padX := Width * 16 div 400;
@@ -227,46 +243,97 @@ begin
       titleLeft := padX + icoSz + padX;
     end;
 
-    { actions from right — Primary tint }
+    { actions from right — Primary tint + badge }
+    bc := ColorToBGRA(ColorToRGB(MD3Colors.Error));
     xAct := Width - padX;
     for i := FActions.Count - 1 downto 0 do
     begin
       iconBmp := FRGetCachedIcon(FActions[i].FIconMode, FRColorToSVGHex(MD3Colors.Primary), 2.0, icoSz, icoSz);
       Dec(xAct, icoSz);
       bmp.PutImage(xAct, icoY, iconBmp, dmDrawWithTransparency);
+
+      { Badge rendering }
+      if FActions[i].FBadge <> '' then
+      begin
+        if FActions[i].FBadge = ' ' then
+          bmp.FillEllipseAntialias(xAct + icoSz - 2, icoY + 2, 4, 4, bc)
+        else
+        begin
+          if Length(FActions[i].FBadge) > 3 then
+            BadgeText := '999+'
+          else
+            BadgeText := FActions[i].FBadge;
+          Canvas.Font.Size := 7;
+          tw := Canvas.TextWidth(BadgeText);
+          bw := tw + 8;
+          if bw < 16 then bw := 16;
+          bh := 16;
+          bx := xAct + icoSz - 4 - bw div 2;
+          by := icoY - 4;
+          bmp.FillRoundRectAntialias(bx, by, bx + bw, by + bh, 7.9, 7.9, bc);
+          Canvas.Font.Color := ColorToRGB(MD3Colors.OnError);
+          Canvas.Brush.Style := bsClear;
+          Canvas.TextOut(bx + (bw - tw) div 2, by + 1, BadgeText);
+          Canvas.Brush.Style := bsSolid;
+        end;
+      end;
+
       Dec(xAct, padX);
     end;
 
-    { bottom accent line }
-    bmp.DrawLineAntialias(0, Height - 1, Width, Height - 1,
-      ColorToBGRA(MD3Colors.Primary), 2);
-
     PaintRipple(bmp, MD3Colors.OnSurface);
+
+    { Bottom elevation shadow — subtle gradient inside control bounds }
+    for i := 0 to 3 do
+      bmp.DrawHorizLine(0, Height - 4 + i, Width - 1,
+        BGRA(0, 0, 0, Byte(20 - i * 5)));
+
     bmp.Draw(Canvas, 0, 0, False);
   finally
     bmp.Free;
   end;
 
-  { title text }
+  { title + subtitle text }
   Canvas.Font.Style := [fsBold];
   case FBarSize of
     absSmall:
     begin
-      aRect := Rect(titleLeft, 0, xAct, Height - 1);
       Canvas.Font.Size := Height * 12 div baseH;
+      if FSubtitle <> '' then
+      begin
+        titleH := Canvas.TextHeight('Ag');
+        Canvas.Font.Style := [];
+        Canvas.Font.Size := Height * 9 div baseH;
+        subH := Canvas.TextHeight('Ag');
+        Canvas.Font.Style := [fsBold];
+        Canvas.Font.Size := Height * 12 div baseH;
+        aRect := Rect(titleLeft, (Height - titleH - subH - 2) div 2,
+          xAct, (Height - titleH - subH - 2) div 2 + titleH);
+        MD3DrawText(Canvas, FTitle, aRect, MD3Colors.OnSurface, taLeftJustify, False);
+        Canvas.Font.Style := [];
+        Canvas.Font.Size := Height * 9 div baseH;
+        aRect := Rect(titleLeft, aRect.Bottom + 2, xAct, aRect.Bottom + 2 + subH);
+        MD3DrawText(Canvas, FSubtitle, aRect, MD3Colors.OnSurfaceVariant, taLeftJustify, False);
+      end
+      else
+      begin
+        aRect := Rect(titleLeft, 0, xAct, Height - 1);
+        MD3DrawText(Canvas, FTitle, aRect, MD3Colors.OnSurface, taLeftJustify, True);
+      end;
     end;
     absMedium:
     begin
-      aRect := Rect(padX, Height * 64 div baseH, Width - padX, Height);
       Canvas.Font.Size := Height * 14 div baseH;
+      aRect := Rect(padX, Height * 64 div baseH, Width - padX, Height);
+      MD3DrawText(Canvas, FTitle, aRect, MD3Colors.OnSurface, taLeftJustify, True);
     end;
     absLarge:
     begin
-      aRect := Rect(padX, Height * 104 div baseH, Width - padX, Height);
       Canvas.Font.Size := Height * 16 div baseH;
+      aRect := Rect(padX, Height * 104 div baseH, Width - padX, Height);
+      MD3DrawText(Canvas, FTitle, aRect, MD3Colors.OnSurface, taLeftJustify, True);
     end;
   end;
-  MD3DrawText(Canvas, FTitle, aRect, MD3Colors.OnSurface, taLeftJustify, True);
   Canvas.Font.Style := [];
   Canvas.Font.Size := 10;
 end;

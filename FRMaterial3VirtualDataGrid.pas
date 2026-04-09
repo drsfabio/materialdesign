@@ -334,12 +334,17 @@ begin
   FEdit.OnKeyDown  := EditKeyDown;
   FEdit.OnKeyPress := EditKeyPress;
 
-  { Force Win32 alignment via window style — LCL TEdit.Alignment
-    is unreliable on some widgetsets/BorderStyle combinations }
+  { Force handle creation and apply Win32 alignment + multiline style.
+    ES_MULTILINE is required because Win32 single-line edits ignore
+    ES_RIGHT/ES_CENTER on some LCL widgetset/BorderStyle combinations.
+    Multiline edits always honour alignment. Enter/Escape are already
+    intercepted in EditKeyDown so multiline behaviour is suppressed. }
+  FEdit.HandleNeeded;
   if FEdit.HandleAllocated then
   begin
     WStyle := GetWindowLongW(FEdit.Handle, GWL_STYLE);
-    WStyle := WStyle and not (ES_LEFT or ES_CENTER or ES_RIGHT);
+    WStyle := WStyle and not (ES_LEFT or ES_CENTER or ES_RIGHT or ES_AUTOHSCROLL);
+    WStyle := WStyle or ES_MULTILINE;
     case FEdit.Alignment of
       taLeftJustify:  WStyle := WStyle or ES_LEFT;
       taCenter:       WStyle := WStyle or ES_CENTER;
@@ -393,7 +398,7 @@ end;
 
 procedure TFRMDGridEditLink.SetBounds(R: TRect); stdcall;
 var
-  colLeft, colRight: Integer;
+  colLeft, colRight, cellHeight, textH, yOff: Integer;
 begin
   if not Assigned(FEdit) then Exit;
 
@@ -408,11 +413,18 @@ begin
 
   { Inset by 2px so the Primary border from DoBeforeCellPaint stays visible }
   R.Left   := R.Left + 2;
-  R.Top    := R.Top + 2;
   R.Right  := R.Right - 2;
-  R.Bottom := R.Bottom - 2;
 
-  FEdit.BoundsRect := R;
+  { Centraliza o editor verticalmente na celula }
+  cellHeight := R.Bottom - R.Top;
+  FTree.Canvas.Font.Assign(FEdit.Font);
+  textH := FTree.Canvas.TextHeight('Wg') + 4;
+  if (textH > 0) and (textH < cellHeight) then
+    yOff := (cellHeight - textH) div 2
+  else
+    yOff := 2;
+
+  FEdit.SetBounds(R.Left, R.Top + yOff, R.Right - R.Left, textH);
 end;
 
 procedure TFRMDGridEditLink.ProcessMessage(var Message: TLMessage); stdcall;

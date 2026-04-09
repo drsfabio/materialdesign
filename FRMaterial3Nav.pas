@@ -17,7 +17,7 @@ uses
   Classes, SysUtils, Controls, Graphics,
   {$IFDEF FPC} LResources, {$ENDIF}
   BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialIcons,
-  FRMaterial3PageControl, FRMaterialTheme;
+  FRMaterial3PageControl, FRMaterial3Menu, FRMaterialTheme;
 
 type
   TFRMaterialNavItem = class(TCollectionItem)
@@ -25,10 +25,13 @@ type
     FCaption: string;
     FIconMode: TFRIconMode;
     FBadge: string;
+    FMenu: TFRMaterialMenu;
+    procedure SetMenu(AValue: TFRMaterialMenu);
   published
     property Caption: string read FCaption write FCaption;
     property IconMode: TFRIconMode read FIconMode write FIconMode;
     property Badge: string read FBadge write FBadge;
+    property Menu: TFRMaterialMenu read FMenu write SetMenu;
   end;
 
   TFRMaterialNavItems = class(TCollection)
@@ -204,6 +207,21 @@ begin
     TControl(FOwner).Invalidate;
 end;
 
+{ ── TFRMaterialNavItem ── }
+
+procedure TFRMaterialNavItem.SetMenu(AValue: TFRMaterialMenu);
+var
+  OwnerComp: TComponent;
+begin
+  if FMenu = AValue then Exit;
+  OwnerComp := TFRMaterialNavItems(Collection).FOwner;
+  if Assigned(FMenu) then
+    FMenu.RemoveFreeNotification(OwnerComp);
+  FMenu := AValue;
+  if Assigned(FMenu) then
+    FMenu.FreeNotification(OwnerComp);
+end;
+
 { ══════════════════════════════════════════════════════════════
   TFRMaterialNavBar — bottom 80dp bar
   ══════════════════════════════════════════════════════════════ }
@@ -310,10 +328,18 @@ begin
 end;
 
 procedure TFRMaterialNavBar.Notification(AComponent: TComponent; Operation: TOperation);
+var
+  i: Integer;
 begin
   inherited Notification(AComponent, Operation);
-  if (Operation = opRemove) and (AComponent = FPageControl) then
-    FPageControl := nil;
+  if Operation = opRemove then
+  begin
+    if AComponent = FPageControl then
+      FPageControl := nil;
+    for i := 0 to FItems.Count - 1 do
+      if FItems[i].FMenu = AComponent then
+        FItems[i].FMenu := nil;
+  end;
 end;
 
 procedure TFRMaterialNavBar.DoOnResize;
@@ -407,6 +433,7 @@ end;
 procedure TFRMaterialNavBar.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
   iw, idx: Integer;
+  P: TPoint;
 begin
   inherited;
   if (Button = mbLeft) and (FItems.Count > 0) then
@@ -414,7 +441,14 @@ begin
     iw := Width div FItems.Count;
     idx := X div iw;
     if (idx >= 0) and (idx < FItems.Count) then
+    begin
       SetItemIndex(idx);
+      if Assigned(FItems[idx].FMenu) then
+      begin
+        P := ClientToScreen(Point(idx * iw, 0));
+        FItems[idx].FMenu.Popup(P.X, P.Y);
+      end;
+    end;
   end;
 end;
 
@@ -473,10 +507,18 @@ begin
 end;
 
 procedure TFRMaterialNavDrawer.Notification(AComponent: TComponent; Operation: TOperation);
+var
+  i: Integer;
 begin
   inherited Notification(AComponent, Operation);
-  if (Operation = opRemove) and (AComponent = FPageControl) then
-    FPageControl := nil;
+  if Operation = opRemove then
+  begin
+    if AComponent = FPageControl then
+      FPageControl := nil;
+    for i := 0 to FItems.Count - 1 do
+      if FItems[i].FMenu = AComponent then
+        FItems[i].FMenu := nil;
+  end;
 end;
 
 procedure TFRMaterialNavDrawer.Paint;
@@ -570,6 +612,7 @@ end;
 procedure TFRMaterialNavDrawer.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
   yStart, idx, ih, padX: Integer;
+  P: TPoint;
 begin
   inherited;
   if Button <> mbLeft then Exit;
@@ -580,7 +623,14 @@ begin
   if FHeaderTitle <> '' then Inc(yStart, ih);
   idx := (Y - yStart) div ih;
   if (idx >= 0) and (idx < FItems.Count) then
+  begin
     SetItemIndex(idx);
+    if Assigned(FItems[idx].FMenu) then
+    begin
+      P := ClientToScreen(Point(Width, yStart + idx * ih));
+      FItems[idx].FMenu.Popup(P.X, P.Y);
+    end;
+  end;
 end;
 
 { ══════════════════════════════════════════════════════════════
@@ -639,10 +689,18 @@ begin
 end;
 
 procedure TFRMaterialNavRail.Notification(AComponent: TComponent; Operation: TOperation);
+var
+  i: Integer;
 begin
   inherited Notification(AComponent, Operation);
-  if (Operation = opRemove) and (AComponent = FPageControl) then
-    FPageControl := nil;
+  if Operation = opRemove then
+  begin
+    if AComponent = FPageControl then
+      FPageControl := nil;
+    for i := 0 to FItems.Count - 1 do
+      if FItems[i].FMenu = AComponent then
+        FItems[i].FMenu := nil;
+  end;
 end;
 
 procedure TFRMaterialNavRail.Paint;
@@ -745,6 +803,7 @@ end;
 procedure TFRMaterialNavRail.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
   yStart, idx, ih, padX, fabH: Integer;
+  P: TPoint;
 begin
   inherited;
   if Button <> mbLeft then Exit;
@@ -778,7 +837,14 @@ begin
   { items }
   idx := (Y - yStart) div ih;
   if (idx >= 0) and (idx < FItems.Count) then
+  begin
     SetItemIndex(idx);
+    if Assigned(FItems[idx].FMenu) then
+    begin
+      P := ClientToScreen(Point(Width, yStart + idx * ih));
+      FItems[idx].FMenu.Popup(P.X, P.Y);
+    end;
+  end;
 end;
 
 procedure Register;
