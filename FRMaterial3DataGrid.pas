@@ -88,6 +88,7 @@ type
     property FixedCols;
     property FixedRows;
     property Font;
+    property ParentFont;
     property Options;
     property PopupMenu;
     property RowCount;

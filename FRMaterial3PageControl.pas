@@ -63,6 +63,7 @@ type
     property Constraints;
     property Cursor;
     property Font;
+    property ParentFont;
     property PopupMenu;
     property ShowHint;
     property Tag;
@@ -132,6 +133,7 @@ type
     property Cursor;
     property Enabled;
     property Font;
+    property ParentFont;
     property PopupMenu;
     property ShowHint;
     property TabOrder;

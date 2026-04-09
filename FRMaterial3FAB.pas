@@ -67,6 +67,7 @@ type
     property Anchors;
     property Caption;
     property Font;
+    property ParentFont;
     property Enabled;
     property Visible;
     property OnClick;

@@ -77,6 +77,7 @@ type
     property Cursor;
     property Enabled;
     property Font;
+    property ParentFont;
     property PopupMenu;
     property ShowHint;
     property Visible;
@@ -102,6 +103,7 @@ type
     property Cursor;
     property Enabled;
     property Font;
+    property ParentFont;
     property PopupMenu;
     property ShowHint;
     property Visible;

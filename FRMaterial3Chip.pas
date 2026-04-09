@@ -51,6 +51,7 @@ type
     property IconMode: TFRIconMode read FIconMode write SetIconMode default imSearch;
     property Caption;
     property Font;
+    property ParentFont;
     property Enabled;
     property Visible;
     property OnClick;
@@ -86,6 +87,7 @@ type
     property ItemIndex: Integer read FItemIndex write SetItemIndex default -1;
     property MultiSelect: Boolean read FMultiSelect write SetMultiSelect default False;
     property Font;
+    property ParentFont;
     property Enabled;
     property Visible;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;

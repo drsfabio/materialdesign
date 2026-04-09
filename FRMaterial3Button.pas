@@ -51,6 +51,7 @@ type
     property Caption;
     property Enabled;
     property Font;
+    property ParentFont;
     property Visible;
     property OnClick;
     property OnMouseDown;
@@ -119,6 +120,7 @@ type
     property Caption;
     property Enabled;
     property Font;
+    property ParentFont;
     property Visible;
     property OnClick;
   end;

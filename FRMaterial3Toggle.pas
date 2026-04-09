@@ -78,6 +78,7 @@ type
     property Constraints;
     property Cursor;
     property Font;
+    property ParentFont;
     property Enabled;
     property PopupMenu;
     property ShowHint;
@@ -114,6 +115,7 @@ type
     property Constraints;
     property Cursor;
     property Font;
+    property ParentFont;
     property Enabled;
     property PopupMenu;
     property ShowHint;
