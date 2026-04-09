@@ -395,14 +395,19 @@ begin
 end;
 
 procedure TFRMaterialCellEditor.SetBounds(ALeft, ATop, AWidth, AHeight: Integer);
+var
+  h: Integer;
 begin
-  { Imita as margens exatas do Canvas (Left=16px) e centraliza verticalmente }
+  { Alinha o editor com o padding do DrawCell (Left=16px, Right=4px) e
+    centraliza verticalmente com base na altura real da fonte }
   if (AWidth > 20) and (AHeight > 10) then
   begin
-    Inc(ALeft, 14);
-    Dec(AWidth, 18);
-    Inc(ATop, (AHeight - 20) div 2); 
-    AHeight := 20; 
+    h := Font.GetTextHeight('Wg') + 4;
+    if h < 20 then h := 20;
+    Inc(ALeft, 16);
+    Dec(AWidth, 20);
+    Inc(ATop, (AHeight - h) div 2);
+    AHeight := h;
   end;
   inherited SetBounds(ALeft, ATop, AWidth, AHeight);
 end;
