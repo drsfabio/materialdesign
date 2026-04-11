@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [2.0.0] — 2026-04-11
+## [3.0.0] — 2026-04-11
+
+> **Version note:** The previous `materialdesign` package was at v2.0.0.
+> Because this release renames the package (a breaking change for every
+> consumer `.lpi`), SemVer mandates a major bump to **v3.0.0**. The unit
+> names and class names remain unchanged — only the `.lpk` dependency
+> reference needs to be updated in consumer projects.
 
 ### Package rename
 - **Renamed package** from `materialdesign` to **`frcomponents`**. This is a

@@ -1,6 +1,6 @@
 # FRComponents — Material Design 3 for Lazarus
 
-> **v2.0.0** — Abril 2026 · Pacote Lazarus/FPC · LGPL v3 + exceção de linking
+> **v3.0.0** — Abril 2026 · Pacote Lazarus/FPC · LGPL v3 + exceção de linking
 
 **FRComponents** é uma biblioteca completa de componentes Material Design 3
 (Material You) para Lazarus/Free Pascal, com **~50 componentes visuais**
