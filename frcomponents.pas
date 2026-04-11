@@ -2,7 +2,7 @@
   This source is only used to compile and install the package.
  }
 
-unit materialdesign;
+unit frcomponents;
 
 {$warn 5023 off : no warning about unused units}
 interface
@@ -67,5 +67,5 @@ begin
 end;
 
 initialization
-  RegisterPackage('materialdesign', @Register);
+  RegisterPackage('frcomponents', @Register);
 end.

@@ -12,7 +12,7 @@ uses
   FRMaterial3TreeView, FRMaterial3VirtualDataGrid, FRMaterialCheckComboEdit,
   FRMaterialComboEdit, FRMaterialCurrencyEdit, FRMaterialDateEdit, FRMaterialEdit,
   FRMaterialIcons, FRMaterialMaskEdit, FRMaterialMasks, FRMaterialMemoEdit,
-  FRMaterialSearchEdit, FRMaterialSpinEdit, FRMaterialTheme, materialdesign,
+  FRMaterialSearchEdit, FRMaterialSpinEdit, FRMaterialTheme, frcomponents,
   FRMaterial3DataGrid, FRMaterial3PageControl, FRMaterialFieldPainter, FRMaterialInternalEdits,
   FRMaterialThemeManager;
 

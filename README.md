@@ -1,8 +1,24 @@
-# Material Design 3 Component Library for Lazarus
+# FRComponents — Material Design 3 for Lazarus
 
-> **v2.0** — Abril 2026
+> **v2.0.0** — Abril 2026 · Pacote Lazarus/FPC · LGPL v3 + exceção de linking
 
-Componentes Material Design 3 completos para Lazarus / Free Pascal, integrados ao pacote [BGRAControls](https://github.com/bgrabitmap/bgracontrols). Licenciado sob **LGPL v3**.
+**FRComponents** é uma biblioteca completa de componentes Material Design 3
+(Material You) para Lazarus/Free Pascal, com **~50 componentes visuais**
+endurecidos e testados via smoke runner.
+
+Construído sobre o pacote original [`materialdesign`](https://github.com/bgrabitmap/materialdesign)
+do time BGRAControls, com reescrita de arquitetura em volta de lifecycle
+(csDestroying/csLoading guards, BeforeDestruction pattern, recursion guard
+no ThemeManager), novos componentes (GridPanel 12-col, TitleBar, empty/
+loading states no VirtualDataGrid) e infraestrutura de QA (40 smoke tests
+automatizados cobrindo create/parent/destroy/theme-stress).
+
+## Status
+
+- ✅ **40/40** smoke tests passam (`tests/smoke_runner.lpi`)
+- ✅ Compila limpo contra Lazarus 4.4 / FPC 3.2.2 (Win64 testado)
+- ✅ Em produção num ERP de ~121k linhas de código
+- ✅ Integrado com `BGRABitmapPack` e `laz.virtualtreeview_package`
 
 ## Visão geral
 
@@ -532,7 +548,7 @@ Caso o BGRABitmapPack ainda não esteja disponível no seu IDE, instale-o primei
 ### Instalando este pacote
 
 1. **Abrir o pacote**  
-   **Pacote → Abrir arquivo de pacote (.lpk)** → selecione `materialdesign.lpk` deste repositório.
+   **Pacote → Abrir arquivo de pacote (.lpk)** → selecione `frcomponents.lpk` deste repositório.
 
 2. **Compilar**  
    Na janela do Editor de Pacotes, clique em **Compilar**.  
@@ -551,7 +567,7 @@ Caso o BGRABitmapPack ainda não esteja disponível no seu IDE, instale-o primei
 Se preferir não instalar na paleta do IDE, adicione o pacote como dependência do seu projeto:
 
 1. No seu projeto, abra **Projeto → Inspetor de Projeto**.
-2. Clique em **Adicionar → Novo Requisito** e escolha `materialdesign`.
+2. Clique em **Adicionar → Novo Requisito** e escolha `frcomponents`.
 3. Adicione as units necessárias na cláusula `uses` de cada formulário:
 
 ```pascal
@@ -597,8 +613,36 @@ uses
 
 ### Desinstalando
 
-1. **Pacote → Pacotes Instalados** → selecione `materialdesign` → clique em **Desinstalar**.
+1. **Pacote → Pacotes Instalados** → selecione `frcomponents` → clique em **Desinstalar**.
 2. Confirme a reconstrução do IDE.
+
+### Migrando de `materialdesign` → `frcomponents`
+
+Se você usava a versão anterior `materialdesign.lpk`:
+
+1. No Lazarus, desinstale o pacote `materialdesign` antigo.
+2. Abra `frcomponents.lpk` e instale.
+3. Abra seu `.lpi` de projeto e troque `<PackageName Value="materialdesign"/>`
+   por `<PackageName Value="frcomponents"/>`.
+4. **Os nomes das units individuais e classes não mudaram** (ex:
+   `FRMaterial3Button`, `TFRMaterialButton`), então as cláusulas `uses` nos
+   forms permanecem como estão.
+
+---
+
+## Créditos
+
+- **Autor:** Fábio Reis `<drsfabio@outlook.com>`
+- **Baseado em:** [`materialdesign`](https://github.com/bgrabitmap/materialdesign) do time BGRAControls (LGPL v3)
+- **Coautoria:** Claude (Anthropic) nas rodadas de hardening de v2.0
+- **Licença:** LGPL v3 com exceção de linking estático (mesma da LCL). Ver [LICENSE](LICENSE)
+- **Changelog:** ver [CHANGELOG.md](CHANGELOG.md)
+
+Agradecimentos especiais ao time BGRAControls por fornecer a base sólida
+que tornou este rework possível, incluindo `BGRABitmap` (renderização
+anti-aliased), o pacote original `materialdesign` e o `BCMaterial` do
+qual tudo derivou. Quando possível, as melhorias serão propostas como
+PRs upstream.
 
 ---
 

@@ -21,7 +21,7 @@
     </RunParams>
     <RequiredPackages>
       <Item>
-        <PackageName Value="materialdesign"/>
+        <PackageName Value="frcomponents"/>
       </Item>
       <Item>
         <PackageName Value="BGRABitmapPack"/>
@@ -167,11 +167,11 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="../materialdesign.lpk"/>
+        <Filename Value="../frcomponents.lpk"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="../materialdesign.pas"/>
+        <Filename Value="../frcomponents.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>

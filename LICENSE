@@ -1,0 +1,64 @@
+FRComponents — Material Design 3 component library for Lazarus/FPC
+Copyright (C) 2024-2026 Fabio Reis <drsfabio@outlook.com>
+
+Based on the "materialdesign" package from the BGRAControls team
+(https://github.com/bgrabitmap/materialdesign), licensed under the same
+terms.
+
+This library is free software; you can redistribute it and/or modify it
+under the terms of the GNU Lesser General Public License as published by
+the Free Software Foundation; either version 3 of the License, or (at
+your option) any later version, WITH the following "static linking
+exception" — the same exception used by the LCL (Lazarus Component
+Library):
+
+  As a special exception, the copyright holders of this library give
+  you permission to link this library with independent modules to
+  produce an executable, regardless of the license terms of these
+  independent modules, and to copy and distribute the resulting
+  executable under terms of your choice, provided that you also meet,
+  for each linked independent module, the terms and conditions of the
+  license of that module. An independent module is a module which is
+  not derived from or based on this library. If you modify this
+  library, you may extend this exception to your version of the
+  library, but you are not obligated to do so. If you do not wish to
+  do so, delete this exception statement from your version.
+
+This library is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser
+General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with this library; if not, write to the Free Software Foundation,
+Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+For the full text of the GNU Lesser General Public License version 3,
+see https://www.gnu.org/licenses/lgpl-3.0.txt
+
+================================================================================
+
+THIRD-PARTY ATTRIBUTIONS
+
+This package builds on and is a major extension of the "materialdesign"
+package from the BGRAControls team, itself derived from "BCMaterial".
+The original source is available at:
+
+    https://github.com/bgrabitmap/materialdesign
+    https://github.com/bgrabitmap/bgracontrols
+
+Original authors retain copyright on unmodified portions. All new code
+(hardening pass, lifecycle helpers, smoke runner, TFRMaterial3GridPanel,
+TFRMaterial3TitleBar, TFRMaterialVirtualDataGrid v2 rework including
+empty/loading states and auto-sized header, among others) is Copyright
+(C) 2024-2026 Fabio Reis and is released under the same LGPL v3 with
+static linking exception as described above.
+
+BGRABitmap, which this package depends on, is licensed under modified
+LGPL (same terms). See https://github.com/bgrabitmap/bgrabitmap for
+details.
+
+Material Design is a design system developed by Google. The name
+"Material Design" is a trademark of Google LLC. This package implements
+visual components that follow the Material Design 3 specification but
+is not affiliated with, endorsed by, or sponsored by Google.

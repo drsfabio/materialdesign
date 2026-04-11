@@ -24,7 +24,7 @@
         <PackageName Value="bgracontrols"/>
       </Item>
       <Item>
-        <PackageName Value="materialdesign"/>
+        <PackageName Value="frcomponents"/>
       </Item>
       <Item>
         <PackageName Value="LCL"/>

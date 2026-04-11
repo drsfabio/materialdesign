@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CONFIG>
   <Package Version="5">
-    <Name Value="materialdesign"/>
+    <Name Value="frcomponents"/>
     <Type Value="RunAndDesignTime"/>
-    <Author Value="bgrabitmap"/>
+    <Author Value="Fabio Reis (drsfabio@outlook.com) — based on materialdesign by bgrabitmap team"/>
     <CompilerOptions>
       <Version Value="11"/>
       <SearchPaths>
         <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
     </CompilerOptions>
-    <Description Value="Material Design input components for Lazarus: TEdit, TComboBox, TCheckCombo and TDateEdit wrappers with floating label, accent color, Variant styles (Standard/Filled/Outlined), border radius, search/clear buttons and WCAG 2.1 contrast utilities. Fork of BCMaterial from BGRAControls."/>
-    <License Value="LGPL v3"/>
-    <Version Major="2"/>
+    <Description Value="FRComponents — Complete Material Design 3 component library for Lazarus/FPC. Includes ~50 visual components: buttons (Button, FAB, SplitButton), inputs (Edit, Combo, CheckCombo, Currency, Date, Mask, Memo, Search, Spin), toggles (Switch, CheckBox, Radio, Chip), progress (Linear, Circular, Loading), data (ListView, TreeView, DataGrid, VirtualDataGrid, PageControl, Tabs), navigation (AppBar, NavBar, NavDrawer, NavRail), surfaces (Card, Dialog, Snackbar, Tooltip, Menu, Divider, BottomSheet, SideSheet), indicators (Badge, Carousel, DatePicker, TimePicker, Slider), containers (GridPanel with 12-col auto-flow) and a central ThemeManager with dark mode, palette switching, density and variant tokens. Hardened with lifecycle guards and covered by a smoke test runner. Based on the materialdesign package by the bgrabitmap team."/>
+    <License Value="LGPL v3 with linking exception (same as LCL)"/>
+    <Version Major="2" Minor="0"/>
     <Files Count="42">
       <Item1>
         <Filename Value="FRMaterialTheme.pas"/>
