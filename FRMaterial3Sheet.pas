@@ -174,7 +174,7 @@ end;
 destructor TFRMaterialBottomSheet.Destroy;
 begin
   DestroyScrim;
-  FAnimTimer.Free;
+  FreeAndNil(FAnimTimer);
   inherited Destroy;
 end;
 
@@ -201,11 +201,7 @@ end;
 
 procedure TFRMaterialBottomSheet.DestroyScrim;
 begin
-  if Assigned(FScrim) then
-  begin
-    FScrim.Free;
-    FScrim := nil;
-  end;
+  FreeAndNil(FScrim);
 end;
 
 procedure TFRMaterialBottomSheet.OnScrimClick(Sender: TObject);
@@ -351,7 +347,7 @@ end;
 destructor TFRMaterialSideSheet.Destroy;
 begin
   DestroyScrim;
-  FAnimTimer.Free;
+  FreeAndNil(FAnimTimer);
   inherited Destroy;
 end;
 
@@ -378,11 +374,7 @@ end;
 
 procedure TFRMaterialSideSheet.DestroyScrim;
 begin
-  if Assigned(FScrim) then
-  begin
-    FScrim.Free;
-    FScrim := nil;
-  end;
+  FreeAndNil(FScrim);
 end;
 
 procedure TFRMaterialSideSheet.OnScrimClick(Sender: TObject);

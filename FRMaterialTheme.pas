@@ -40,6 +40,29 @@ type
     ddUltraDense   { -12px — espaço mínimo   }
   );
 
+  { Tamanho semântico do campo para auto-layout no TFRMaterialGridPanel.
+    Quando o Grid tem AutoColSpan=True, ele consulta este valor em cada
+    filho (via TFRMaterial3Control.FieldSize) para decidir quantas colunas
+    ocupar, ao invés de usar o ColSpan manual do Items.
+
+    Mapeamento em grid de 12 colunas:
+      fsTiny   →  2 cols  (flags, ids curtos, códigos 1-2 dígitos)
+      fsSmall  →  3 cols  (UF, CEP, datas, percentuais, horas)
+      fsMedium →  4 cols  (telefone, CPF, CNPJ, valores monetários)
+      fsLarge  →  6 cols  (e-mail, nome curto, cidade)
+      fsHuge   →  8 cols  (razão social, endereço)
+      fsFull   → 12 cols  (observação, descrição longa, memo)
+      fsAuto   →  heurística por MaxLength do edit genérico         }
+  TFRFieldSize = (
+    fsAuto,
+    fsTiny,
+    fsSmall,
+    fsMedium,
+    fsLarge,
+    fsHuge,
+    fsFull
+  );
+
   { Elevation levels MD3. Controla intensidade da sombra.
     Level0=0dp, Level1=1dp, Level2=3dp, Level3=6dp, Level4=8dp, Level5=12dp. }
   TFRMDElevation = (

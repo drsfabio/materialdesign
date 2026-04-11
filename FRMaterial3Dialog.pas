@@ -236,8 +236,8 @@ begin
       FPaintCache.PutImage(FIconLeft, FIconTop, FIconBmp, dmDrawWithTransparency);
   end;
 
-  { Fully opaque blit — all pixels are composited, no transparency remains. }
-  FPaintCache.Draw(Canvas, 0, 0, True);
+  { Opaque blit — all pixels are fully composited (alpha=255). }
+  FPaintCache.Draw(Canvas, 0, 0, False);
 end;
 
 destructor TFRDialogPanel.Destroy;
@@ -420,7 +420,7 @@ begin
   FDialogPanel.Tag := dlgHeight; { store target height for animation }
   FDialogPanel.Anchors := [];
   FDialogPanel.FScrimAlpha := 0;
-  FDialogPanel.Color := clBlack;  { dark — any LCL background leak blends with scrim }
+  FDialogPanel.Color := MD3Colors.SurfaceContainerHigh;  { matches card — opaque draw prevents bleed }
 
   { Capture the screen content for see-through scrim }
   CaptureBackdrop;
@@ -559,7 +559,6 @@ procedure TFRDialogForm.CaptureBackdrop;
 var
   DC: HDC;
   bmp: TBitmap;
-  mainForm: TForm;
   w, h: Integer;
 begin
   { Ensure any pending paints are flushed so we capture fresh content }
@@ -571,37 +570,19 @@ begin
     h := Screen.Height;
     bmp.SetSize(w, h);
 
-    { Try to paint the main form directly — works even before it is visible
-      on screen (e.g. during startup when GetDC(0) would return black). }
-    mainForm := Application.MainForm;
-    if Assigned(mainForm) and mainForm.HandleAllocated then
-    begin
-      try
-        bmp.Canvas.Brush.Color := clBlack;
-        bmp.Canvas.FillRect(0, 0, w, h);
-        mainForm.PaintTo(bmp.Canvas, mainForm.Left, mainForm.Top);
-      except
-        { Fallback — PaintTo may fail on some widget-sets }
-        DC := GetDC(0);
-        try
-          BitBlt(bmp.Canvas.Handle, 0, 0, w, h, DC, 0, 0, SRCCOPY);
-        finally
-          ReleaseDC(0, DC);
-        end;
-      end;
-    end
-    else
-    begin
-      { No main form yet — capture the desktop }
-      DC := GetDC(0);
-      try
-        BitBlt(bmp.Canvas.Handle, 0, 0, w, h, DC, 0, 0, SRCCOPY);
-      finally
-        ReleaseDC(0, DC);
-      end;
+    { Capture current screen via BitBlt — most reliable on Windows,
+      captures the actual visible content including all windows. }
+    DC := GetDC(0);
+    try
+      BitBlt(bmp.Canvas.Handle, 0, 0, w, h, DC, 0, 0, SRCCOPY);
+    finally
+      ReleaseDC(0, DC);
     end;
 
     FBackdrop := TBGRABitmap.Create(bmp);
+    { Windows TBitmap 32-bit often has alpha=0 in all pixels.
+      Force fully opaque so compositing in panel corners works. }
+    FBackdrop.AlphaFill(255, 0, FBackdrop.NbPixels);
   finally
     bmp.Free;
   end;
@@ -614,9 +595,9 @@ var
 begin
   if (ClientWidth <= 0) or (ClientHeight <= 0) then Exit;
 
-  { Draw captured backdrop — gives the see-through effect }
+  { Draw captured backdrop opaque (alpha forced to 255 in CaptureBackdrop) }
   if Assigned(FBackdrop) then
-    FBackdrop.Draw(Canvas, 0, 0, True);
+    FBackdrop.Draw(Canvas, 0, 0, False);
 
   { Scrim alpha — animated or full }
   if FAnimating then
@@ -640,7 +621,7 @@ begin
   end;
 
   { Alpha-blend scrim over the backdrop }
-  FScrimCache.Draw(Canvas, 0, 0, False);
+  FScrimCache.Draw(Canvas, 0, 0, True);
 end;
 
 procedure TFRDialogForm.Resize;

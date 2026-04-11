@@ -135,8 +135,8 @@ end;
 
 destructor TFRMaterialTabs.Destroy;
 begin
-  FBackgroundImage.Free;
-  FTabs.Free;
+  FreeAndNil(FBackgroundImage);
+  FreeAndNil(FTabs);
   inherited Destroy;
 end;
 

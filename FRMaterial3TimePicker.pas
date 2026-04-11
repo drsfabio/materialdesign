@@ -190,6 +190,7 @@ var
   padY, fW, colW, r, ampmX: Integer;
   aRect: TRect;
 begin
+  if not FRMDCanPaint(Self) then Exit;
   { Proportional metrics based on Width (reference = 220) and Height (reference = 72) }
   padY := Height * 8 div 72;
   fW := Width * 80 div 220;       { hour/minute field width }

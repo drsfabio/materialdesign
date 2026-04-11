@@ -100,6 +100,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    procedure BeforeDestruction; override;
 
     { Marca/desmarca todos os itens }
     procedure CheckAll(AChecked: Boolean);
@@ -696,7 +697,11 @@ var
   DecoColor: TColor;
   P: TFRMDFieldPaintParams;
 begin
+  if not FRMDCanPaint(Self) then Exit;
+
   inherited Paint;
+
+  if not Assigned(FDisplayEdit) then Exit;
 
   if FDisplayEdit.Color <> Self.Color then
     FDisplayEdit.Color := Self.Color;
@@ -727,7 +732,10 @@ begin
   P.EditWidth := FDisplayEdit.Width;
   P.EditHeight := FDisplayEdit.Height;
 
-  P.ActionRight := FDropButton.Left + FDropButton.Width;
+  if Assigned(FDropButton) then
+    P.ActionRight := FDropButton.Left + FDropButton.Width
+  else
+    P.ActionRight := FDisplayEdit.Left + FDisplayEdit.Width;
   P.BottomMargin := 0;
 
   P.HelperText := HelperText;
@@ -736,10 +744,13 @@ begin
   P.SuffixText := '';
 
   P.EditFont := FDisplayEdit.Font;
-  P.LabelFont := FLabel.Font;
-  P.LabelRight := FLabel.Left + Canvas.TextWidth(FLabel.Caption);
-  P.LabelTop := FLabel.Top;
-  P.LabelText := FLabel.Caption;
+  if Assigned(FLabel) then
+  begin
+    P.LabelFont := FLabel.Font;
+    P.LabelRight := FLabel.Left + Canvas.TextWidth(FLabel.Caption);
+    P.LabelTop := FLabel.Top;
+    P.LabelText := FLabel.Caption;
+  end;
   if Assigned(FLabelAnimator) then
     P.LabelProgress := FLabelAnimator.Progress
   else
@@ -850,10 +861,32 @@ begin
   UpdateDisplayText;
 end;
 
+procedure TFRMaterialCheckComboEdit.BeforeDestruction;
+begin
+  { Fecha o dropdown se estiver aberto — senao o form dropdown tenta
+    pintar com referencia ao combo que esta sendo destruido. }
+  try
+    if IsDropDownOpen then
+      CloseDropDown;
+  except
+  end;
+
+  { Nila handlers dos sub-controles para que mensagens enfileiradas nao
+    disparem em Self ja meio-destruido. }
+  if Assigned(FDropButton)  then FDropButton.OnClick  := nil;
+  if Assigned(FDisplayEdit) then
+  begin
+    FDisplayEdit.OnKeyDown := nil;
+    FDisplayEdit.OnKeyPress := nil;
+  end;
+
+  inherited BeforeDestruction;
+end;
+
 destructor TFRMaterialCheckComboEdit.Destroy;
 begin
-  if Assigned(FLabelAnimator) then FLabelAnimator.Free;
-  FItems.Free;
+  if Assigned(FLabelAnimator) then FreeAndNil(FLabelAnimator);
+  FreeAndNil(FItems);
   inherited Destroy;
 end;
 

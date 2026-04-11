@@ -32,6 +32,7 @@ type
     FDensity: TFRMDDensity;
     FVariant: TFRMaterialVariant;
     FListeners: TFPList;
+    FApplying: Boolean;
     procedure SetPalette(AValue: TFRMDPalette);
     procedure SetDarkMode(AValue: Boolean);
     procedure SetSeedColor(AValue: TColor);
@@ -84,20 +85,40 @@ begin
   FUseSeed   := False;
   FDensity   := ddNormal;
   FVariant   := mvStandard;
+  FApplying  := False;
 end;
 
 destructor TFRMaterialThemeManager.Destroy;
 begin
   if FRMaterialDefaultThemeManager = Self then
     FRMaterialDefaultThemeManager := nil;
-  FListeners.Free;
+  FreeAndNil(FListeners);
   inherited Destroy;
 end;
 
 procedure TFRMaterialThemeManager.RegisterComponent(AComponent: IFRMaterialComponent);
 begin
-  if Assigned(FListeners) and (FListeners.IndexOf(Pointer(AComponent)) < 0) then
-    FListeners.Add(Pointer(AComponent));
+  if not Assigned(FListeners) then Exit;
+  if FListeners.IndexOf(Pointer(AComponent)) >= 0 then Exit;
+
+  FListeners.Add(Pointer(AComponent));
+
+  { NAO empurrar ApplyTheme aqui. Este metodo eh chamado do construtor
+    base (TFRMaterial3Control.Create), momento em que o construtor do
+    descendente ainda nao rodou — FDisplayEdit, FLabel etc sao nil.
+    Chamar ApplyTheme virtualmente nesse ponto crasha com AV em campo
+    nil do derivado. A sincronizacao inicial do tema eh feita via:
+
+      1. LFM-loaded components: TFRMaterial3Control.Loaded override
+         chama ApplyTheme DEPOIS que o streaming completa e todos os
+         sub-componentes estao construidos.
+
+      2. Code-created components: o chamador aplica tema explicitamente
+         quando necessario (ex: uFmMain.ApplyMD3Colors apos criar UI
+         dinamica).
+
+    A partir do proximo SetDarkMode/SetDensity/SetVariant, ApplyTheme
+    propaga normalmente para todos os listeners. }
 end;
 
 procedure TFRMaterialThemeManager.UnregisterComponent(AComponent: IFRMaterialComponent);
@@ -111,23 +132,43 @@ var
   i: Integer;
   Comp: IFRMaterialComponent;
 begin
-  { Gera o novo esquema de cores e popula a global MD3Colors }
-  if FUseSeed then
-    MD3GenerateScheme(FSeedColor, FDarkMode)
-  else
-    MD3LoadPalette(FPalette, FDarkMode);
+  { Reentrancy guard — se um listener dentro do seu ApplyTheme mexer em
+    Palette/DarkMode/Density/Variant, os setters tentam chamar ApplyTheme
+    de novo. Sem este guard entramos em loop infinito e (pior) iteramos
+    FListeners com contagem mudando a cada passo. }
+  if FApplying then Exit;
+  FApplying := True;
+  try
+    { Gera o novo esquema de cores e popula a global MD3Colors }
+    if FUseSeed then
+      MD3GenerateScheme(FSeedColor, FDarkMode)
+    else
+      MD3LoadPalette(FPalette, FDarkMode);
 
-  { Limpa o cache de ícones para que sejam re-renderizados com as novas cores }
-  FRClearIconCache;
+    { Limpa o cache de ícones para que sejam re-renderizados com as novas cores }
+    FRClearIconCache;
 
-  { Propaga invalidação para todos os observers }
-  if Assigned(FListeners) then
-    for i := FListeners.Count - 1 downto 0 do
-    begin
-      Comp := IFRMaterialComponent(FListeners[i]);
-      if Assigned(Comp) then
-        Comp.ApplyTheme(Self);
-    end;
+    { Propaga invalidação para todos os observers. Iteramos de tras para
+      frente para resistir a remocoes (componente desregistrando dentro
+      do proprio ApplyTheme). }
+    if Assigned(FListeners) then
+      for i := FListeners.Count - 1 downto 0 do
+      begin
+        if i >= FListeners.Count then Continue;
+        { Nil pointer check ANTES do cast — protege contra slots ja
+          nilled (defensivo, mesmo com unregister correto). }
+        if FListeners[i] = nil then Continue;
+        Comp := IFRMaterialComponent(FListeners[i]);
+        if Assigned(Comp) then
+        try
+          Comp.ApplyTheme(Self);
+        except
+          { Um listener que crashar nao pode derrubar todos os outros. }
+        end;
+      end;
+  finally
+    FApplying := False;
+  end;
 end;
 
 procedure TFRMaterialThemeManager.Apply;

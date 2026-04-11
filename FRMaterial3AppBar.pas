@@ -25,11 +25,13 @@ type
     FIconMode: TFRIconMode;
     FHint: string;
     FBadge: string;
+    FIsSeparator: Boolean;
     FOnClick: TNotifyEvent;
   published
     property IconMode: TFRIconMode read FIconMode write FIconMode;
     property Hint: string read FHint write FHint;
     property Badge: string read FBadge write FBadge;
+    property IsSeparator: Boolean read FIsSeparator write FIsSeparator default False;
     property OnClick: TNotifyEvent read FOnClick write FOnClick;
   end;
 
@@ -61,10 +63,12 @@ type
     procedure SetBarSize(AValue: TFRMDAppBarSize);
     procedure SetActions(AValue: TFRMaterialAppBarActions);
     function GetBarHeight: Integer;
+    function IsOnInteractiveArea(AX, AY: Integer): Boolean;
   protected
     function PaintCached(ABmp: TBGRABitmap): Boolean; override;
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure DblClick; override;
     procedure DoOnResize; override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -122,6 +126,9 @@ procedure Register;
 
 implementation
 
+uses
+  Forms, LCLIntf;
+
 { ── TFRMaterialAppBarActions ── }
 
 constructor TFRMaterialAppBarActions.Create(AOwner: TComponent);
@@ -167,7 +174,7 @@ end;
 
 destructor TFRMaterialAppBar.Destroy;
 begin
-  FActions.Free;
+  FreeAndNil(FActions);
   inherited Destroy;
 end;
 
@@ -255,6 +262,18 @@ begin
   xAct := Width - padX;
   for i := FActions.Count - 1 downto 0 do
   begin
+    { Separator — vertical line }
+    if FActions[i].FIsSeparator then
+    begin
+      Dec(xAct, gapX);
+      ABmp.DrawVertLine(xAct, icoY, icoY + icoSz,
+        BGRA(ColorToBGRA(ColorToRGB(MD3Colors.OutlineVariant)).red,
+             ColorToBGRA(ColorToRGB(MD3Colors.OutlineVariant)).green,
+             ColorToBGRA(ColorToRGB(MD3Colors.OutlineVariant)).blue, 160));
+      Dec(xAct, gapX);
+      Continue;
+    end;
+
     iconBmp := FRGetCachedIcon(FActions[i].FIconMode, FRColorToSVGHex(MD3Colors.Primary), 2.0, icoSz, icoSz);
     Dec(xAct, icoSz);
     ABmp.PutImage(xAct, icoY, iconBmp, dmDrawWithTransparency);
@@ -300,6 +319,7 @@ var
   tw, bw, bx, by: Integer;
   titleH, subH: Integer;
 begin
+  if not FRMDCanPaint(Self) then Exit;
   inherited Paint;
 
   baseH := GetBarHeight;
@@ -318,6 +338,12 @@ begin
   xAct := Width - padX;
   for i := FActions.Count - 1 downto 0 do
   begin
+    if FActions[i].FIsSeparator then
+    begin
+      Dec(xAct, gapX * 2);
+      Continue;
+    end;
+
     Dec(xAct, icoSz);
 
     if (FActions[i].FBadge <> '') and (FActions[i].FBadge <> ' ') then
@@ -400,6 +426,9 @@ procedure TFRMaterialAppBar.MouseDown(Button: TMouseButton; Shift: TShiftState; 
 var
   i, xAct: Integer;
   baseH, padX, gapX, icoSz, icoY, hitH: Integer;
+  {$IFDEF MSWINDOWS}
+  pf: TCustomForm;
+  {$ENDIF}
 begin
   inherited;
   if Button <> mbLeft then Exit;
@@ -425,6 +454,11 @@ begin
   xAct := Width - padX;
   for i := FActions.Count - 1 downto 0 do
   begin
+    if FActions[i].FIsSeparator then
+    begin
+      Dec(xAct, gapX * 2);
+      Continue;
+    end;
     Dec(xAct, icoSz);
     if (X >= xAct) and (X <= xAct + icoSz) and (Y >= icoY - 4) and (Y <= hitH + 4) then
     begin
@@ -434,6 +468,81 @@ begin
     end;
     Dec(xAct, gapX);
   end;
+
+  { Non-interactive area — drag borderless form }
+  {$IFDEF MSWINDOWS}
+  begin
+    pf := GetParentForm(Self);
+    if (pf <> nil) and (pf.Parent = nil) and (pf.BorderStyle in [bsNone, bsSizeable]) then
+    begin
+      ReleaseCapture;
+      SendMessage(pf.Handle, $0112 {WM_SYSCOMMAND}, $F012 {SC_MOVE+HTCAPTION}, 0);
+    end;
+  end;
+  {$ENDIF}
+end;
+
+function TFRMaterialAppBar.IsOnInteractiveArea(AX, AY: Integer): Boolean;
+var
+  i, xAct: Integer;
+  baseH, padX, gapX, icoSz, icoY, hitH: Integer;
+begin
+  Result := False;
+  baseH := GetBarHeight;
+  padX := 16;
+  gapX := 8;
+  icoSz := Height * 24 div baseH;
+  if icoSz < 16 then icoSz := 16;
+  if icoSz > 36 then icoSz := 36;
+  icoY := Height * 20 div baseH;
+  hitH := icoY + icoSz;
+
+  if (FNavIcon <> imClear) and (AX < padX + icoSz + 8) and (AY >= icoY - 4) and (AY <= hitH + 4) then
+  begin
+    Result := True;
+    Exit;
+  end;
+
+  xAct := Width - padX;
+  for i := FActions.Count - 1 downto 0 do
+  begin
+    if FActions[i].FIsSeparator then
+    begin
+      Dec(xAct, gapX * 2);
+      Continue;
+    end;
+    Dec(xAct, icoSz);
+    if (AX >= xAct) and (AX <= xAct + icoSz) and (AY >= icoY - 4) and (AY <= hitH + 4) then
+    begin
+      Result := True;
+      Exit;
+    end;
+    Dec(xAct, gapX);
+  end;
+end;
+
+procedure TFRMaterialAppBar.DblClick;
+{$IFDEF MSWINDOWS}
+var
+  pf: TCustomForm;
+  pt: TPoint;
+{$ENDIF}
+begin
+  inherited;
+  {$IFDEF MSWINDOWS}
+  pf := GetParentForm(Self);
+  if (pf <> nil) and (pf.Parent = nil) and (pf.BorderStyle in [bsNone, bsSizeable]) then
+  begin
+    pt := ScreenToClient(Mouse.CursorPos);
+    if not IsOnInteractiveArea(pt.X, pt.Y) then
+    begin
+      if pf.WindowState = wsMaximized then
+        pf.WindowState := wsNormal
+      else
+        pf.WindowState := wsMaximized;
+    end;
+  end;
+  {$ENDIF}
 end;
 
 { ── TFRMaterialToolbar ── }
@@ -448,7 +557,7 @@ end;
 
 destructor TFRMaterialToolbar.Destroy;
 begin
-  FActions.Free;
+  FreeAndNil(FActions);
   inherited Destroy;
 end;
 

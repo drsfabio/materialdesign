@@ -317,7 +317,7 @@ end;
 
 destructor TFRMDFloatingLabelAnimator.Destroy;
 begin
-  FTimer.Free;
+  FreeAndNil(FTimer);
   inherited Destroy;
 end;
 

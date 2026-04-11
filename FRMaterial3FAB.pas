@@ -166,14 +166,14 @@ begin
   if FFABSize = AValue then Exit;
   FFABSize := AValue;
   SetBounds(Left, Top, GetFABDimension, GetFABDimension);
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialFAB.SetIconMode(AValue: TFRIconMode);
 begin
   if FIconMode = AValue then Exit;
   FIconMode := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 function TFRMaterialFAB.GetFABDimension: Integer;
@@ -264,14 +264,14 @@ procedure TFRMaterialExtendedFAB.SetIconMode(AValue: TFRIconMode);
 begin
   if FIconMode = AValue then Exit;
   FIconMode := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialExtendedFAB.SetShowIcon(AValue: Boolean);
 begin
   if FShowIcon = AValue then Exit;
   FShowIcon := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialExtendedFAB.DoOnResize;
@@ -366,7 +366,7 @@ end;
 
 destructor TFRMaterialFABMenu.Destroy;
 begin
-  FItems.Free;
+  FreeAndNil(FItems);
   inherited Destroy;
 end;
 
@@ -380,7 +380,7 @@ procedure TFRMaterialFABMenu.SetIconMode(AValue: TFRIconMode);
 begin
   if FIconMode = AValue then Exit;
   FIconMode := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialFABMenu.SetExpanded(AValue: Boolean);
@@ -398,7 +398,7 @@ begin
     Height := 56;
     if Assigned(FOnCollapse) then FOnCollapse(Self);
   end;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialFABMenu.SetItems(AValue: TFRMaterialFABMenuItems);

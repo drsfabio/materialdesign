@@ -52,7 +52,11 @@ type
     imInventory, imCashFlow, imAccountBalance, imTax,
     imInvoice, imHandshake, imFactory, imQrCode,
     imPrinter, imClipboard, imAssignment,
-    imReport, imFile, imKpi
+    imReport, imFile, imKpi,
+    { Controles de janela }
+    imWindowMinimize, imWindowMaximize, imWindowRestore, imWindowClose,
+    { Variantes preenchidas }
+    imStarFilled
   );
 
   { TFRMaterialIconButton
@@ -176,6 +180,12 @@ function FRAssignmentIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRReportIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRFileIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRKpiIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+{ Controles de janela }
+function FRWindowMinimizeIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRWindowMaximizeIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRWindowRestoreIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRWindowCloseIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRStarFilledIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRRenderSVGIcon(const ASVG: string; AW, AH: Integer): TBGRABitmap;
 function FRGetIconSVG(AMode: TFRIconMode; const AHex: string; AStroke: Double): string;
 
@@ -1279,6 +1289,61 @@ begin
     '</svg>';
 end;
 
+{ ── Controles de janela ── }
+
+function FRWindowMinimizeIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<line x1="6" y1="12" x2="18" y2="12" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '</svg>';
+end;
+
+function FRWindowMaximizeIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="5" y="5" width="14" height="14" rx="1" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+function FRWindowRestoreIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="4" y="8" width="12" height="12" rx="1" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linejoin="round"/>' +
+    '<polyline points="8 8 8 4 20 4 20 16 16 16" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+function FRWindowCloseIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<line x1="6" y1="6" x2="18" y2="18" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<line x1="18" y1="6" x2="6" y2="18" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '</svg>';
+end;
+
+function FRStarFilledIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" ' +
+    'fill="' + AHex + '" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
 function FRLockIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 var sw: string;
 begin
@@ -1396,6 +1461,12 @@ begin
     imReport:        Result := FRReportIconSVG(AHex,         UseStroke(AStroke, 2.0));
     imFile:          Result := FRFileIconSVG(AHex,           UseStroke(AStroke, 2.0));
     imKpi:           Result := FRKpiIconSVG(AHex,            UseStroke(AStroke, 2.0));
+    { Controles de janela }
+    imWindowMinimize: Result := FRWindowMinimizeIconSVG(AHex, UseStroke(AStroke, 2.0));
+    imWindowMaximize: Result := FRWindowMaximizeIconSVG(AHex, UseStroke(AStroke, 2.0));
+    imWindowRestore:  Result := FRWindowRestoreIconSVG(AHex,  UseStroke(AStroke, 2.0));
+    imWindowClose:    Result := FRWindowCloseIconSVG(AHex,    UseStroke(AStroke, 2.0));
+    imStarFilled:     Result := FRStarFilledIconSVG(AHex,     UseStroke(AStroke, 2.0));
   else
     Result := '';
   end;

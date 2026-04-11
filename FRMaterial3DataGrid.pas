@@ -201,7 +201,7 @@ begin
   Font.Color  := ColorToRGB(MD3Colors.OnSurface);
 
   ApplyRowHeight;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialDataGrid.SetDensity(AValue: TFRMDDensity);
@@ -209,14 +209,14 @@ begin
   if FDensity = AValue then Exit;
   FDensity := AValue;
   ApplyRowHeight;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialDataGrid.SetZebraStripes(AValue: Boolean);
 begin
   if FZebraStripes = AValue then Exit;
   FZebraStripes := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialDataGrid.DrawCell(ACol, ARow: Integer; ARect: TRect;
@@ -340,7 +340,7 @@ begin
   if ARow2 <> FHoveredRow then
   begin
     FHoveredRow := ARow2;
-    Invalidate;
+    FRMDSafeInvalidate(Self);
   end;
 end;
 
@@ -348,7 +348,7 @@ procedure TFRMaterialDataGrid.MouseLeave;
 begin
   inherited MouseLeave;
   FHoveredRow := -1;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialDataGrid.HeaderClick(IsColumn: Boolean; Index: Integer);
@@ -375,7 +375,7 @@ begin
   if Assigned(FOnSortColumn) then
     FOnSortColumn(Self, FSortCol, FSortDir);
 
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialDataGrid.SortByColumn(ACol: Integer; AAscending: Boolean);
@@ -387,7 +387,7 @@ begin
   if Assigned(FOnSortColumn) then
     FOnSortColumn(Self, FSortCol, FSortDir);
 
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 type

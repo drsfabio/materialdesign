@@ -77,6 +77,10 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    { Desregistra do theme manager e nila handlers de sub-controles antes
+      do cascade destruction. Sem isto, WM_PAINT/WM_TIMER em fila podem
+      disparar nos sub-controles ja parcialmente liberados. }
+    procedure BeforeDestruction; override;
     procedure ApplyTheme(const AThemeManager: TObject); virtual;
     property Edit: TEdit read FEdit;
   published
@@ -233,13 +237,38 @@ begin
   FIconStrokeWidth  := 0;
 end;
 
+procedure TFRMaterialSearchEdit.BeforeDestruction;
+begin
+  { Unregister cedo — impede callbacks de tema em Self enquanto children
+    sao destruidos. }
+  FRMDUnregisterComponent(Self);
+
+  { Desativa e nila handlers dos sub-controles antes do cascade para que
+    mensagens enfileiradas (timer, mouse, key) nao disparem em Self ja
+    meio-destruido. Os sub-controles em si serao liberados pela owner
+    chain do inherited. }
+  if Assigned(FDebounceTimer) then
+  begin
+    FDebounceTimer.Enabled := False;
+    FDebounceTimer.OnTimer := nil;
+  end;
+  if Assigned(FSearchButton) then FSearchButton.OnClick := nil;
+  if Assigned(FClearButton)  then FClearButton.OnClick  := nil;
+  if Assigned(FEdit) then
+  begin
+    FEdit.OnKeyDown := nil;
+    FEdit.RemoveAllHandlersOfObject(Self);
+  end;
+
+  inherited BeforeDestruction;
+end;
+
 destructor TFRMaterialSearchEdit.Destroy;
 begin
-  if Assigned(FLabelAnimator) then FLabelAnimator.Free;
-  FDebounceTimer.Enabled := False;
-  
-  FRMDUnregisterComponent(Self);
-    
+  { BeforeDestruction ja desregistrou e desarmou handlers. Aqui apenas
+    libera recursos proprios (FLabelAnimator). Os sub-controles sao
+    liberados pela owner chain. }
+  if Assigned(FLabelAnimator) then FreeAndNil(FLabelAnimator);
   inherited Destroy;
 end;
 
@@ -435,8 +464,13 @@ end;
 
 procedure TFRMaterialSearchEdit.InternalEditChange(Sender: TObject);
 begin
-  UpdateClearButton;
-  
+  { Guard: OnChange pode disparar durante construcao antes de FDebounceTimer
+    / FClearButton / FLabelAnimator estarem criados, ou durante destruicao. }
+  if csDestroying in ComponentState then Exit;
+
+  if Assigned(FClearButton) then
+    UpdateClearButton;
+
   if Assigned(FLabelAnimator) then
   begin
     if (Trim(FEdit.Text) <> '') or FFocused then
@@ -444,10 +478,13 @@ begin
     else
       FLabelAnimator.InlineLabel;
   end;
-  
+
   { Reinicia o debounce }
-  FDebounceTimer.Enabled := False;
-  FDebounceTimer.Enabled := True;
+  if Assigned(FDebounceTimer) then
+  begin
+    FDebounceTimer.Enabled := False;
+    FDebounceTimer.Enabled := True;
+  end;
 end;
 
 procedure TFRMaterialSearchEdit.InternalEditKeyDown(Sender: TObject; var Key: Word; {%H-}Shift: TShiftState);
@@ -487,7 +524,14 @@ var
   P: TFRMDFieldPaintParams;
   ActionRightPos: Integer;
 begin
+  { Guard sistemico — impede que WM_PAINT tardias batam em sub-controles
+    ja parcialmente destruidos. FRMDCanPaint checa csDestroying/csLoading/
+    HandleAllocated/dimensoes em uma chamada so. }
+  if not FRMDCanPaint(Self) then Exit;
+
   inherited Paint;
+
+  if not Assigned(FEdit) then Exit;
 
   if FEdit.Color <> Self.Color then
     FEdit.Color := Self.Color;
@@ -497,7 +541,7 @@ begin
   else
     DecoColor := DisabledColor;
 
-  if FSearchButton.NormalColor <> DecoColor then
+  if Assigned(FSearchButton) and (FSearchButton.NormalColor <> DecoColor) then
   begin
     FSearchButton.NormalColor := DecoColor;
     FSearchButton.InvalidateCache;
@@ -514,33 +558,36 @@ begin
 
   P.Variant := FVariant;
   P.BorderRadius := FBorderRadius;
-  
+
   P.DecoColor := DecoColor;
   P.HelperColor := DisabledColor;
   P.DisabledColor := DisabledColor;
-  
+
   P.IsFocused := FFocused;
   P.IsEnabled := Enabled;
   P.IsRequired := False;
-  
+
   P.EditLeft := FEdit.Left;
   P.EditTop := FEdit.Top;
   P.EditWidth := FEdit.Width;
   P.EditHeight := FEdit.Height;
-  
+
   P.ActionRight := ActionRightPos;
   P.BottomMargin := 0;
-  
+
   P.HelperText := '';
   P.CharCounterText := '';
   P.PrefixText := '';
   P.SuffixText := '';
-  
+
   P.EditFont := FEdit.Font;
-  P.LabelFont := FLabel.Font;
-  P.LabelRight := FLabel.Left + Canvas.TextWidth(FLabel.Caption);
-  P.LabelTop := FLabel.Top;
-  P.LabelText := FLabel.Caption;
+  if Assigned(FLabel) then
+  begin
+    P.LabelFont := FLabel.Font;
+    P.LabelRight := FLabel.Left + Canvas.TextWidth(FLabel.Caption);
+    P.LabelTop := FLabel.Top;
+    P.LabelText := FLabel.Caption;
+  end;
   if Assigned(FLabelAnimator) then
     P.LabelProgress := FLabelAnimator.Progress
   else

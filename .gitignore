@@ -19,6 +19,12 @@ demo/lib/
 *.res
 icons/treeview_temp.png
 
+# Smoke test runner build artifacts
+tests/smoke_runner.exe
+tests/smoke_runner.res
+tests/smoke_out.txt
+tests/lib/
+
 # Build logs and temp files
 *.log
 diff.txt

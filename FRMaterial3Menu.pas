@@ -200,7 +200,7 @@ end;
 
 destructor TFRMaterialMenuItem.Destroy;
 begin
-  FSubItems.Free;
+  FreeAndNil(FSubItems);
   inherited Destroy;
 end;
 
@@ -265,10 +265,10 @@ end;
 destructor TFRMaterialMenu.Destroy;
 begin
   CloseAll;
-  FItems.Free;
-  
+  FreeAndNil(FItems);
+
   FRMDUnregisterComponent(Self);
-    
+
   inherited Destroy;
 end;
 

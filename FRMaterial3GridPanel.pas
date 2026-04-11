@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Controls, Graphics, LMessages,
-  FRMaterialTheme;
+  FRMaterialTheme, FRMaterial3Base;
 
 type
 
@@ -61,11 +61,14 @@ type
     FGapV: Integer;
     FItems: TFRGridItems;
     FUpdating: Boolean;
+    FAutoColSpan: Boolean;
 
     procedure SetColumnCount(AValue: Integer);
     procedure SetGapH(AValue: Integer);
     procedure SetGapV(AValue: Integer);
     procedure SetItems(AValue: TFRGridItems);
+    procedure SetAutoColSpan(AValue: Boolean);
+    function  ResolveSpan(AControl: TControl): Integer;
 
   protected
     procedure AlignControls(AControl: TControl; var ARect: TRect); override;
@@ -83,8 +86,17 @@ type
 
   published
     property ColumnCount: Integer read FColumnCount write SetColumnCount default 12;
-    property GapH: Integer read FGapH write SetGapH default 16;
-    property GapV: Integer read FGapV write SetGapV default 8;
+    { GapH / GapV — defaults com respiro suficiente para variantes sem borda
+      (Standard/Filled) sob densidades compactas. Reduza explicitamente no
+      LFM se quiser um layout mais denso. }
+    property GapH: Integer read FGapH write SetGapH default 20;
+    property GapV: Integer read FGapV write SetGapV default 16;
+    { Quando True, o ColSpan de cada filho eh resolvido automaticamente a partir
+      da property FieldSize do TFRMaterial3Control (fsTiny=2, fsSmall=3,
+      fsMedium=4, fsLarge=6, fsHuge=8, fsFull=12). Filhos com FieldSize=fsAuto
+      ou que nao sao TFRMaterial3Control caem no fallback fsLarge (6 cols).
+      Quando False (default), usa o ColSpan manual definido em Items. }
+    property AutoColSpan: Boolean read FAutoColSpan write SetAutoColSpan default False;
     property Items: TFRGridItems read FItems write SetItems;
 
     property Align;
@@ -208,9 +220,10 @@ begin
   ControlStyle := ControlStyle + [csAcceptsControls];
 
   FColumnCount := 12;
-  FGapH := 16;
-  FGapV := 8;
+  FGapH := 20;
+  FGapV := 16;
   FUpdating := False;
+  FAutoColSpan := False;
   FItems := TFRGridItems.Create(Self, TFRGridItem);
 
   Width  := 600;
@@ -254,6 +267,55 @@ end;
 procedure TFRMaterialGridPanel.SetItems(AValue: TFRGridItems);
 begin
   FItems.Assign(AValue);
+end;
+
+procedure TFRMaterialGridPanel.SetAutoColSpan(AValue: Boolean);
+begin
+  if FAutoColSpan = AValue then Exit;
+  FAutoColSpan := AValue;
+  ReAlign;
+end;
+
+{ Resolve o ColSpan efetivo de um controle.
+  - AutoColSpan=False → usa o ColSpan manual do Items (default 12).
+  - AutoColSpan=True:
+      * TFRMaterial3Control com FieldSize<>fsAuto → mapeia por FieldSize.
+      * TFRMaterial3Control com fsAuto → fallback fsLarge (6 cols).
+      * Filho nao-MD3 (TPanel, TLabel...) → respeita ColSpan manual
+        do Items, permitindo uso misto de auto + manual no mesmo grid. }
+function TFRMaterialGridPanel.ResolveSpan(AControl: TControl): Integer;
+var
+  size: TFRFieldSize;
+begin
+  if not FAutoColSpan then
+  begin
+    Result := GetColSpan(AControl);
+    Exit;
+  end;
+
+  if not (AControl is TFRMaterial3Control) then
+  begin
+    Result := GetColSpan(AControl);
+    if Result > FColumnCount then Result := FColumnCount;
+    Exit;
+  end;
+
+  size := TFRMaterial3Control(AControl).FieldSize;
+
+  case size of
+    fsTiny:   Result := 2;
+    fsSmall:  Result := 3;
+    fsMedium: Result := 4;
+    fsLarge:  Result := 6;
+    fsHuge:   Result := 8;
+    fsFull:   Result := 12;
+  else
+    { fsAuto — fallback: metade da linha (6 cols). }
+    Result := 6;
+  end;
+
+  if Result > FColumnCount then
+    Result := FColumnCount;
 end;
 
 { ── Public ColSpan helpers (code usage) ── }
@@ -359,7 +421,7 @@ begin
     ctrl := Controls[i];
     if not ctrl.Visible then Continue;
 
-    span := GetColSpan(ctrl);
+    span := ResolveSpan(ctrl);
     if span > FColumnCount then span := FColumnCount;
 
     { Wrap to next row if this child won't fit }

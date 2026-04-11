@@ -25,6 +25,7 @@ interface
 uses
   Classes, SysUtils, Controls, Graphics, Types, StdCtrls, ExtCtrls, Forms,
   Generics.Collections,
+  BGRABitmap, BGRABitmapTypes,
   {$IFDEF FPC} LCLType, LCLIntf, LResources, LMessages, {$ENDIF}
   laz.VirtualTrees, FRMaterial3Base, FRMaterialTheme;
 
@@ -147,10 +148,22 @@ type
     FPendingEditColumn: TColumnIndex;
     FReverseNavigation: Boolean;
     FEditingNode: PVirtualNode;
+    { States (empty / loading) }
+    FEmptyText: string;
+    FEmptyHint: string;
+    FLoading: Boolean;
+    FLoadingText: string;
+    FLoadingAngle: Single;
+    FLoadingTimer: TTimer;
+    procedure SetLoading(AValue: Boolean);
+    procedure DoLoadingTick(Sender: TObject);
+    procedure DrawEmptyState(ACanvas: TCanvas; const AClientArea: TRect);
+    procedure DrawLoadingOverlay(ACanvas: TCanvas; const AClientArea: TRect);
     { Style }
     procedure SetDensity(AValue: TFRMDDensity);
     procedure SetZebraStripes(AValue: Boolean);
     procedure ApplyNodeHeight;
+    function MeasureHeaderCaptionHeight: Integer;
     procedure ApplyMD3Style;
     { Edit internals }
     function FindEditColumn(AIndex: TColumnIndex): Integer;
@@ -195,6 +208,8 @@ type
     function DoCompare(Node1, Node2: PVirtualNode;
       Column: TColumnIndex): Integer; override;
     procedure Loaded; override;
+    procedure DoColumnResize(Column: TColumnIndex); override;
+    procedure DoAfterPaint(ACanvas: TCanvas); override;
     { Editing overrides }
     procedure DoCanEdit(Node: PVirtualNode; Column: TColumnIndex;
       var Allowed: Boolean); override;
@@ -206,6 +221,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    procedure BeforeDestruction; override;
     procedure ApplyTheme(const AThemeManager: TObject); virtual;
 
     { Ordena a coluna ACol. AAscending: True=Asc, False=Desc }
@@ -275,6 +291,16 @@ type
     property OnEditApplyValue: TFRMDEditApplyEvent read FOnEditApplyValue write FOnEditApplyValue;
     { Edição: disparado para obter o valor atual do editor }
     property OnEditGetValue: TFRMDEditGetValueEvent read FOnEditGetValue write FOnEditGetValue;
+    { Texto principal exibido quando o grid nao tem nodes (empty state).
+      Default "Nenhum registro para exibir". }
+    property EmptyText: string read FEmptyText write FEmptyText;
+    { Texto secundario (hint) abaixo do EmptyText. Default vazio. }
+    property EmptyHint: string read FEmptyHint write FEmptyHint;
+    { Quando True, sobrepoe um overlay semi-transparente com um spinner
+      circular e LoadingText. Use para indicar carregamento em curso. }
+    property Loading: Boolean read FLoading write SetLoading default False;
+    { Texto exibido abaixo do spinner quando Loading=True. Default "Carregando...". }
+    property LoadingText: string read FLoadingText write FLoadingText;
     property SyncWithTheme: TFRMDSyncOptions read FSyncWithTheme write FSyncWithTheme default [toColor, toDensity, toVariant];
   end;
 
@@ -474,30 +500,42 @@ end;
 
 constructor TFRMaterialVirtualDataGrid.Create(AOwner: TComponent);
 begin
-  inherited Create(AOwner);
-  FDensity      := ddNormal;
-  FZebraStripes := False;
-  FSortCol      := -1;
-  FSortDir      := sdNone;
-  FAutoSort     := True;
-  FMD3Initialized := False;
-  FFilterTexts    := TDictionary<Integer, String>.Create;
-  FFilterEnabled  := True;
+  { CRITICAL: FFilterTexts precisa ser criado ANTES de qualquer coisa que
+    possa falhar (inclusive inherited Create, que pode chamar virtual
+    methods que tocam em FFilterTexts). Se uma excecao subir agora, o
+    destrutor ainda encontra um FFilterTexts valido e libera corretamente
+    em vez de tentar liberar um ponteiro aleatorio. }
+  FFilterTexts       := TDictionary<Integer, String>.Create;
+  FDensity           := ddNormal;
+  FZebraStripes      := False;
+  FSortCol           := -1;
+  FSortDir           := sdNone;
+  FAutoSort          := True;
+  FMD3Initialized    := False;
+  FFilterEnabled     := True;
   FPendingEditNode   := nil;
   FPendingEditColumn := -1;
   FReverseNavigation := False;
   FEditingNode       := nil;
   FSyncWithTheme     := [toColor, toDensity, toVariant];
+  FEmptyText         := 'Nenhum registro para exibir';
+  FEmptyHint         := '';
+  FLoading           := False;
+  FLoadingText       := 'Carregando...';
+  FLoadingAngle      := 0;
+  FLoadingTimer      := nil;
+
+  inherited Create(AOwner);
 
   { Defaults MD3 }
-  BorderStyle     := bsNone;
+  BorderStyle       := bsNone;
   DefaultNodeHeight := 36;
-  Font.Height     := -13;
-  Font.Size       := 10;
+  Font.Height       := -13;
+  Font.Size         := 10;
 
-  Header.Height   := 40;
-  Header.Options  := Header.Options + [hoVisible, hoColumnResize, hoOwnerDraw]
-                                    - [hoAutoResize, hoShowSortGlyphs];
+  Header.Height      := 40;
+  Header.Options     := Header.Options + [hoVisible, hoColumnResize, hoOwnerDraw]
+                                       - [hoAutoResize, hoShowSortGlyphs];
   Header.Font.Height := -12;
   Header.Font.Size   := 9;
   Header.Style       := hsFlatButtons;
@@ -514,9 +552,9 @@ begin
        toShowHorzGridLines, toShowVertGridLines];
 
   TreeOptions.SelectionOptions := TreeOptions.SelectionOptions + [toFullRowSelect];
-  TreeOptions.MiscOptions := TreeOptions.MiscOptions - [toEditable];
+  TreeOptions.MiscOptions      := TreeOptions.MiscOptions - [toEditable];
 
-  Margin    := 0;
+  Margin     := 0;
   TextMargin := 8;
 
   FRMDRegisterComponent(Self);
@@ -525,12 +563,25 @@ begin
   FMD3Initialized := True;
 end;
 
-destructor TFRMaterialVirtualDataGrid.Destroy;
+procedure TFRMaterialVirtualDataGrid.BeforeDestruction;
 begin
+  { Desregistra cedo pra que callbacks de tema nao toquem o grid enquanto
+    sub-controles (editor popup, header) sao destruidos no cascade. }
   FRMDUnregisterComponent(Self);
   Application.RemoveAsyncCalls(Self);
   FPendingEditNode   := nil;
   FPendingEditColumn := -1;
+  if Assigned(FLoadingTimer) then
+  begin
+    FLoadingTimer.Enabled := False;
+    FLoadingTimer.OnTimer := nil;
+  end;
+  inherited BeforeDestruction;
+end;
+
+destructor TFRMaterialVirtualDataGrid.Destroy;
+begin
+  FreeAndNil(FLoadingTimer);
   FreeAndNil(FFilterTexts);
   inherited;
 end;
@@ -555,6 +606,16 @@ begin
   ApplyMD3Style;
 end;
 
+procedure TFRMaterialVirtualDataGrid.DoColumnResize(Column: TColumnIndex);
+begin
+  inherited DoColumnResize(Column);
+  { Quando uma coluna eh redimensionada, a quebra de linha do caption
+    pode mudar — recalculamos a altura do header para garantir que o
+    texto sempre cabe. }
+  if HandleAllocated and not (csLoading in ComponentState) then
+    ApplyNodeHeight;
+end;
+
 procedure TFRMaterialVirtualDataGrid.ApplyMD3Style;
 begin
   Color             := ColorToRGB(MD3Colors.Surface);
@@ -563,21 +624,280 @@ begin
   ApplyNodeHeight;
 end;
 
+{ Mede a maior altura de caption do header considerando word-wrap dentro
+  da largura de cada coluna (com padding lateral). Retorna o minimo
+  necessario para caber o texto de 2 linhas + padding vertical MD3 (16px
+  total = 8 top + 8 bottom). }
+function TFRMaterialVirtualDataGrid.MeasureHeaderCaptionHeight: Integer;
+var
+  i: Integer;
+  col: TVirtualTreeColumn;
+  textRect: TRect;
+  lineH, maxH, usableW: Integer;
+  cvs: TCanvas;
+begin
+  Result := 0;
+  if Header.Columns.Count = 0 then Exit;
+
+  cvs := Canvas;
+  cvs.Font.Assign(Header.Font);
+  cvs.Font.Height := -13;
+  cvs.Font.Style  := [fsBold];
+
+  lineH := cvs.TextHeight('Ay');
+  if lineH < 16 then lineH := 16;
+
+  maxH := lineH;
+  for i := 0 to Header.Columns.Count - 1 do
+  begin
+    col := Header.Columns[i];
+    if (col = nil) or (Trim(col.Text) = '') then Continue;
+
+    { Largura util: largura da coluna menos padding lateral (10+10) e menos
+      reserva para filter icon + sort glyph (24). }
+    usableW := col.Width - 44;
+    if usableW < 24 then usableW := 24;
+
+    textRect := Rect(0, 0, usableW, 0);
+    DrawText(cvs.Handle, PChar(col.Text), Length(col.Text), textRect,
+      DT_WORDBREAK or DT_CALCRECT or DT_NOPREFIX);
+
+    { Clamp em 2 linhas — ellipsis cuida do overflow alem disso. }
+    if textRect.Height > lineH * 2 then
+      textRect.Height := lineH * 2;
+
+    if textRect.Height > maxH then
+      maxH := textRect.Height;
+  end;
+
+  { Padding vertical MD3: 8px top + 8px bottom }
+  Result := maxH + 16;
+end;
+
 procedure TFRMaterialVirtualDataGrid.ApplyNodeHeight;
 var
-  H: Integer;
+  H, headerH, captionH: Integer;
 begin
   H := 36 + MD3DensityDelta(FDensity);
-  if H < 24 then H  := 24;
+  if H < 24 then H := 24;
   DefaultNodeHeight := H;
 
-  Header.Height := Max(32, 40 + MD3DensityDelta(FDensity));
+  { Header auto-height: maior entre o minimo por densidade e o que o
+    caption mais alto precisa (com word-wrap). Mantem 56px como
+    minimo MD3 para captions curtos. }
+  headerH := 56 + MD3DensityDelta(FDensity);
+  if headerH < 40 then headerH := 40;
+
+  if HandleAllocated and (Header.Columns.Count > 0) then
+  begin
+    captionH := MeasureHeaderCaptionHeight;
+    if captionH > headerH then
+      headerH := captionH;
+  end;
+
+  Header.Height := headerH;
 end;
 
 procedure TFRMaterialVirtualDataGrid.RefreshMD3Colors;
 begin
   ApplyMD3Style;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
+end;
+
+{ ── States (empty / loading) ── }
+
+procedure TFRMaterialVirtualDataGrid.SetLoading(AValue: Boolean);
+begin
+  if FLoading = AValue then Exit;
+  FLoading := AValue;
+
+  if FLoading then
+  begin
+    if not Assigned(FLoadingTimer) then
+    begin
+      FLoadingTimer := TTimer.Create(Self);
+      FLoadingTimer.Interval := 16;
+      FLoadingTimer.OnTimer := DoLoadingTick;
+    end;
+    FLoadingAngle := 0;
+    FLoadingTimer.Enabled := True;
+  end
+  else
+  begin
+    if Assigned(FLoadingTimer) then
+      FLoadingTimer.Enabled := False;
+  end;
+
+  FRMDSafeInvalidate(Self);
+end;
+
+procedure TFRMaterialVirtualDataGrid.DoLoadingTick(Sender: TObject);
+begin
+  if FRMDIsDestroying(Self) then Exit;
+  { Avanca 8 graus por tick (16ms) — uma revolucao completa em ~720ms }
+  FLoadingAngle := FLoadingAngle + 8;
+  if FLoadingAngle >= 360 then
+    FLoadingAngle := FLoadingAngle - 360;
+  FRMDSafeInvalidate(Self);
+end;
+
+procedure TFRMaterialVirtualDataGrid.DrawEmptyState(ACanvas: TCanvas;
+  const AClientArea: TRect);
+var
+  centerX, centerY, iconSize: Integer;
+  iconRect, textRect, hintRect: TRect;
+  textH, hintH, totalH, yOffset: Integer;
+begin
+  centerX := (AClientArea.Left + AClientArea.Right) div 2;
+  centerY := (AClientArea.Top + AClientArea.Bottom) div 2;
+
+  iconSize := 72;
+
+  ACanvas.Font.Assign(Font);
+  ACanvas.Font.Height := -14;
+  ACanvas.Font.Style  := [fsBold];
+  ACanvas.Font.Color  := ColorToRGB(MD3Colors.OnSurfaceVariant);
+  ACanvas.Brush.Style := bsClear;
+  textH := ACanvas.TextHeight('Ay') + 8;
+
+  hintH := 0;
+  if FEmptyHint <> '' then
+  begin
+    ACanvas.Font.Height := -11;
+    ACanvas.Font.Style  := [];
+    hintH := ACanvas.TextHeight('Ay') + 4;
+  end;
+
+  totalH := iconSize + 16 + textH + hintH;
+  yOffset := centerY - (totalH div 2);
+
+  { Icone circular com "dashed" — placeholder simples sem depender de
+    arquivo de asset. Desenha um circulo com outline dashed. }
+  iconRect := Rect(
+    centerX - (iconSize div 2),
+    yOffset,
+    centerX + (iconSize div 2),
+    yOffset + iconSize);
+
+  ACanvas.Pen.Color := ColorToRGB(MD3Colors.OutlineVariant);
+  ACanvas.Pen.Width := 2;
+  ACanvas.Pen.Style := psDash;
+  ACanvas.Brush.Style := bsClear;
+  ACanvas.Ellipse(iconRect);
+
+  { Icone interno: tracinho horizontal centrado dentro do circulo,
+    sugerindo "sem conteudo". }
+  ACanvas.Pen.Style := psSolid;
+  ACanvas.Pen.Width := 3;
+  ACanvas.Pen.Color := ColorToRGB(MD3Colors.OutlineVariant);
+  ACanvas.MoveTo(iconRect.Left + 20, (iconRect.Top + iconRect.Bottom) div 2);
+  ACanvas.LineTo(iconRect.Right - 20, (iconRect.Top + iconRect.Bottom) div 2);
+
+  { Texto principal }
+  ACanvas.Pen.Width := 1;
+  ACanvas.Font.Height := -14;
+  ACanvas.Font.Style  := [fsBold];
+  ACanvas.Font.Color  := ColorToRGB(MD3Colors.OnSurfaceVariant);
+  textRect := Rect(AClientArea.Left, iconRect.Bottom + 16, AClientArea.Right, iconRect.Bottom + 16 + textH);
+  DrawText(ACanvas.Handle, PChar(FEmptyText), Length(FEmptyText), textRect,
+    DT_CENTER or DT_TOP or DT_NOPREFIX or DT_END_ELLIPSIS);
+
+  { Hint secundario }
+  if FEmptyHint <> '' then
+  begin
+    ACanvas.Font.Height := -11;
+    ACanvas.Font.Style  := [];
+    hintRect := Rect(AClientArea.Left, textRect.Bottom + 4, AClientArea.Right, textRect.Bottom + 4 + hintH);
+    DrawText(ACanvas.Handle, PChar(FEmptyHint), Length(FEmptyHint), hintRect,
+      DT_CENTER or DT_TOP or DT_NOPREFIX or DT_END_ELLIPSIS);
+  end;
+end;
+
+procedure TFRMaterialVirtualDataGrid.DrawLoadingOverlay(ACanvas: TCanvas;
+  const AClientArea: TRect);
+var
+  centerX, centerY, r, i: Integer;
+  dotX, dotY: Integer;
+  angleRad: Single;
+  dotColor: TColor;
+  alpha: Byte;
+  bmp: TBGRABitmap;
+  textRect: TRect;
+  textH: Integer;
+begin
+  { Overlay semi-transparente cobrindo o client area toda. Usamos
+    TBGRABitmap para ter alpha-blending real (GDI FillRect nao tem). }
+  bmp := TBGRABitmap.Create(
+    AClientArea.Width, AClientArea.Height,
+    ColorToBGRA(ColorToRGB(MD3Colors.Surface), 160));
+  try
+    bmp.Draw(ACanvas, AClientArea.Left, AClientArea.Top, False);
+  finally
+    bmp.Free;
+  end;
+
+  centerX := (AClientArea.Left + AClientArea.Right) div 2;
+  centerY := (AClientArea.Top + AClientArea.Bottom) div 2;
+  r := 24;
+
+  { Spinner MD3: 8 dots em circulo, rotacionando. Cada dot tem opacidade
+    proporcional a distancia do angulo "head". }
+  for i := 0 to 7 do
+  begin
+    angleRad := (FLoadingAngle + i * 45) * Pi / 180;
+    dotX := centerX + Round(r * Cos(angleRad));
+    dotY := centerY + Round(r * Sin(angleRad));
+    alpha := EnsureRange(255 - (i * 28), 32, 255);
+    dotColor := MD3Blend(
+      ColorToRGB(MD3Colors.Surface),
+      ColorToRGB(MD3Colors.Primary),
+      alpha);
+    ACanvas.Brush.Color := dotColor;
+    ACanvas.Pen.Style := psClear;
+    ACanvas.Ellipse(dotX - 3, dotY - 3, dotX + 4, dotY + 4);
+  end;
+
+  { Loading text abaixo do spinner }
+  if FLoadingText <> '' then
+  begin
+    ACanvas.Font.Assign(Font);
+    ACanvas.Font.Height := -12;
+    ACanvas.Font.Style  := [fsBold];
+    ACanvas.Font.Color  := ColorToRGB(MD3Colors.Primary);
+    ACanvas.Brush.Style := bsClear;
+    textH := ACanvas.TextHeight('Ay');
+    textRect := Rect(
+      AClientArea.Left,
+      centerY + r + 16,
+      AClientArea.Right,
+      centerY + r + 16 + textH);
+    DrawText(ACanvas.Handle, PChar(FLoadingText), Length(FLoadingText),
+      textRect, DT_CENTER or DT_TOP or DT_NOPREFIX);
+  end;
+end;
+
+procedure TFRMaterialVirtualDataGrid.DoAfterPaint(ACanvas: TCanvas);
+var
+  clientArea: TRect;
+begin
+  inherited DoAfterPaint(ACanvas);
+
+  { Area abaixo do header — tudo que nao eh header pertence ao area de
+    dados onde pintamos os overlays. }
+  clientArea := Rect(
+    0,
+    Header.Height,
+    ClientWidth,
+    ClientHeight);
+
+  { Empty state so aparece quando nao ha dados E nao estamos em loading. }
+  if (RootNode^.ChildCount = 0) and (not FLoading) then
+    DrawEmptyState(ACanvas, clientArea);
+
+  { Loading overlay aparece sempre que FLoading=True, sobrepondo o
+    conteudo (ou empty state) com alpha. }
+  if FLoading then
+    DrawLoadingOverlay(ACanvas, clientArea);
 end;
 
 procedure TFRMaterialVirtualDataGrid.SetDensity(AValue: TFRMDDensity);
@@ -585,14 +905,14 @@ begin
   if FDensity = AValue then Exit;
   FDensity := AValue;
   ApplyNodeHeight;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialVirtualDataGrid.SetZebraStripes(AValue: Boolean);
 begin
   if FZebraStripes = AValue then Exit;
   FZebraStripes := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 { ── Painting ── }
@@ -601,31 +921,57 @@ procedure TFRMaterialVirtualDataGrid.DoBeforeCellPaint(ACanvas: TCanvas;
   Node: PVirtualNode; Column: TColumnIndex; CellPaintMode: TVTCellPaintMode;
   CellRect: TRect; var ContentRect: TRect);
 var
-  bg: TColor;
-  isSelected, isHovered, isEditable: Boolean;
+  bg, baseBg: TColor;
+  isSelected, isHovered, isFocused, isEditable: Boolean;
   NodeIdx: Cardinal;
   rect: TRect;
 begin
   isSelected := Selected[Node];
-  isHovered  := (Node = HotNode) and not isSelected;
+  isHovered  := Node = HotNode;
+  isFocused  := Node = FocusedNode;
   isEditable := IsEditableColumn(Column);
 
+  { Passo 1 — cor base da linha (resting state) seguindo MD3:
+      - Surface para maioria
+      - SurfaceContainerLow para zebra alternada
+      - SecondaryContainer para row selecionada }
   if isSelected then
-    bg := ColorToRGB(MD3Colors.SecondaryContainer)
-  else if isHovered then
-    bg := MD3Blend(ColorToRGB(MD3Colors.Surface),
-            ColorToRGB(MD3Colors.OnSurface), 20)  { 8% state layer }
-  else if isEditable then
-    bg := MD3Blend(ColorToRGB(MD3Colors.Surface),
-            ColorToRGB(MD3Colors.TertiaryContainer), 80)  { subtle editable hint }
+    baseBg := ColorToRGB(MD3Colors.SecondaryContainer)
   else
   begin
     NodeIdx := Node^.Index;
     if FZebraStripes and (NodeIdx mod 2 = 0) then
-      bg := ColorToRGB(MD3Colors.SurfaceContainerLow)
+      baseBg := ColorToRGB(MD3Colors.SurfaceContainerLow)
     else
-      bg := ColorToRGB(MD3Colors.Surface);
+      baseBg := ColorToRGB(MD3Colors.Surface);
   end;
+
+  bg := baseBg;
+
+  { Passo 2 — state layer (sobreposto a base) seguindo MD3 tokens:
+      - hover  = 8% OnSurface (ou OnSecondaryContainer se selecionado)
+      - focus  = +4% extra, compondo com hover quando aplicavel
+    Combinamos via MD3Blend para simular alpha composition real. }
+  if isHovered then
+  begin
+    if isSelected then
+      bg := MD3Blend(bg, ColorToRGB(MD3Colors.OnSecondaryContainer), 20)  { 8% }
+    else
+      bg := MD3Blend(bg, ColorToRGB(MD3Colors.OnSurface), 20);            { 8% }
+  end;
+
+  if isFocused and (FocusedColumn = Column) then
+  begin
+    if isSelected then
+      bg := MD3Blend(bg, ColorToRGB(MD3Colors.OnSecondaryContainer), 12)  { +4% }
+    else
+      bg := MD3Blend(bg, ColorToRGB(MD3Colors.OnSurface), 12);            { +4% }
+  end;
+
+  { Passo 3 — dica sutil de celulas editaveis (apenas quando nao
+    sobreposto por outro estado). }
+  if isEditable and not isSelected and not isHovered then
+    bg := MD3Blend(bg, ColorToRGB(MD3Colors.TertiaryContainer), 30);  { hint }
 
   ACanvas.Brush.Color := bg;
   ACanvas.FillRect(CellRect);
@@ -864,15 +1210,29 @@ begin
   Hover   := PaintInfo.IsHoverIndex;
   Pressed := PaintInfo.IsDownIndex;
 
-  { Guard: Column can be nil for the header background area beyond columns }
-  if Column = nil then
-    Exit;
-
   divClr := ColorToRGB(MD3Colors.OutlineVariant);
+  bg := ColorToRGB(MD3Colors.SurfaceContainerHighest);
+
+  { Spring area (espaco depois da ultima coluna): Column=nil. Se nao
+    pintarmos aqui, a area fica com lixo do canvas (preto no bitmap
+    nao inicializado). Desenhamos background flat + bottom divider
+    para continuidade visual com as colunas reais. }
+  if Column = nil then
+  begin
+    ACanvas.Brush.Color := bg;
+    ACanvas.Pen.Style   := psClear;
+    ACanvas.FillRect(R);
+    ACanvas.Pen.Style   := psSolid;
+    ACanvas.Pen.Color   := divClr;
+    ACanvas.Pen.Width   := 1;
+    ACanvas.MoveTo(R.Left,  R.Bottom - 1);
+    ACanvas.LineTo(R.Right, R.Bottom - 1);
+    Exit;
+  end;
+
   hasFilter := HasActiveFilter(Column.Index);
 
-  { ── Background — flat MD3 surface ── }
-  bg := ColorToRGB(MD3Colors.SurfaceContainerHighest);
+  { ── Background — flat MD3 surface + state layer ── }
   if Pressed then
     bg := MD3Blend(bg, ColorToRGB(MD3Colors.OnSurface), 24)    { 12% press }
   else if Hover then
@@ -1186,7 +1546,7 @@ begin
     if FAutoSort and (FSortDir <> sdNone) then
       DoInternalSort;
 
-    Invalidate;
+    FRMDSafeInvalidate(Self);
   end;
 
   inherited DoHeaderClick(HitInfo);
@@ -1195,7 +1555,7 @@ end;
 procedure TFRMaterialVirtualDataGrid.DoHotChange(Old, New: PVirtualNode);
 begin
   inherited DoHotChange(Old, New);
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialVirtualDataGrid.SortByColumn(ACol: Integer; AAscending: Boolean);
@@ -1212,7 +1572,7 @@ begin
   if FAutoSort then
     DoInternalSort;
 
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 { ══════════════════════════════════════════════════════════════════════════ }

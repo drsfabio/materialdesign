@@ -217,7 +217,7 @@ begin
   if FButtonStyle = AValue then Exit;
   FButtonStyle := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialButton.SetShowIcon(AValue: Boolean);
@@ -225,7 +225,7 @@ begin
   if FShowIcon = AValue then Exit;
   FShowIcon := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialButton.SetIconMode(AValue: TFRIconMode);
@@ -233,7 +233,7 @@ begin
   if FIconMode = AValue then Exit;
   FIconMode := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialButton.DoOnResize;
@@ -346,7 +346,7 @@ begin
   if FIconStyle = AValue then Exit;
   FIconStyle := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialButtonIcon.SetIconMode(AValue: TFRIconMode);
@@ -354,7 +354,7 @@ begin
   if FIconMode = AValue then Exit;
   FIconMode := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialButtonIcon.SetToggle(AValue: Boolean);
@@ -362,7 +362,7 @@ begin
   if FToggle = AValue then Exit;
   FToggle := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialButtonIcon.SetToggled(AValue: Boolean);
@@ -370,7 +370,7 @@ begin
   if FToggled = AValue then Exit;
   FToggled := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialButtonIcon.Click;
@@ -499,7 +499,7 @@ begin
   if FButtonStyle = AValue then Exit;
   FButtonStyle := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialSplitButton.SetDropDownMenu(AValue: TPopupMenu);
@@ -550,13 +550,13 @@ begin
   if (Button = mbLeft) and PtInRect(Point(X, Y), ar) then
   begin
     FArrowPressed := True;
-    Invalidate;
+    FRMDSafeInvalidate(Self);
     if Assigned(FDropDownMenu) then
     begin
       P := ClientToScreen(Point(ar.Left, Height));
       FDropDownMenu.PopUp(P.X, P.Y);
       FArrowPressed := False;
-      Invalidate;
+      FRMDSafeInvalidate(Self);
     end;
   end
   else
@@ -580,7 +580,7 @@ begin
   begin
     FArrowHovered := inArrow;
     InvalidatePaintCache;
-    Invalidate;
+    FRMDSafeInvalidate(Self);
   end;
   inherited;
 end;
@@ -591,7 +591,7 @@ begin
   begin
     FArrowHovered := False;
     InvalidatePaintCache;
-    Invalidate;
+    FRMDSafeInvalidate(Self);
   end;
   inherited;
 end;

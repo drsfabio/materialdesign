@@ -132,35 +132,35 @@ procedure TFRMaterialChip.SetChipStyle(AValue: TFRMDChipStyle);
 begin
   if FChipStyle = AValue then Exit;
   FChipStyle := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialChip.SetSelected(AValue: Boolean);
 begin
   if FSelected = AValue then Exit;
   FSelected := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialChip.SetDeletable(AValue: Boolean);
 begin
   if FDeletable = AValue then Exit;
   FDeletable := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialChip.SetShowIcon(AValue: Boolean);
 begin
   if FShowIcon = AValue then Exit;
   FShowIcon := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialChip.SetIconMode(AValue: TFRIconMode);
 begin
   if FIconMode = AValue then Exit;
   FIconMode := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialChip.Click;
@@ -278,7 +278,7 @@ end;
 
 destructor TFRMaterialSegmentedButton.Destroy;
 begin
-  FItems.Free;
+  FreeAndNil(FItems);
   inherited Destroy;
 end;
 
@@ -297,7 +297,7 @@ procedure TFRMaterialSegmentedButton.SetItemIndex(AValue: Integer);
 begin
   if FItemIndex = AValue then Exit;
   FItemIndex := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
   if Assigned(FOnChange) then FOnChange(Self);
 end;
 
@@ -305,13 +305,13 @@ procedure TFRMaterialSegmentedButton.SetMultiSelect(AValue: Boolean);
 begin
   if FMultiSelect = AValue then Exit;
   FMultiSelect := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialSegmentedButton.ItemsChanged(Sender: TObject);
 begin
   SetLength(FSelectedItems, FItems.Count);
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 function TFRMaterialSegmentedButton.GetSegmentWidth: Integer;
@@ -335,7 +335,7 @@ begin
   if (Index >= 0) and (Index < Length(FSelectedItems)) then
   begin
     FSelectedItems[Index] := AValue;
-    Invalidate;
+    FRMDSafeInvalidate(Self);
   end;
 end;
 
@@ -356,7 +356,7 @@ begin
       if (idx >= 0) and (idx < Length(FSelectedItems)) then
       begin
         FSelectedItems[idx] := not FSelectedItems[idx];
-        Invalidate;
+        FRMDSafeInvalidate(Self);
         if Assigned(FOnChange) then FOnChange(Self);
       end;
     end

@@ -247,7 +247,7 @@ begin
   inherited DoEnter;
   FFocused := True;
   if Assigned(FLabelAnimator) then FLabelAnimator.FloatLabel;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
   { Redireciona o foco para o memo interno }
   if FMemo.CanFocus then
     FMemo.SetFocus;
@@ -267,7 +267,7 @@ begin
       FLabelAnimator.FloatLabel;
   end;
   
-  Invalidate;
+  FRMDSafeInvalidate(Self);
   inherited DoExit;
 end;
 
@@ -395,35 +395,35 @@ procedure TFRMaterialMemoEdit.SetHelperText(const AValue: string);
 begin
   if FHelperText = AValue then Exit;
   FHelperText := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialMemoEdit.SetErrorText(const AValue: string);
 begin
   if FErrorText = AValue then Exit;
   FErrorText := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialMemoEdit.SetShowCharCounter(AValue: Boolean);
 begin
   if FShowCharCounter = AValue then Exit;
   FShowCharCounter := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialMemoEdit.SetRequired(AValue: Boolean);
 begin
   if FRequired = AValue then Exit;
   FRequired := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialMemoEdit.SetValidationState(AValue: TFRValidationState);
 begin
   if FValidationState = AValue then Exit;
   FValidationState := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 function TFRMaterialMemoEdit.GetBottomMargin: Integer;
@@ -470,7 +470,7 @@ begin
   end;
   
   if FShowCharCounter then
-    Invalidate;
+    FRMDSafeInvalidate(Self);
   { Repassa para o handler do usuário }
   if Assigned(FUserOnChange) then
     FUserOnChange(Sender);
@@ -482,7 +482,10 @@ var
   HelperStr, CounterStr: string;
   P: TFRMDFieldPaintParams;
 begin
+  if not FRMDCanPaint(Self) then Exit;
   inherited Paint;
+
+  if not Assigned(FMemo) then Exit;
 
   if FMemo.Color <> Self.Color then
     FMemo.Color := Self.Color;
@@ -578,7 +581,7 @@ begin
   FMemo.Font.Color  := MD3Colors.OnSurface;
   FLabel.Font.Color := MD3Colors.OnSurfaceVariant;
 
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 end.

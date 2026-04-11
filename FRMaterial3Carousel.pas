@@ -166,7 +166,7 @@ end;
 
 destructor TFRMaterialCarouselItem.Destroy;
 begin
-  FImage.Free;
+  FreeAndNil(FImage);
   inherited Destroy;
 end;
 
@@ -275,9 +275,9 @@ end;
 
 destructor TFRMaterialCarousel.Destroy;
 begin
-  FAutoTimer.Free;
-  FAnimTimer.Free;
-  FItems.Free;
+  FreeAndNil(FAutoTimer);
+  FreeAndNil(FAnimTimer);
+  FreeAndNil(FItems);
   inherited Destroy;
 end;
 
@@ -350,7 +350,7 @@ begin
     Files.Free;
   end;
   FActiveIndex := 0;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialCarousel.SetActiveIndex(AValue: Integer);
@@ -384,7 +384,7 @@ procedure TFRMaterialCarousel.SetShowIndicators(AValue: Boolean);
 begin
   if FShowIndicators = AValue then Exit;
   FShowIndicators := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialCarousel.SetBorderRadius(AValue: Integer);
@@ -392,7 +392,7 @@ begin
   if AValue < 0 then AValue := 0;
   if FBorderRadius = AValue then Exit;
   FBorderRadius := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialCarousel.AnimateTo(AIndex: Integer);
@@ -440,7 +440,7 @@ begin
   end
   else
     FAnimOffset := FAnimOffset + (FTargetOffset - FAnimOffset) * speed;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialCarousel.DoAutoTick(Sender: TObject);
@@ -499,7 +499,7 @@ begin
   begin
     FDragOffset := (X - FDragStartX) / Width;
     FAnimOffset := FDragOffset;
-    Invalidate;
+    FRMDSafeInvalidate(Self);
   end;
   inherited;
 end;

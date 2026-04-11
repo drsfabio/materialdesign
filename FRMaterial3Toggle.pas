@@ -168,7 +168,7 @@ begin
   if FChecked = AValue then Exit;
   FChecked := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
   if Assigned(FOnChange) then FOnChange(Self);
 end;
 
@@ -288,7 +288,7 @@ begin
   if FState = AValue then Exit;
   FState := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
   if Assigned(FOnChange) then FOnChange(Self);
 end;
 
@@ -388,6 +388,7 @@ var
   aRect: TRect;
   boxSize, boxX: Integer;
 begin
+  if not FRMDCanPaint(Self) then Exit;
   { Call inherited Paint which handles PaintCached }
   inherited Paint;
 
@@ -427,7 +428,7 @@ begin
   if FChecked then
     UncheckSiblings;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
   if Assigned(FOnChange) then FOnChange(Self);
 end;
 
@@ -507,6 +508,7 @@ var
   circSize: Integer;
   aRect: TRect;
 begin
+  if not FRMDCanPaint(Self) then Exit;
   { Call inherited Paint which handles PaintCached }
   inherited Paint;
 

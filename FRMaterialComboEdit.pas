@@ -755,7 +755,10 @@ var
   DecoColor: TColor;
   P: TFRMDFieldPaintParams;
 begin
+  if not FRMDCanPaint(Self) then Exit;
   inherited Paint;
+
+  if not Assigned(FCombo) then Exit;
 
   if FCombo.Color <> Self.Color then
     FCombo.Color := Self.Color;

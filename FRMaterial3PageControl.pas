@@ -196,7 +196,7 @@ end;
 procedure TFRMaterialTabPage.ApplyTheme(const AThemeManager: TObject);
 begin
   if not Assigned(AThemeManager) then Exit;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialTabPage.SetPageControl(AValue: TFRMaterialPageControl);
@@ -298,9 +298,9 @@ begin
   { Clear back-references so TabPage destructors don't call RemovePage }
   for i := FPages.Count - 1 downto 0 do
     TFRMaterialTabPage(FPages[i]).FPageControl := nil;
-  FPages.Free;
-  FBackgroundImage.Free;
-  
+  FreeAndNil(FPages);
+  FreeAndNil(FBackgroundImage);
+
   FRMDUnregisterComponent(Self);
 
   inherited Destroy;
@@ -309,7 +309,7 @@ end;
 procedure TFRMaterialPageControl.ApplyTheme(const AThemeManager: TObject);
 begin
   if not Assigned(AThemeManager) then Exit;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 function TFRMaterialPageControl.GetPageCount: Integer;
@@ -351,8 +351,8 @@ begin
   if FActivePageIndex = AValue then Exit;
   FActivePageIndex := AValue;
   UpdatePageLayout;
-  Invalidate;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
+  FRMDSafeInvalidate(Self);
   if Assigned(FOnChange) then
     FOnChange(Self);
 end;
@@ -361,8 +361,8 @@ procedure TFRMaterialPageControl.SetShowCloseButton(AValue: Boolean);
 begin
   if FShowCloseButton = AValue then Exit;
   FShowCloseButton := AValue;
-  Invalidate;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialPageControl.SetTabPosition(AValue: TFRTabPosition);
@@ -370,8 +370,8 @@ begin
   if FTabPosition = AValue then Exit;
   FTabPosition := AValue;
   UpdatePageLayout;
-  Invalidate;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialPageControl.SetTabAlignment(AValue: TFRTabAlignment);
@@ -379,12 +379,12 @@ begin
   if FTabAlignment = AValue then Exit;
   FTabAlignment := AValue;
   UpdatePageLayout;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialPageControl.BackgroundImageChanged(Sender: TObject);
 begin
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialPageControl.AddPage(APage: TFRMaterialTabPage);
@@ -397,8 +397,8 @@ begin
   else
   begin
     UpdatePageLayout;
-    Invalidate;
-    Invalidate;
+    FRMDSafeInvalidate(Self);
+    FRMDSafeInvalidate(Self);
   end;
 end;
 
@@ -412,8 +412,8 @@ begin
   if FActivePageIndex >= FPages.Count then
     FActivePageIndex := FPages.Count - 1;
   UpdatePageLayout;
-  Invalidate;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
+  FRMDSafeInvalidate(Self);
 end;
 
 function TFRMaterialPageControl.IndexOfPage(APage: TFRMaterialTabPage): Integer;
@@ -759,7 +759,7 @@ begin
   begin
     FHoverTabIndex := newHover;
     FHoverClose := newClose;
-    Invalidate;
+    FRMDSafeInvalidate(Self);
   end;
 end;
 
@@ -770,8 +770,8 @@ begin
   begin
     FHoverTabIndex := -1;
     FHoverClose := False;
-    Invalidate;
-    Invalidate;
+    FRMDSafeInvalidate(Self);
+    FRMDSafeInvalidate(Self);
   end;
 end;
 

@@ -7,6 +7,47 @@ unit FRMaterial3Base;
   Provides the MD3 color scheme, shape scale, helper rendering functions,
   and base control classes for all MD3 components.
 
+  =========================================================================
+  LIFECYCLE CONVENTIONS — read this before adding new components.
+  =========================================================================
+
+  Every MD3 component MUST follow the patterns below. They exist because
+  LCL paint messages can arrive after a control is partially destroyed,
+  and ApplyTheme can fire during LFM streaming when sub-components are
+  not yet fully built — both cause AV in TGraphicControl.WMPaint.
+
+  1. Paint methods MUST guard against invalid state. Use FRMDCanPaint(Self)
+     at the top of every overridden Paint:
+
+         procedure TFRMyComponent.Paint;
+         begin
+           if not FRMDCanPaint(Self) then Exit;
+           ...
+         end;
+
+  2. Invalidation MUST go through FRMDSafeInvalidate(Self) instead of raw
+     Invalidate. It checks csDestroying, HandleAllocated (for TWinControl)
+     and Parent <> nil (for TGraphicControl) before queueing WM_PAINT.
+
+  3. Cleanup MUST happen in BeforeDestruction, not Destroy. The base
+     TFRMaterial3Control.BeforeDestruction already unregisters from the
+     theme manager and stops the ripple timer. Subclasses override
+     BeforeDestruction to nil their own event handlers and set destroying
+     flags BEFORE calling inherited BeforeDestruction.
+
+  4. Destroy releases owned resources only (bitmaps, lists, helpers).
+     Do NOT access sub-components there — they may already be freed by
+     the owner chain.
+
+  5. Setters that trigger repaint MUST call FRMDSafeInvalidate, never
+     Invalidate directly. Same for InvalidatePaintCache — it already
+     clears the cache but does NOT queue a repaint; callers schedule
+     via FRMDSafeInvalidate.
+
+  6. Register in the constructor via FRMDRegisterComponent(Self). The
+     theme manager skips new listeners that are still in csLoading so
+     it is safe to register early.
+
   License: LGPL v3 — mesma do bgracontrols
 }
 
@@ -148,6 +189,26 @@ function MD3PaletteCount: Integer;
 { Returns the name of a palette. }
 function MD3PaletteName(APalette: TFRMDPalette): string;
 
+{ ══════════════════════════════════════════════════════════════════════════
+  Lifecycle guards — single source of truth for "can I paint/invalidate?"
+  Use these instead of raw csDestroying / csLoading / HandleAllocated /
+  Parent checks. See the convention block at the top of this unit.
+  ══════════════════════════════════════════════════════════════════════════ }
+
+{ True when the control is in a state where Paint can safely draw.
+  Returns False during csDestroying, csLoading, zero dimensions, or
+  when the underlying handle/parent is not ready. }
+function FRMDCanPaint(AControl: TControl): Boolean;
+
+{ Schedules a repaint if and only if it is safe to do so. For TWinControl
+  this checks HandleAllocated; for TGraphicControl it checks Parent. Always
+  short-circuits during csDestroying. Use this instead of raw Invalidate. }
+procedure FRMDSafeInvalidate(AControl: TControl);
+
+{ True while AComponent is tearing down. Combines csDestroying with nil
+  check. Useful guard inside timers, callbacks and theme listeners. }
+function FRMDIsDestroying(AComponent: TComponent): Boolean; inline;
+
 type
   { Base class for interactive MD3 components (buttons, switches, etc.).
     Extends TCustomControl (windowed, can receive focus).
@@ -158,6 +219,7 @@ type
     FHovered: Boolean;
     FPressed: Boolean;
     FDensity: TFRMDDensity;
+    FFieldSize: TFRFieldSize;
     FSyncWithTheme: TFRMDSyncOptions;
     { Ripple animation }
     FRippleX: Integer;
@@ -174,6 +236,13 @@ type
   protected
     procedure EraseBackground({%H-}DC: HDC); override;
     procedure Paint; override;
+    { Loaded() eh chamado pelo LCL APOS o streaming do LFM completar e
+      TODOS os sub-componentes/properties estarem populados. Este eh o
+      momento seguro para aplicar o tema inicial — diferente de
+      RegisterComponent (chamado do construtor base antes do derivado
+      construir seus campos). Descendentes podem override e fazer
+      tarefas pos-load adicionais, chamando inherited Loaded. }
+    procedure Loaded; override;
     procedure MouseEnter; override;
     procedure MouseLeave; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -193,6 +262,10 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    { Unregistra do ThemeManager e para o timer de ripple ANTES do cascade
+      destruction. Subclasses devem overrideem para nilar seus handlers
+      (OnClick, OnChange, etc) e chamar inherited. }
+    procedure BeforeDestruction; override;
     procedure ApplyTheme(const AThemeManager: TObject); virtual;
     property Hovered: Boolean read FHovered;
     property Pressed: Boolean read FPressed;
@@ -205,6 +278,10 @@ type
     property TabOrder;
     property TabStop;
     property Density: TFRMDDensity read FDensity write SetDensity default ddNormal;
+    { Tamanho semântico usado pelo TFRMaterialGridPanel quando AutoColSpan=True.
+      Em fsAuto, o Grid infere a largura por MaxLength (edits genéricos) ou
+      por classe do componente (currency, date, spin, memo...). }
+    property FieldSize: TFRFieldSize read FFieldSize write FFieldSize default fsAuto;
     property SyncWithTheme: TFRMDSyncOptions read FSyncWithTheme write FSyncWithTheme default [toColor, toDensity, toVariant];
   end;
 
@@ -227,9 +304,12 @@ type
     function PaintCached(ABmp: TBGRABitmap): Boolean; virtual;
     { Marca o cache de pintura como inválido. }
     procedure InvalidatePaintCache;
+  protected
+    procedure Loaded; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    procedure BeforeDestruction; override;
     procedure ApplyTheme(const AThemeManager: TObject); virtual;
     property Hovered: Boolean read FHovered;
   published
@@ -267,6 +347,57 @@ type
 implementation
 
 uses Math;
+
+{ ══════════════════════════════════════════════════════════════════════════
+  Lifecycle guards — implementation
+  ══════════════════════════════════════════════════════════════════════════ }
+
+function FRMDIsDestroying(AComponent: TComponent): Boolean; inline;
+begin
+  Result := (AComponent = nil) or (csDestroying in AComponent.ComponentState);
+end;
+
+function FRMDCanPaint(AControl: TControl): Boolean;
+begin
+  Result := False;
+  if AControl = nil then Exit;
+  if csDestroying in AControl.ComponentState then Exit;
+  if csLoading in AControl.ComponentState then Exit;
+  if (AControl.Width <= 0) or (AControl.Height <= 0) then Exit;
+
+  { TWinControl needs an allocated handle; TGraphicControl needs a live
+    Parent (it paints on the parent's canvas). }
+  if AControl is TWinControl then
+  begin
+    if not TWinControl(AControl).HandleAllocated then Exit;
+  end
+  else
+  begin
+    if AControl.Parent = nil then Exit;
+  end;
+
+  Result := True;
+end;
+
+procedure FRMDSafeInvalidate(AControl: TControl);
+begin
+  if AControl = nil then Exit;
+  if csDestroying in AControl.ComponentState then Exit;
+  { Durante csLoading o LFM ainda esta populando properties; descartar
+    o repaint nao perde nada porque Loaded() reavalia o estado final. }
+  if csLoading in AControl.ComponentState then Exit;
+
+  if AControl is TWinControl then
+  begin
+    if not TWinControl(AControl).HandleAllocated then Exit;
+  end
+  else
+  begin
+    if AControl.Parent = nil then Exit;
+  end;
+
+  AControl.Invalidate;
+end;
 
 { ── HSL helpers for palette generation ── }
 
@@ -772,6 +903,7 @@ begin
   inherited Create(AOwner);
   FHovered := False;
   FPressed := False;
+  FFieldSize := fsAuto;
   FRippleProgress := 0;
   FRippleFading := False;
   FRippleFadeProgress := 0;
@@ -785,23 +917,53 @@ begin
   FRMDRegisterComponent(Self);
 end;
 
+procedure TFRMaterial3Control.BeforeDestruction;
+begin
+  { Desregistra do ThemeManager PRIMEIRO — impede que callbacks de tema
+    disparados enquanto children estao sendo destruidos toquem memoria
+    inconsistente. Depois para o ripple timer para que DoRippleTick nao
+    tente pintar um componente em destruicao. }
+  FRMDUnregisterComponent(Self);
+
+  if Assigned(FRippleTimer) then
+  begin
+    FRippleTimer.Enabled := False;
+    FRippleTimer.OnTimer := nil;
+  end;
+
+  inherited BeforeDestruction;
+end;
+
 destructor TFRMaterial3Control.Destroy;
 begin
+  { BeforeDestruction ja desregistrou e parou o timer. Aqui liberamos
+    apenas recursos proprios (nao sub-componentes, que sao freeados
+    pelo owner chain). }
   FreeAndNil(FPaintCache);
   FreeAndNil(FRippleTimer);
-  FRMDUnregisterComponent(Self);
   inherited Destroy;
+end;
+
+procedure TFRMaterial3Control.Loaded;
+begin
+  inherited Loaded;
+  { Aplica o tema atual agora que o streaming do LFM terminou. Neste
+    momento todos os sub-componentes do derivado ja existem e todas as
+    properties foram lidas — seguro chamar o virtual ApplyTheme. }
+  if Assigned(FRMaterialDefaultThemeManager) then
+    ApplyTheme(FRMaterialDefaultThemeManager);
 end;
 
 procedure TFRMaterial3Control.ApplyTheme(const AThemeManager: TObject);
 begin
   if not Assigned(AThemeManager) then Exit;
+  if FRMDIsDestroying(Self) then Exit;
 
   if toDensity in FSyncWithTheme then
     SetDensity(FRMDGetThemeDensity(AThemeManager));
 
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterial3Control.InvalidatePaintCache;
@@ -828,7 +990,7 @@ var
   NeedsRebuild: Boolean;
   bmpRipple: TBGRABitmap;
 begin
-  if (Width <= 0) or (Height <= 0) then Exit;
+  if not FRMDCanPaint(Self) then Exit;
 
   NeedsRebuild := (FPaintCache = nil)
     or (FPaintCacheW <> Width)
@@ -895,7 +1057,7 @@ procedure TFRMaterial3Control.MouseEnter;
 begin
   FHovered := True;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
   inherited;
 end;
 
@@ -909,7 +1071,7 @@ begin
     FRippleFading := True;
     FRippleFadeProgress := 0;
   end;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
   inherited;
 end;
 
@@ -935,7 +1097,7 @@ begin
       end;
       FRippleTimer.Enabled := True;
     end;
-    Invalidate;
+    FRMDSafeInvalidate(Self);
   end;
   inherited;
 end;
@@ -952,7 +1114,7 @@ begin
       FRippleFading := True;
       FRippleFadeProgress := 0;
     end;
-    Invalidate;
+    FRMDSafeInvalidate(Self);
   end;
   inherited;
 end;
@@ -973,6 +1135,10 @@ end;
 
 procedure TFRMaterial3Control.DoRippleTick(Sender: TObject);
 begin
+  { Guard defensivo: timer pode disparar uma ultima vez apos Enabled=False
+    em BeforeDestruction se ja tiver uma mensagem WM_TIMER enfileirada. }
+  if FRMDIsDestroying(Self) then Exit;
+
   if FRippleFading then
   begin
     FRippleFadeProgress := FRippleFadeProgress + 0.12;
@@ -998,7 +1164,7 @@ begin
       end;
     end;
   end;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterial3Control.PaintRipple(ABmp: TBGRABitmap; ARippleColor: TColor);
@@ -1035,18 +1201,32 @@ begin
   FRMDRegisterComponent(Self);
 end;
 
+procedure TFRMaterial3Graphic.Loaded;
+begin
+  inherited Loaded;
+  if Assigned(FRMaterialDefaultThemeManager) then
+    ApplyTheme(FRMaterialDefaultThemeManager);
+end;
+
+procedure TFRMaterial3Graphic.BeforeDestruction;
+begin
+  { Desregistra cedo, antes do cascade atingir Self. }
+  FRMDUnregisterComponent(Self);
+  inherited BeforeDestruction;
+end;
+
 destructor TFRMaterial3Graphic.Destroy;
 begin
   FreeAndNil(FPaintCache);
-  FRMDUnregisterComponent(Self);
   inherited Destroy;
 end;
 
 procedure TFRMaterial3Graphic.ApplyTheme(const AThemeManager: TObject);
 begin
   if not Assigned(AThemeManager) then Exit;
+  if FRMDIsDestroying(Self) then Exit;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterial3Graphic.InvalidatePaintCache;
@@ -1065,7 +1245,7 @@ procedure TFRMaterial3Graphic.Paint;
 var
   NeedsRebuild: Boolean;
 begin
-  if (Width <= 0) or (Height <= 0) then Exit;
+  if not FRMDCanPaint(Self) then Exit;
 
   NeedsRebuild := (FPaintCache = nil)
     or (FPaintCacheW <> Width)
@@ -1102,7 +1282,7 @@ procedure TFRMaterial3Graphic.MouseEnter;
 begin
   FHovered := True;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
   inherited;
 end;
 
@@ -1110,7 +1290,7 @@ procedure TFRMaterial3Graphic.MouseLeave;
 begin
   FHovered := False;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
   inherited;
 end;
 
@@ -1127,13 +1307,12 @@ end;
 
 procedure TFRMaterial3Control.SetDensity(AValue: TFRMDDensity);
 begin
-  if FDensity <> AValue then
-  begin
-    FDensity := AValue;
-    InvalidatePaintCache;
-    Invalidate;
+  if FDensity = AValue then Exit;
+  FDensity := AValue;
+  InvalidatePaintCache;
+  FRMDSafeInvalidate(Self);
+  if not (csLoading in ComponentState) then
     DoOnResize;
-  end;
 end;
 
 procedure TFRMaterialCustomControl.SetValidationState(AValue: TFRValidationState);

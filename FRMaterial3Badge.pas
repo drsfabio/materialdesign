@@ -101,7 +101,7 @@ end;
 procedure TFRMaterialBadge.ApplyTheme(const AThemeManager: TObject);
 begin
   if not Assigned(AThemeManager) then Exit;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialBadge.SetBadgeMode(AValue: TFRMDBadgeMode);
@@ -110,7 +110,7 @@ begin
   FBadgeMode := AValue;
   UpdatePosition;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialBadge.SetValue(AValue: Integer);
@@ -120,7 +120,7 @@ begin
   FValue := AValue;
   UpdatePosition;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialBadge.SetMaxValue(AValue: Integer);
@@ -130,7 +130,7 @@ begin
   FMaxValue := AValue;
   UpdatePosition;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialBadge.SetAttachTo(AValue: TControl);
@@ -143,7 +143,7 @@ begin
     FAttachTo.FreeNotification(Self);
   UpdatePosition;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialBadge.SetOffsetX(AValue: Integer);
@@ -167,7 +167,7 @@ begin
   if (Operation = opRemove) and (AComponent = FAttachTo) then
   begin
     FAttachTo := nil;
-    Invalidate;
+    FRMDSafeInvalidate(Self);
   end;
 end;
 

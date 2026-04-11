@@ -138,7 +138,7 @@ end;
 
 destructor TFRMaterialListView.Destroy;
 begin
-  FItems.Free;
+  FreeAndNil(FItems);
   inherited Destroy;
 end;
 

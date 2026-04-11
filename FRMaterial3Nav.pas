@@ -290,7 +290,7 @@ end;
 
 destructor TFRMaterialNavBar.Destroy;
 begin
-  FItems.Free;
+  FreeAndNil(FItems);
   inherited Destroy;
 end;
 
@@ -336,9 +336,12 @@ begin
   begin
     if AComponent = FPageControl then
       FPageControl := nil;
-    for i := 0 to FItems.Count - 1 do
-      if FItems[i].FMenu = AComponent then
-        FItems[i].FMenu := nil;
+    { FItems pode ter sido liberado e nilado em Destroy antes do cascade
+      LCL chamar Notification nos children. Sem guard, AV garantido. }
+    if Assigned(FItems) then
+      for i := 0 to FItems.Count - 1 do
+        if FItems[i].FMenu = AComponent then
+          FItems[i].FMenu := nil;
   end;
 end;
 
@@ -462,7 +465,7 @@ end;
 
 destructor TFRMaterialNavDrawer.Destroy;
 begin
-  FItems.Free;
+  FreeAndNil(FItems);
   inherited Destroy;
 end;
 
@@ -508,9 +511,12 @@ begin
   begin
     if AComponent = FPageControl then
       FPageControl := nil;
-    for i := 0 to FItems.Count - 1 do
-      if FItems[i].FMenu = AComponent then
-        FItems[i].FMenu := nil;
+    { FItems pode ter sido liberado e nilado em Destroy antes do cascade
+      LCL chamar Notification nos children. Sem guard, AV garantido. }
+    if Assigned(FItems) then
+      for i := 0 to FItems.Count - 1 do
+        if FItems[i].FMenu = AComponent then
+          FItems[i].FMenu := nil;
   end;
 end;
 
@@ -646,7 +652,7 @@ end;
 
 destructor TFRMaterialNavRail.Destroy;
 begin
-  FItems.Free;
+  FreeAndNil(FItems);
   inherited Destroy;
 end;
 
@@ -692,9 +698,12 @@ begin
   begin
     if AComponent = FPageControl then
       FPageControl := nil;
-    for i := 0 to FItems.Count - 1 do
-      if FItems[i].FMenu = AComponent then
-        FItems[i].FMenu := nil;
+    { FItems pode ter sido liberado e nilado em Destroy antes do cascade
+      LCL chamar Notification nos children. Sem guard, AV garantido. }
+    if Assigned(FItems) then
+      for i := 0 to FItems.Count - 1 do
+        if FItems[i].FMenu = AComponent then
+          FItems[i].FMenu := nil;
   end;
 end;
 

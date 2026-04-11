@@ -166,7 +166,7 @@ begin
   FViewYear := y;
   FViewMonth := m;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
   if Assigned(FOnChange) then
     FOnChange(Self);
 end;
@@ -176,7 +176,7 @@ begin
   if FMinDate = AValue then Exit;
   FMinDate := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialDatePicker.SetMaxDate(AValue: TDate);
@@ -184,7 +184,7 @@ begin
   if FMaxDate = AValue then Exit;
   FMaxDate := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialDatePicker.SetShowToday(AValue: Boolean);
@@ -192,7 +192,7 @@ begin
   if FShowToday = AValue then Exit;
   FShowToday := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 function TFRMaterialDatePicker.DaysInViewMonth: Integer;
@@ -257,7 +257,7 @@ begin
   end;
   FHoverDay := 0;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialDatePicker.MouseDown(Button: TMouseButton;
@@ -289,7 +289,7 @@ begin
     begin
       FDate := EncodeDate(FViewYear, FViewMonth, i);
       InvalidatePaintCache;
-      Invalidate;
+      FRMDSafeInvalidate(Self);
       if Assigned(FOnChange) then
         FOnChange(Self);
       Exit;
@@ -326,7 +326,7 @@ begin
     FHoverDay := newHover;
     FHoverNav := newNav;
     InvalidatePaintCache;
-    Invalidate;
+    FRMDSafeInvalidate(Self);
   end;
 end;
 
@@ -338,7 +338,7 @@ begin
     FHoverDay := 0;
     FHoverNav := 0;
     InvalidatePaintCache;
-    Invalidate;
+    FRMDSafeInvalidate(Self);
   end;
 end;
 

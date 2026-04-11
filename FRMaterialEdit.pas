@@ -8,7 +8,7 @@ uses
   FRMaterialTheme, FRMaterialThemeManager, FRMaterialIcons, FRMaterialMasks, FRMaterial3Base,
   FRMaterialFieldPainter, FRMaterialInternalEdits, BGRABitmap, BGRABitmapTypes,
   Classes, Clipbrd, Controls, Dialogs, ExtCtrls, Forms, Graphics,
-  {$IFDEF FPC} LCLType, LResources, {$ENDIF} Math, MaskEdit, Menus, StdCtrls, SysUtils;
+  {$IFDEF FPC} LCLType, LMessages, LResources, {$ENDIF} Math, MaskEdit, Menus, StdCtrls, SysUtils;
 
 type
 
@@ -205,6 +205,7 @@ type
     procedure DoOnResize; override;
     procedure Loaded; override;
     procedure Paint; override;
+    procedure CMEnabledChanged(var Message: TLMessage); message CM_ENABLEDCHANGED;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -559,7 +560,7 @@ begin
   
   { Repinta para atualizar o contador de caracteres e animador }
   if FShowCharCounter then
-    Invalidate;
+    FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialEditBase.UpdateRightButtonSpacing;
@@ -581,7 +582,7 @@ begin
   finally
     EnableAlign;
   end;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 { --- Botão de pesquisa --- }
@@ -602,7 +603,7 @@ begin
   finally
     EnableAlign;
   end;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialEditBase.SearchButtonClick(Sender: TObject);
@@ -642,7 +643,7 @@ begin
   if FSearchButtonPosition = AValue then Exit;
   FSearchButtonPosition := AValue;
   AnchorButtons;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialEditBase.AnchorButtons;
@@ -784,21 +785,21 @@ begin
   if FShowCharCounter = AValue then Exit;
   FShowCharCounter := AValue;
   if not (csLoading in ComponentState) then DoOnResize;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialEditBase.SetPrefixText(const AValue: string);
 begin
   if FPrefixText = AValue then Exit;
   FPrefixText := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialEditBase.SetSuffixText(const AValue: string);
 begin
   if FSuffixText = AValue then Exit;
   FSuffixText := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialEditBase.SetShowLeadingIcon(AValue: Boolean);
@@ -812,7 +813,7 @@ begin
   finally
     EnableAlign;
   end;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialEditBase.SetLeadingIconMode(AValue: TFRIconMode);
@@ -851,7 +852,7 @@ begin
   finally
     EnableAlign;
   end;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialEditBase.EyeButtonClick(Sender: TObject);
@@ -884,7 +885,7 @@ begin
   finally
     EnableAlign;
   end;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialEditBase.CopyButtonClick(Sender: TObject);
@@ -923,7 +924,41 @@ begin
       Self.Color := clWhite;
   end;
   UpdateClearButton;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
+end;
+
+{ --- Enabled/Disabled (estado visual MD3 para campos desabilitados) ---
+
+  Quando o componente fica Enabled := False, espelhamos o visual seguindo o
+  padrao Material Design 3: fundo SurfaceDim (tom mais apagado) para deixar
+  claro que o campo nao aceita interacao. Borda, label e helper ja sao
+  pintados com DisabledColor pelo Paint existente (ver linhas 1583-1587).
+
+  Locked tem precedencia sobre Disabled: se o campo esta Locked, nao
+  sobrescrevemos a Self.Color — a semantica do Lock (campo preenchido por
+  pesquisa, limpavel apenas via clear) deve permanecer visivel. }
+procedure TFRMaterialEditBase.CMEnabledChanged(var Message: TLMessage);
+begin
+  inherited;
+  if not FLocked then
+  begin
+    if Enabled then
+    begin
+      if Assigned(FRMaterialDefaultThemeManager) then
+      begin
+        if FVariant = mvFilled then
+          Self.Color := MD3Colors.SurfaceContainerHighest
+        else
+          Self.Color := MD3Colors.Surface;
+      end
+      else
+        Self.Color := clWhite;
+    end
+    else
+      Self.Color := MD3Colors.SurfaceDim;
+  end;
+  UpdateClearButton;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialEditBase.SetVariant(AValue: TFRMaterialVariant);
@@ -932,28 +967,28 @@ begin
   FVariant := AValue;
   if Assigned(FRMaterialDefaultThemeManager) then
     ApplyTheme(FRMaterialDefaultThemeManager);
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialEditBase.SetBorderRadius(AValue: Integer);
 begin
   if FBorderRadius = AValue then Exit;
   FBorderRadius := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialEditBase.SetValidColor(AValue: TColor);
 begin
   if FValidColor = AValue then Exit;
   FValidColor := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialEditBase.SetInvalidColor(AValue: TColor);
 begin
   if FInvalidColor = AValue then Exit;
   FInvalidColor := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialEditBase.Lock;
@@ -1448,7 +1483,7 @@ begin
     FSearchButton.NormalColor := AccentColor;
     FSearchButton.InvalidateCache;
   end;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
   { Redireciona o foco para o edit interno }
   if FEdit.CanFocus then
     FEdit.SetFocus;
@@ -1478,7 +1513,7 @@ begin
     FSearchButton.InvalidateCache;
   end;
 
-  Invalidate;
+  FRMDSafeInvalidate(Self);
   inherited DoExit;
 end;
 
@@ -1566,10 +1601,14 @@ var
   P: TFRMDFieldPaintParams;
   ActionRightPos: Integer;
 begin
+  if not FRMDCanPaint(Self) then Exit;
   inherited Paint;
 
+  if not Assigned(FEdit) then Exit;
+
   { Sync ClearButton visibility with Edit.Enabled state }
-  UpdateClearButton;
+  if Assigned(FClearButton) then
+    UpdateClearButton;
 
   { Sync internal edit color with container }
   if FEdit.Color <> Self.Color then
@@ -1802,7 +1841,20 @@ end;
 destructor TFRMaterialEditBase.Destroy;
 begin
   FRMDUnregisterComponent(Self as IFRMaterialComponent);
-    
+
+  { Zera OnClick/OnChange dos sub-controles ANTES de inherited Destroy.
+    inherited cascata-libera os 5 IconButtons (Clear/Search/Leading/Eye/
+    Copy) e o FEdit interno via owner chain. Se um evento estiver em fila
+    (ex: clique disparado durante fade-out), o handler pode executar em
+    self ja meio-destruido — AV. Desconectar os handlers elimina isto. }
+  if Assigned(FClearButton)  then FClearButton.OnClick  := nil;
+  if Assigned(FSearchButton) then FSearchButton.OnClick := nil;
+  if Assigned(FLeadingIcon)  then FLeadingIcon.OnClick  := nil;
+  if Assigned(FEyeButton)    then FEyeButton.OnClick    := nil;
+  if Assigned(FCopyButton)   then FCopyButton.OnClick   := nil;
+  if Assigned(FEdit) then
+    FEdit.OnChange := nil;
+
   if Assigned(FLabelAnimator) then FLabelAnimator.Free;
   inherited Destroy;
 end;
@@ -1873,7 +1925,7 @@ begin
     else
       Self.Color := MD3Colors.SurfaceContainerHigh;
   end;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 { TFRMaterialEdit }
@@ -2003,7 +2055,7 @@ begin
     FEdit.OnChange   := FUserOnChange;
     FValidationState := vsNone;
   end;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 function TFRMaterialEdit.GetUserOnChange: TNotifyEvent;

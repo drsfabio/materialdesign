@@ -70,18 +70,13 @@ type
 
 destructor TTooltipPanel.Destroy;
 begin
-  if Assigned(FPaintCache) then
-    FPaintCache.Free;
+  FreeAndNil(FPaintCache);
   inherited Destroy;
 end;
 
 procedure TTooltipPanel.InvalidatePaintCache;
 begin
-  if Assigned(FPaintCache) then
-  begin
-    FPaintCache.Free;
-    FPaintCache := nil;
-  end;
+  FreeAndNil(FPaintCache);
   FPaintCacheW := 0;
   FPaintCacheH := 0;
 end;
@@ -101,8 +96,7 @@ begin
   { Use paint cache if available and valid }
   if (FPaintCache = nil) or (FPaintCacheW <> Width) or (FPaintCacheH <> Height) then
   begin
-    if Assigned(FPaintCache) then
-      FPaintCache.Free;
+    FreeAndNil(FPaintCache);
     FPaintCache := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
     FPaintCacheW := Width;
     FPaintCacheH := Height;
@@ -139,11 +133,11 @@ end;
 destructor TFRMaterialTooltip.Destroy;
 begin
   Hide;
-  FTimer.Free;
-  FAutoHideTimer.Free;
-  
+  FreeAndNil(FTimer);
+  FreeAndNil(FAutoHideTimer);
+
   FRMDUnregisterComponent(Self);
-    
+
   inherited Destroy;
 end;
 
@@ -241,11 +235,7 @@ end;
 procedure TFRMaterialTooltip.Hide;
 begin
   FAutoHideTimer.Enabled := False;
-  if Assigned(FPanel) then
-  begin
-    FPanel.Free;
-    FPanel := nil;
-  end;
+  FreeAndNil(FPanel);
 end;
 
 procedure Register;

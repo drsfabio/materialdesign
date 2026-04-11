@@ -112,7 +112,7 @@ begin
   if FValue = AValue then Exit;
   FValue := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
   if Assigned(FOnChange) then FOnChange(Self);
 end;
 
@@ -122,7 +122,7 @@ begin
   FMin := AValue;
   ClampValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialSlider.SetMax(AValue: Double);
@@ -131,7 +131,7 @@ begin
   FMax := AValue;
   ClampValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialSlider.SetDiscrete(AValue: Boolean);
@@ -139,7 +139,7 @@ begin
   if FDiscrete = AValue then Exit;
   FDiscrete := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialSlider.SetSteps(AValue: Integer);
@@ -148,7 +148,7 @@ begin
   if FSteps = AValue then Exit;
   FSteps := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialSlider.SetShowValueLabel(AValue: Boolean);
@@ -156,7 +156,7 @@ begin
   if FShowValueLabel = AValue then Exit;
   FShowValueLabel := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialSlider.ClampValue;
@@ -276,6 +276,7 @@ var
   labelRect: TRect;
   labelText: string;
 begin
+  if not FRMDCanPaint(Self) then Exit;
   { Call inherited Paint which handles PaintCached and ripple }
   inherited Paint;
 

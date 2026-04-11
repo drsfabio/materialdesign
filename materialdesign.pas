@@ -20,7 +20,7 @@ uses
   FRMaterialThemeManager, FRMaterial3DataGrid, FRMaterialFieldPainter, 
   FRMaterial3PageControl, FRMaterial3VirtualDataGrid, FRMaterial3Card, 
   FRMaterial3Badge, FRMaterial3Carousel, FRMaterial3DatePicker, 
-  FRMaterial3GridPanel, LazarusPackageIntf;
+  FRMaterial3GridPanel, FRMaterial3TitleBar, LazarusPackageIntf;
 
 implementation
 
@@ -63,6 +63,7 @@ begin
   RegisterUnit('FRMaterial3Carousel', @FRMaterial3Carousel.Register);
   RegisterUnit('FRMaterial3DatePicker', @FRMaterial3DatePicker.Register);
   RegisterUnit('FRMaterial3GridPanel', @FRMaterial3GridPanel.Register);
+  RegisterUnit('FRMaterial3TitleBar', @FRMaterial3TitleBar.Register);
 end;
 
 initialization

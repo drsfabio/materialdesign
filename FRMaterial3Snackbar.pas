@@ -368,13 +368,9 @@ destructor TFRMaterialSnackbar.Destroy;
 begin
   FAnimTimer.Enabled := False;
   FTimer.Enabled := False;
-  if Assigned(FPanel) then
-  begin
-    FPanel.Free;
-    FPanel := nil;
-  end;
-  FAnimTimer.Free;
-  FTimer.Free;
+  FreeAndNil(FPanel);
+  FreeAndNil(FAnimTimer);
+  FreeAndNil(FTimer);
 
   FRMDUnregisterComponent(Self);
 
@@ -430,9 +426,12 @@ begin
     begin
       FAnimProgress := 1.0;
       FAnimTimer.Enabled := False;
-      { Actually destroy the panel }
-      FPanel.Free;
+      { Desabilita o panel antes de liberar — garante que clicks/mouse
+        events ja enfileirados nao sejam dispatched para memoria livre. }
+      snkPanel.Enabled := False;
+      snkPanel.Visible := False;
       FPanel := nil;
+      snkPanel.Free;
       if Assigned(FOnHide) then
         FOnHide(Self);
       Exit;
@@ -510,13 +509,18 @@ var
   panelW, panelH: Integer;
   maxTextW: Integer;
 begin
-  { If already showing, hide without animation first }
+  { If already showing, hide without animation first. Mesmo pattern do
+    DoAnimTick: desabilita antes de free pra que mensagens na fila nao
+    batam em memoria liberada. }
   if Assigned(FPanel) then
   begin
     FAnimTimer.Enabled := False;
     FTimer.Enabled := False;
-    FPanel.Free;
+    FPanel.Enabled := False;
+    FPanel.Visible := False;
+    snkPanel := TSnackbarPanel(FPanel);
     FPanel := nil;
+    snkPanel.Free;
   end;
 
   ownerForm := nil;
@@ -612,8 +616,7 @@ begin
     { Force hide if already animating out }
     FAnimTimer.Enabled := False;
     FTimer.Enabled := False;
-    FPanel.Free;
-    FPanel := nil;
+    FreeAndNil(FPanel);
     if Assigned(FOnHide) then
       FOnHide(Self);
   end;

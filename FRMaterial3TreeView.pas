@@ -128,7 +128,7 @@ end;
 
 destructor TFRMaterialTreeNode.Destroy;
 begin
-  FChildren.Free;
+  FreeAndNil(FChildren);
   inherited Destroy;
 end;
 
@@ -189,8 +189,8 @@ end;
 
 destructor TFRMaterialTreeView.Destroy;
 begin
-  FFlatList.Free;
-  FNodes.Free;
+  FreeAndNil(FFlatList);
+  FreeAndNil(FNodes);
   inherited Destroy;
 end;
 
@@ -317,6 +317,7 @@ var
   clr: TColor;
   padX, chevW, nodeW: Integer;
 begin
+  if not FRMDCanPaint(Self) then Exit;
   inherited Paint;
 
   { Text labels — second pass on Canvas }

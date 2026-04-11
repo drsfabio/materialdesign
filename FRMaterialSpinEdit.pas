@@ -72,6 +72,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    procedure BeforeDestruction; override;
     procedure ApplyTheme(const AThemeManager: TObject); virtual;
     property Edit: TEdit read FEdit;
     property MinusButton: TFRMaterialIconButton read FMinusButton;
@@ -260,7 +261,7 @@ begin
   inherited DoEnter;
   FFocused := True;
   if Assigned(FLabelAnimator) then FLabelAnimator.FloatLabel;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
   { Redireciona o foco para o edit interno }
   if FEdit.CanFocus then
     FEdit.SetFocus;
@@ -277,7 +278,7 @@ begin
     else
       FLabelAnimator.FloatLabel;
   end;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
   inherited DoExit;
 end;
 
@@ -351,7 +352,7 @@ procedure TFRMaterialSpinEdit.SetValidationState(AValue: TFRValidationState);
 begin
   if FValidationState = AValue then Exit;
   FValidationState := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialSpinEdit.MinusButtonClick(Sender: TObject);
@@ -409,7 +410,11 @@ var
   DecoColor: TColor;
   P: TFRMDFieldPaintParams;
 begin
+  if not FRMDCanPaint(Self) then Exit;
+
   inherited Paint;
+
+  if not Assigned(FEdit) then Exit;
 
   if FEdit.Color <> Self.Color then
     FEdit.Color := Self.Color;
@@ -425,12 +430,12 @@ begin
   end;
 
   { Atualiza cor dos botões }
-  if FMinusButton.NormalColor <> DecoColor then
+  if Assigned(FMinusButton) and (FMinusButton.NormalColor <> DecoColor) then
   begin
     FMinusButton.NormalColor := DecoColor;
     FMinusButton.InvalidateCache;
   end;
-  if FPlusButton.NormalColor <> DecoColor then
+  if Assigned(FPlusButton) and (FPlusButton.NormalColor <> DecoColor) then
   begin
     FPlusButton.NormalColor := DecoColor;
     FPlusButton.InvalidateCache;
@@ -443,33 +448,39 @@ begin
 
   P.Variant := FVariant;
   P.BorderRadius := FBorderRadius;
-  
+
   P.DecoColor := DecoColor;
   P.HelperColor := DisabledColor;
   P.DisabledColor := DisabledColor;
-  
+
   P.IsFocused := FFocused;
   P.IsEnabled := Enabled;
   P.IsRequired := False;
-  
+
   P.EditLeft := FEdit.Left;
   P.EditTop := FEdit.Top;
   P.EditWidth := FEdit.Width;
   P.EditHeight := FEdit.Height;
-  
-  P.ActionRight := FPlusButton.Left + FPlusButton.Width;
+
+  if Assigned(FPlusButton) then
+    P.ActionRight := FPlusButton.Left + FPlusButton.Width
+  else
+    P.ActionRight := FEdit.Left + FEdit.Width;
   P.BottomMargin := 0;
-  
+
   P.HelperText := '';
   P.CharCounterText := '';
   P.PrefixText := '';
   P.SuffixText := '';
-  
+
   P.EditFont := FEdit.Font;
-  P.LabelFont := FLabel.Font;
-  P.LabelRight := FLabel.Left + Canvas.TextWidth(FLabel.Caption);
-  P.LabelTop := FLabel.Top;
-  P.LabelText := FLabel.Caption;
+  if Assigned(FLabel) then
+  begin
+    P.LabelFont := FLabel.Font;
+    P.LabelRight := FLabel.Left + Canvas.TextWidth(FLabel.Caption);
+    P.LabelTop := FLabel.Top;
+    P.LabelText := FLabel.Caption;
+  end;
   if Assigned(FLabelAnimator) then
     P.LabelProgress := FLabelAnimator.Progress
   else
@@ -478,12 +489,26 @@ begin
   TFRMaterialFieldPainter.DrawField(P);
 end;
 
+procedure TFRMaterialSpinEdit.BeforeDestruction;
+begin
+  FRMDUnregisterComponent(Self);
+
+  { Remove handlers dos sub-controles para que mensagens em fila nao
+    disparem em Self meio-destruido. }
+  if Assigned(FMinusButton) then FMinusButton.OnClick := nil;
+  if Assigned(FPlusButton)  then FPlusButton.OnClick  := nil;
+  if Assigned(FEdit) then
+  begin
+    FEdit.RemoveHandlerOnChange(@EditChange);
+    FEdit.OnKeyDown := nil;
+  end;
+
+  inherited BeforeDestruction;
+end;
+
 destructor TFRMaterialSpinEdit.Destroy;
 begin
-  if Assigned(FEdit) then
-    FEdit.RemoveHandlerOnChange(@EditChange);
-  if Assigned(FLabelAnimator) then FLabelAnimator.Free;
-  FRMDUnregisterComponent(Self);
+  if Assigned(FLabelAnimator) then FreeAndNil(FLabelAnimator);
   inherited Destroy;
 end;
 
@@ -512,7 +537,7 @@ begin
   FPlusButton.HoverColor   := MD3Colors.Primary;
   FPlusButton.InvalidateCache;
 
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 end.

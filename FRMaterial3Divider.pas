@@ -137,7 +137,7 @@ begin
   else
     Width := 1;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialDivider.SetInsetStart(AValue: Integer);
@@ -145,7 +145,7 @@ begin
   if FInsetStart = AValue then Exit;
   FInsetStart := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialDivider.SetInsetEnd(AValue: Integer);
@@ -153,7 +153,7 @@ begin
   if FInsetEnd = AValue then Exit;
   FInsetEnd := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 function TFRMaterialDivider.PaintCached(ABmp: TBGRABitmap): Boolean;
@@ -191,8 +191,7 @@ end;
 destructor TFRMaterialGroupBox.Destroy;
 begin
   FRMDUnregisterComponent(Self);
-  if Assigned(FPaintCache) then
-    FPaintCache.Free;
+  FreeAndNil(FPaintCache);
   inherited Destroy;
 end;
 
@@ -201,16 +200,12 @@ begin
   if not Assigned(AThemeManager) then Exit;
   Color := MD3Colors.SurfaceContainerLow;
   Font.Color := MD3Colors.OnSurface;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialGroupBox.InvalidatePaintCache;
 begin
-  if Assigned(FPaintCache) then
-  begin
-    FPaintCache.Free;
-    FPaintCache := nil;
-  end;
+  FreeAndNil(FPaintCache);
   FPaintCacheW := 0;
   FPaintCacheH := 0;
 end;
@@ -220,7 +215,7 @@ begin
   if FBorderRadius = AValue then Exit;
   FBorderRadius := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialGroupBox.SetShowBorder(AValue: Boolean);
@@ -228,7 +223,7 @@ begin
   if FShowBorder = AValue then Exit;
   FShowBorder := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialGroupBox.SetContentPadding(AValue: Integer);
@@ -238,7 +233,7 @@ begin
   FContentPadding := AValue;
   InvalidatePaintCache;
   ReAlign;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 function TFRMaterialGroupBox.GetCaptionHeight: Integer;
@@ -289,8 +284,7 @@ begin
   { Use paint cache if available and valid }
   if (FPaintCache = nil) or (FPaintCacheW <> Width) or (FPaintCacheH <> Height) then
   begin
-    if Assigned(FPaintCache) then
-      FPaintCache.Free;
+    FreeAndNil(FPaintCache);
     FPaintCache := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
     FPaintCacheW := Width;
     FPaintCacheH := Height;

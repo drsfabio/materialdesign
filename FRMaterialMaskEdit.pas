@@ -656,7 +656,10 @@ var
   P: TFRMDFieldPaintParams;
   ActionRightPos: Integer;
 begin
+  if not FRMDCanPaint(Self) then Exit;
   inherited Paint;
+
+  if not Assigned(FMaskEdit) then Exit;
 
   if FMaskEdit.Color <> Self.Color then
     FMaskEdit.Color := Self.Color;

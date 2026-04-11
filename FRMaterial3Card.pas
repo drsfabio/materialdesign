@@ -146,7 +146,7 @@ end;
 destructor TFRMaterialCard.Destroy;
 begin
   FreeAndNil(FRippleTimer);
-  FHeaderImage.Free;
+  FreeAndNil(FHeaderImage);
   FRMDUnregisterComponent(Self);
   inherited Destroy;
 end;
@@ -154,7 +154,7 @@ end;
 procedure TFRMaterialCard.ApplyTheme(const AThemeManager: TObject);
 begin
   if not Assigned(AThemeManager) then Exit;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialCard.EraseBackground(DC: HDC);
@@ -174,7 +174,7 @@ procedure TFRMaterialCard.SetCardStyle(AValue: TFRMDCardStyle);
 begin
   if FCardStyle = AValue then Exit;
   FCardStyle := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialCard.SetBorderRadius(AValue: Integer);
@@ -182,7 +182,7 @@ begin
   if AValue < 0 then AValue := 0;
   if FBorderRadius = AValue then Exit;
   FBorderRadius := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialCard.SetContentPadding(AValue: Integer);
@@ -192,7 +192,7 @@ begin
   FContentPadding := AValue;
   BorderWidth := AValue;
   ReAlign;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialCard.SetHeaderHeight(AValue: Integer);
@@ -201,7 +201,7 @@ begin
   if FHeaderHeight = AValue then Exit;
   FHeaderHeight := AValue;
   ReAlign;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialCard.SetClickable(AValue: Boolean);
@@ -216,7 +216,7 @@ end;
 
 procedure TFRMaterialCard.HeaderImageChanged(Sender: TObject);
 begin
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialCard.GetStyleColors(out ABg, ABorder: TColor;
@@ -259,7 +259,7 @@ end;
 procedure TFRMaterialCard.MouseEnter;
 begin
   FHovered := True;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
   inherited;
 end;
 
@@ -267,7 +267,7 @@ procedure TFRMaterialCard.MouseLeave;
 begin
   FHovered := False;
   FPressed := False;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
   inherited;
 end;
 
@@ -289,7 +289,7 @@ begin
       FRippleTimer.OnTimer := @DoRippleTick;
     end;
     FRippleTimer.Enabled := True;
-    Invalidate;
+    FRMDSafeInvalidate(Self);
   end;
   inherited;
 end;
@@ -301,7 +301,7 @@ begin
   begin
     FPressed := False;
     FRippleFading := True;
-    Invalidate;
+    FRMDSafeInvalidate(Self);
     if FClickable and Assigned(FOnCardClick) then
       FOnCardClick(Self);
   end;
@@ -328,7 +328,7 @@ begin
     if FRippleProgress > 1.0 then
       FRippleProgress := 1.0;
   end;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialCard.Paint;

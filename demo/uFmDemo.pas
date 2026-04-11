@@ -87,6 +87,7 @@ type
     FDataGrid: TFRMaterialDataGrid;
     FPageControl: TFRMaterialPageControl;
     FVirtualGrid: TFRMaterialVirtualDataGrid;
+    FVGridLoadingSimTimer: TTimer;
     FDatePicker: TFRMaterialDatePicker;
     FCarousel: TFRMaterialCarousel;
 
@@ -162,6 +163,10 @@ type
     procedure OnPageControlChange(Sender: TObject);
     procedure OnVGridSortColumn(Sender: TObject; ACol: Integer;
       var ADirection: TFRMDSortDirection);
+    procedure OnVGridClearClick(Sender: TObject);
+    procedure OnVGridLoadingClick(Sender: TObject);
+    procedure OnVGridReloadClick(Sender: TObject);
+    procedure DoVGridLoadingTimer(Sender: TObject);
     procedure OnCardClick(Sender: TObject);
     procedure OnDatePickerChange(Sender: TObject);
     procedure OnCarouselChange(Sender: TObject; AIndex: Integer);
@@ -1722,6 +1727,11 @@ begin
     FVirtualGrid.EndUpdate;
   end;
 
+  { Defaults do empty/loading state expostos pelo grid }
+  FVirtualGrid.EmptyText := 'Nenhum produto cadastrado';
+  FVirtualGrid.EmptyHint := 'Clique em "Reload" para carregar exemplos';
+  FVirtualGrid.LoadingText := 'Carregando produtos...';
+
   Y := Y + 440;
   Y := AddSection(APage, Y, 'Density Controls');
   with TFRMaterialSegmentedButton.Create(Self) do
@@ -1732,6 +1742,36 @@ begin
     ItemIndex := 1;
     OnChange := @OnSegmentChange;
     Tag := 999;
+  end;
+
+  Y := Y + BTN_H + 24;
+  Y := AddSection(APage, Y, 'State Demos');
+
+  with TFRMaterialButton.Create(Self) do
+  begin
+    Parent := APage;
+    SetBounds(PAD, Y, 140, BTN_H);
+    Caption := 'Limpar';
+    ButtonStyle := mbsOutlined;
+    OnClick := @OnVGridClearClick;
+  end;
+
+  with TFRMaterialButton.Create(Self) do
+  begin
+    Parent := APage;
+    SetBounds(PAD + 152, Y, 140, BTN_H);
+    Caption := 'Loading ON';
+    ButtonStyle := mbsFilled;
+    OnClick := @OnVGridLoadingClick;
+  end;
+
+  with TFRMaterialButton.Create(Self) do
+  begin
+    Parent := APage;
+    SetBounds(PAD + 304, Y, 140, BTN_H);
+    Caption := 'Reload';
+    ButtonStyle := mbsTonal;
+    OnClick := @OnVGridReloadClick;
   end;
 end;
 
@@ -2060,6 +2100,64 @@ procedure TFmDemo.OnVGridSortColumn(Sender: TObject; ACol: Integer;
   var ADirection: TFRMDSortDirection);
 begin
   FStatusBar.SimpleText := Format('VirtualGrid: Sort col %d', [ACol]);
+end;
+
+procedure TFmDemo.OnVGridClearClick(Sender: TObject);
+begin
+  FVirtualGrid.Loading := False;
+  FVirtualGrid.Clear;
+  FStatusBar.SimpleText := 'VirtualGrid: empty state (0 registros)';
+end;
+
+procedure TFmDemo.OnVGridLoadingClick(Sender: TObject);
+begin
+  FVirtualGrid.Loading := not FVirtualGrid.Loading;
+  if FVirtualGrid.Loading then
+    FStatusBar.SimpleText := 'VirtualGrid: loading ON'
+  else
+    FStatusBar.SimpleText := 'VirtualGrid: loading OFF';
+end;
+
+procedure TFmDemo.OnVGridReloadClick(Sender: TObject);
+begin
+  { Simula um reload assincrono: ativa loading, espera 1.5s, preenche
+    com dados frescos. }
+  FVirtualGrid.Clear;
+  FVirtualGrid.Loading := True;
+  FStatusBar.SimpleText := 'VirtualGrid: simulando reload (1.5s)...';
+
+  if not Assigned(FVGridLoadingSimTimer) then
+    FVGridLoadingSimTimer := TTimer.Create(Self);
+  FVGridLoadingSimTimer.Interval := 1500;
+  FVGridLoadingSimTimer.OnTimer := @DoVGridLoadingTimer;
+  FVGridLoadingSimTimer.Enabled := True;
+end;
+
+procedure TFmDemo.DoVGridLoadingTimer(Sender: TObject);
+var
+  Node: PVirtualNode;
+begin
+  FVGridLoadingSimTimer.Enabled := False;
+  FVirtualGrid.Loading := False;
+
+  FVirtualGrid.BeginUpdate;
+  try
+    Node := FVirtualGrid.AddChild(nil); FVirtualGrid.Text[Node, 0] := '001'; FVirtualGrid.Text[Node, 1] := 'Monitor LCD 24"'; FVirtualGrid.Text[Node, 2] := 'Informática'; FVirtualGrid.Text[Node, 3] := '12'; FVirtualGrid.Text[Node, 4] := 'R$ 850,00';
+    Node := FVirtualGrid.AddChild(nil); FVirtualGrid.Text[Node, 0] := '002'; FVirtualGrid.Text[Node, 1] := 'Teclado Mecânico RGB'; FVirtualGrid.Text[Node, 2] := 'Informática'; FVirtualGrid.Text[Node, 3] := '45'; FVirtualGrid.Text[Node, 4] := 'R$ 250,00';
+    Node := FVirtualGrid.AddChild(nil); FVirtualGrid.Text[Node, 0] := '003'; FVirtualGrid.Text[Node, 1] := 'Mouse Óptico 3200DPI'; FVirtualGrid.Text[Node, 2] := 'Informática'; FVirtualGrid.Text[Node, 3] := '89'; FVirtualGrid.Text[Node, 4] := 'R$ 85,00';
+    Node := FVirtualGrid.AddChild(nil); FVirtualGrid.Text[Node, 0] := '004'; FVirtualGrid.Text[Node, 1] := 'Cabo HDMI 2m'; FVirtualGrid.Text[Node, 2] := 'Cabos'; FVirtualGrid.Text[Node, 3] := '120'; FVirtualGrid.Text[Node, 4] := 'R$ 25,00';
+    Node := FVirtualGrid.AddChild(nil); FVirtualGrid.Text[Node, 0] := '005'; FVirtualGrid.Text[Node, 1] := 'Parafuso M6x20'; FVirtualGrid.Text[Node, 2] := 'Ferramentas'; FVirtualGrid.Text[Node, 3] := '23'; FVirtualGrid.Text[Node, 4] := 'R$ 0,50';
+    Node := FVirtualGrid.AddChild(nil); FVirtualGrid.Text[Node, 0] := '007'; FVirtualGrid.Text[Node, 1] := 'Lâmpada LED 12W'; FVirtualGrid.Text[Node, 2] := 'Iluminação'; FVirtualGrid.Text[Node, 3] := '200'; FVirtualGrid.Text[Node, 4] := 'R$ 8,50';
+    Node := FVirtualGrid.AddChild(nil); FVirtualGrid.Text[Node, 0] := '008'; FVirtualGrid.Text[Node, 1] := 'Tinta Acrílica 3.6L'; FVirtualGrid.Text[Node, 2] := 'Pintura'; FVirtualGrid.Text[Node, 3] := '34'; FVirtualGrid.Text[Node, 4] := 'R$ 89,90';
+    Node := FVirtualGrid.AddChild(nil); FVirtualGrid.Text[Node, 0] := '009'; FVirtualGrid.Text[Node, 1] := 'Fita Isolante 20m'; FVirtualGrid.Text[Node, 2] := 'Material Elétrico'; FVirtualGrid.Text[Node, 3] := '150'; FVirtualGrid.Text[Node, 4] := 'R$ 5,90';
+    Node := FVirtualGrid.AddChild(nil); FVirtualGrid.Text[Node, 0] := '010'; FVirtualGrid.Text[Node, 1] := 'Webcam Full HD'; FVirtualGrid.Text[Node, 2] := 'Informática'; FVirtualGrid.Text[Node, 3] := '28'; FVirtualGrid.Text[Node, 4] := 'R$ 189,00';
+    Node := FVirtualGrid.AddChild(nil); FVirtualGrid.Text[Node, 0] := '011'; FVirtualGrid.Text[Node, 1] := 'Mangueira 30m'; FVirtualGrid.Text[Node, 2] := 'Hidráulica'; FVirtualGrid.Text[Node, 3] := '15'; FVirtualGrid.Text[Node, 4] := 'R$ 45,00';
+    Node := FVirtualGrid.AddChild(nil); FVirtualGrid.Text[Node, 0] := '012'; FVirtualGrid.Text[Node, 1] := 'Nobreak 1200VA'; FVirtualGrid.Text[Node, 2] := 'Informática'; FVirtualGrid.Text[Node, 3] := '8'; FVirtualGrid.Text[Node, 4] := 'R$ 620,00';
+  finally
+    FVirtualGrid.EndUpdate;
+  end;
+
+  FStatusBar.SimpleText := 'VirtualGrid: recarregado (11 registros)';
 end;
 
 { ===== TreeView event handlers ===== }

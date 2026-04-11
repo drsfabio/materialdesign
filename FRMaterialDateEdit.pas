@@ -267,7 +267,7 @@ procedure TFRMaterialDateEdit.SetVariant(AValue: TFRMaterialVariant);
 begin
   if FVariant = AValue then Exit;
   FVariant := AValue;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialDateEdit.AnchorButtons;
@@ -384,7 +384,7 @@ begin
   finally
     EnableAlign;
   end;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialDateEdit.ClearDate;
@@ -961,7 +961,7 @@ begin
   inherited DoEnter;
   FFocused := True;
   if Assigned(FLabelAnimator) then FLabelAnimator.FloatLabel;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
   { Redireciona o foco para o edit interno }
   if FEdit.CanFocus then
     FEdit.SetFocus;
@@ -1000,7 +1000,7 @@ begin
     FClearButton.InvalidateCache;
   end;
 
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialDateEdit.DoExit;
@@ -1013,7 +1013,7 @@ begin
     else
       FLabelAnimator.FloatLabel;
   end;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
   inherited DoExit;
 end;
 
@@ -1079,7 +1079,10 @@ var
   P: TFRMDFieldPaintParams;
   ActionRightPos: Integer;
 begin
+  if not FRMDCanPaint(Self) then Exit;
   inherited Paint;
+
+  if not Assigned(FEdit) then Exit;
 
   if FEdit.Color <> Self.Color then
     FEdit.Color := Self.Color;

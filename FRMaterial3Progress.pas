@@ -141,7 +141,7 @@ end;
 
 destructor TFRMaterialLinearProgress.Destroy;
 begin
-  FAnimTimer.Free;
+  FreeAndNil(FAnimTimer);
   inherited Destroy;
 end;
 
@@ -157,7 +157,7 @@ begin
   if FValue = AValue then Exit;
   FValue := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialLinearProgress.SetIndeterminate(AValue: Boolean);
@@ -167,7 +167,7 @@ begin
   FAnimTimer.Enabled := AValue and not (csDesigning in ComponentState);
   FAnimPos := 0;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialLinearProgress.OnAnimTimer(Sender: TObject);
@@ -175,7 +175,7 @@ begin
   FAnimPos := FAnimPos + 0.02;
   if FAnimPos > 2.0 then FAnimPos := 0;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 function TFRMaterialLinearProgress.PaintCached(ABmp: TBGRABitmap): Boolean;
@@ -229,7 +229,7 @@ end;
 
 destructor TFRMaterialCircularProgress.Destroy;
 begin
-  FAnimTimer.Free;
+  FreeAndNil(FAnimTimer);
   inherited Destroy;
 end;
 
@@ -245,7 +245,7 @@ begin
   if FValue = AValue then Exit;
   FValue := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialCircularProgress.SetIndeterminate(AValue: Boolean);
@@ -255,7 +255,7 @@ begin
   FAnimTimer.Enabled := AValue and not (csDesigning in ComponentState);
   FAnimAngle := 0;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialCircularProgress.SetStrokeWidth(AValue: Integer);
@@ -264,7 +264,7 @@ begin
   if FStrokeWidth = AValue then Exit;
   FStrokeWidth := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialCircularProgress.OnAnimTimer(Sender: TObject);
@@ -272,7 +272,7 @@ begin
   FAnimAngle := FAnimAngle + 6;
   if FAnimAngle >= 360 then FAnimAngle := FAnimAngle - 360;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 function TFRMaterialCircularProgress.PaintCached(ABmp: TBGRABitmap): Boolean;
@@ -357,7 +357,7 @@ end;
 
 destructor TFRMaterialLoadingIndicator.Destroy;
 begin
-  FAnimTimer.Free;
+  FreeAndNil(FAnimTimer);
   inherited Destroy;
 end;
 
@@ -374,14 +374,14 @@ begin
   if FDotCount = AValue then Exit;
   FDotCount := AValue;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 procedure TFRMaterialLoadingIndicator.OnAnimTimer(Sender: TObject);
 begin
   FAnimStep := (FAnimStep + 1) mod FDotCount;
   InvalidatePaintCache;
-  Invalidate;
+  FRMDSafeInvalidate(Self);
 end;
 
 function TFRMaterialLoadingIndicator.PaintCached(ABmp: TBGRABitmap): Boolean;
