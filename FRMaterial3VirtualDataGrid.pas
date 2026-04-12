@@ -1077,115 +1077,80 @@ end;
 procedure TFRMaterialVirtualDataGrid.PaintCheckImage(ACanvas: TCanvas;
   const ImageInfo: TVTImageInfo; Selected: Boolean);
 var
-  BoxSize, X, Y, Cx, Cy, R: Integer;
-  BoxRect: TRect;
-  FillColor, BorderColor, TickColor: TColor;
+  BoxSize, X, Y, R: Integer;
+  BgColor, FillBGRA, BorderBGRA, TickBGRA: TBGRAPixel;
   IsChecked, IsMixed, IsUnchecked: Boolean;
+  Bmp: TBGRABitmap;
+  Cx, Cy: Single;
 begin
   { Determine check state from image Index }
-  IsChecked   := ImageInfo.Index in [13, 14, 15, 16];   { ckCheckCheckedNormal..Disabled }
-  IsMixed     := ImageInfo.Index in [17, 18, 19, 20];   { ckCheckMixedNormal..Disabled }
-  IsUnchecked := ImageInfo.Index in [9, 10, 11, 12];    { ckCheckUncheckedNormal..Disabled }
+  IsChecked   := ImageInfo.Index in [13, 14, 15, 16];
+  IsMixed     := ImageInfo.Index in [17, 18, 19, 20];
+  IsUnchecked := ImageInfo.Index in [9, 10, 11, 12];
 
-  { Radio buttons (0..8) and plain buttons (21..24): fallback to default }
   if not (IsChecked or IsMixed or IsUnchecked) then
   begin
     inherited PaintCheckImage(ACanvas, ImageInfo, Selected);
     Exit;
   end;
 
-  { ── Box metrics — MD3 uses 18dp checkbox ── }
+  { ── Metrics ── }
   BoxSize := 18;
-  R := 3;  { corner radius — MD3 spec: 2dp, we use 3 for canvas rendering }
+  R := 3;
   X := ImageInfo.XPos;
   Y := ImageInfo.YPos;
 
-  { Center the box vertically within the image area }
-  if ImageInfo.Images <> nil then
-  begin
-    if BoxSize < ImageInfo.Images.Height then
-      Y := Y + (ImageInfo.Images.Height - BoxSize) div 2;
-  end;
+  if (ImageInfo.Images <> nil) and (BoxSize < ImageInfo.Images.Height) then
+    Y := Y + (ImageInfo.Images.Height - BoxSize) div 2;
 
-  BoxRect.Left   := X;
-  BoxRect.Top    := Y;
-  BoxRect.Right  := X + BoxSize;
-  BoxRect.Bottom := Y + BoxSize;
-
-  Cx := X + BoxSize div 2;
-  Cy := Y + BoxSize div 2;
-
-  { ── Colors based on state ── }
-  if IsChecked or IsMixed then
-  begin
-    FillColor   := ColorToRGB(MD3Colors.Primary);
-    BorderColor := FillColor;
-    TickColor   := ColorToRGB(MD3Colors.OnPrimary);
-  end
-  else
-  begin
-    FillColor   := clNone;
-    BorderColor := ColorToRGB(MD3Colors.OnSurfaceVariant);
-    TickColor   := clNone;
-  end;
-
-  { ── Clear the area first to avoid artifacts ── }
-  ACanvas.Brush.Style := bsSolid;
-  if Selected then
-    ACanvas.Brush.Color := ColorToRGB(MD3Colors.SecondaryContainer)
-  else
-    ACanvas.Brush.Color := ColorToRGB(MD3Colors.Surface);
-  ACanvas.FillRect(BoxRect.Left - 1, BoxRect.Top - 1,
-                   BoxRect.Right + 1, BoxRect.Bottom + 1);
-
-  { ── Draw box ── }
-  ACanvas.Pen.Style := psSolid;
+  { ── Sample actual background from canvas (handles zebra, hover, selection) ── }
+  BgColor := ColorToRGB(ACanvas.Pixels[X + BoxSize div 2, Y + BoxSize div 2]);
 
   if IsChecked or IsMixed then
   begin
-    { Filled rounded box }
-    ACanvas.Brush.Color := FillColor;
-    ACanvas.Brush.Style := bsSolid;
-    ACanvas.Pen.Color   := BorderColor;
-    ACanvas.Pen.Width   := 1;
-    ACanvas.RoundRect(BoxRect, R, R);
+    FillBGRA   := ColorToBGRA(MD3Colors.Primary);
+    BorderBGRA := FillBGRA;
+    TickBGRA   := ColorToBGRA(MD3Colors.OnPrimary);
   end
   else
   begin
-    { Empty rounded box with border }
-    ACanvas.Brush.Style := bsClear;
-    ACanvas.Pen.Color   := BorderColor;
-    ACanvas.Pen.Width   := 2;
-    ACanvas.RoundRect(BoxRect.Left + 1, BoxRect.Top + 1,
-                      BoxRect.Right - 1, BoxRect.Bottom - 1, R, R);
+    FillBGRA   := BGRAPixelTransparent;
+    BorderBGRA := ColorToBGRA(MD3Colors.OnSurfaceVariant);
+    TickBGRA   := BGRAPixelTransparent;
   end;
 
-  { ── Draw tick or dash ── }
-  if IsChecked then
-  begin
-    { ✓ checkmark — proportional to box size }
-    ACanvas.Pen.Color := TickColor;
-    ACanvas.Pen.Width := 2;
-    ACanvas.Pen.Style := psSolid;
-    { Short leg }
-    ACanvas.MoveTo(Cx - 4, Cy);
-    ACanvas.LineTo(Cx - 1, Cy + 3);
-    { Long leg }
-    ACanvas.LineTo(Cx + 5, Cy - 4);
-  end
-  else if IsMixed then
-  begin
-    { ─ horizontal dash }
-    ACanvas.Pen.Color := TickColor;
-    ACanvas.Pen.Width := 2;
-    ACanvas.Pen.Style := psSolid;
-    ACanvas.MoveTo(X + 4, Cy);
-    ACanvas.LineTo(X + BoxSize - 4, Cy);
-  end;
+  { ── Render with BGRA antialiasing ── }
+  Bmp := TBGRABitmap.Create(BoxSize + 2, BoxSize + 2, ColorToBGRA(BgColor));
+  try
+    Cx := (BoxSize + 2) / 2.0;
+    Cy := (BoxSize + 2) / 2.0;
 
-  { Restore canvas state }
-  ACanvas.Pen.Width   := 1;
-  ACanvas.Brush.Style := bsSolid;
+    if IsChecked or IsMixed then
+    begin
+      { Filled rounded box }
+      Bmp.RoundRectAntialias(1, 1, BoxSize, BoxSize, R, R,
+        BorderBGRA, 1.0, FillBGRA);
+    end
+    else
+    begin
+      { Empty rounded box with 2px border }
+      Bmp.RoundRectAntialias(2, 2, BoxSize - 1, BoxSize - 1, R, R,
+        BorderBGRA, 2.0, BGRAPixelTransparent);
+    end;
+
+    { ── Tick / Dash ── }
+    if IsChecked then
+    begin
+      Bmp.DrawLineAntialias(Cx - 4, Cy, Cx - 1, Cy + 3, TickBGRA, 2.0);
+      Bmp.DrawLineAntialias(Cx - 1, Cy + 3, Cx + 5, Cy - 4, TickBGRA, 2.0);
+    end
+    else if IsMixed then
+      Bmp.DrawLineAntialias(5, Cy, BoxSize - 3, Cy, TickBGRA, 2.0);
+
+    Bmp.Draw(ACanvas, X - 1, Y - 1, False);
+  finally
+    Bmp.Free;
+  end;
 end;
 
 { ── Header ── }
