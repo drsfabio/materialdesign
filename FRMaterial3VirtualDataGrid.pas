@@ -318,6 +318,12 @@ implementation
 
 uses Math, LazUTF8;
 
+{$IFDEF MSWINDOWS}
+function FRSetWindowTheme(hWnd: THandle; pszSubAppName: PWideChar;
+  pszSubIdList: PWideChar): HRESULT;
+  stdcall; external 'uxtheme.dll' name 'SetWindowTheme';
+{$ENDIF}
+
 const
   { Win32 Edit control style flags for text alignment }
   ES_LEFT   = $0000;
@@ -627,12 +633,35 @@ begin
 end;
 
 procedure TFRMaterialVirtualDataGrid.ApplyMD3Style;
+{$IFDEF MSWINDOWS}
+var
+  R, G, B: Byte;
+  SurfRGB: TColor;
+  IsDark: Boolean;
+{$ENDIF}
 begin
   Color             := ColorToRGB(MD3Colors.Surface);
   Font.Color        := ColorToRGB(MD3Colors.OnSurface);
   Header.Font.Color := ColorToRGB(MD3Colors.OnSurface);
   Header.Background := ColorToRGB(MD3Colors.SurfaceContainerHighest);
   ApplyNodeHeight;
+
+  {$IFDEF MSWINDOWS}
+  { Switch scrollbar theme to match light/dark mode.
+    SetWindowTheme('DarkMode_Explorer') gives dark scrollbars;
+    SetWindowTheme('Explorer') restores light scrollbars. }
+  if HandleAllocated then
+  begin
+    SurfRGB := ColorToRGB(MD3Colors.Surface);
+    R := Red(SurfRGB); G := Green(SurfRGB); B := Blue(SurfRGB);
+    IsDark := (R * 299 + G * 587 + B * 114) div 1000 < 128;
+    if IsDark then
+      FRSetWindowTheme(Handle, PWideChar(WideString('DarkMode_Explorer')), nil)
+    else
+      FRSetWindowTheme(Handle, PWideChar(WideString('Explorer')), nil);
+    SendMessage(Handle, $031A {WM_THEMECHANGED}, 0, 0);
+  end;
+  {$ENDIF}
 
   { Dark mode toggle: forcar repaint total. O VT tem cache interno de
     background dos nodes — sem invalidar esse cache, as rows continuam
