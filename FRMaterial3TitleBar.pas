@@ -192,6 +192,50 @@ function DwmExtendFrameIntoClientArea(hWnd: HWND; const pMarInset: Pointer): HRE
 function DwmSetWindowAttribute(hWnd: HWND; dwAttribute: DWORD;
   pvAttribute: Pointer; cbAttribute: DWORD): HRESULT;
   stdcall; external 'dwmapi.dll';
+
+const
+  { Borderless-window constants }
+  FR_SM_CXPADDEDBORDER = 92;  { SM_CXPADDEDBORDERTHICKNESS }
+  FR_SUBCLASS_ID = 1;
+  FR_MONITOR_NEAREST = 2;     { MONITOR_DEFAULTTONEAREST }
+
+type
+  PFRNCCalcSizeParams = ^TFRNCCalcSizeParams;
+  TFRNCCalcSizeParams = record
+    rgrc: array[0..2] of TRect;
+    lppos: Pointer;
+  end;
+
+  PFRMinMaxInfo = ^TFRMinMaxInfo;
+  TFRMinMaxInfo = record
+    ptReserved: TPoint;
+    ptMaxSize: TPoint;
+    ptMaxPosition: TPoint;
+    ptMinTrackSize: TPoint;
+    ptMaxTrackSize: TPoint;
+  end;
+
+  TFRMonitorInfo = record
+    cbSize: DWORD;
+    rcMonitor: TRect;
+    rcWork: TRect;
+    dwFlags: DWORD;
+  end;
+
+{ ComCtl32 v6 subclassing — chains safely with LCL's own WindowProc }
+function SetWindowSubclass(hWnd: HWND; pfnSubclass: Pointer;
+  uIdSubclass: PtrUInt; dwRefData: PtrUInt): BOOL;
+  stdcall; external 'comctl32.dll';
+function RemoveWindowSubclass(hWnd: HWND; pfnSubclass: Pointer;
+  uIdSubclass: PtrUInt): BOOL;
+  stdcall; external 'comctl32.dll';
+function DefSubclassProc(hWnd: HWND; uMsg: UINT; wParam: WPARAM;
+  lParam: LPARAM): LRESULT;
+  stdcall; external 'comctl32.dll';
+function FRMonitorFromWindow(hWnd: HWND; dwFlags: DWORD): THandle;
+  stdcall; external 'user32.dll' name 'MonitorFromWindow';
+function FRGetMonitorInfo(hMonitor: THandle; lpmi: Pointer): BOOL;
+  stdcall; external 'user32.dll' name 'GetMonitorInfoW';
 {$ENDIF}
 
 const
@@ -454,9 +498,12 @@ begin
   case ABtn of
     tbbMinimize:
       begin
-        if frm is TForm then
-          TForm(frm).WindowState := wsMinimized
+        {$IFDEF MSWINDOWS}
+        { SC_MINIMIZE animates to taskbar even without WS_CAPTION }
+        if frm.HandleAllocated then
+          SendMessage(frm.Handle, WM_SYSCOMMAND, SC_MINIMIZE, 0)
         else
+        {$ENDIF}
           Application.Minimize;
       end;
     tbbMaximize:
@@ -737,6 +784,136 @@ begin
   end;
 end;
 
+{$IFDEF MSWINDOWS}
+{ Chromium-style borderless window.
+  - WM_NCCALCSIZE: zeros NC area (client = window rect)
+  - WM_GETMINMAXINFO: constrains maximize to monitor work area
+  - WM_NCHITTEST: resize borders + caption drag (must live here because
+    DefWindowProc with WS_THICKFRAME intercepts before LCL handler)
+  - WM_NCACTIVATE: suppresses default NC frame painting }
+function FRMaterialFormSubclassProc(hWnd: HWND; uMsg: UINT; wp: WPARAM;
+  lp: LPARAM; {%H-}uIdSubclass: PtrUInt; dwRefData: PtrUInt): LRESULT; stdcall;
+var
+  Form: TFRMaterialForm;
+  MMI: PFRMinMaxInfo;
+  Mon: THandle;
+  MI: TFRMonitorInfo;
+  pt: TPoint;
+  rc: TRect;
+  bw, w, h: Integer;
+begin
+  case uMsg of
+
+    WM_NCCALCSIZE:
+      begin
+        if wp <> 0 then
+        begin
+          { Return 0: client rect = window rect → no visible NC area.
+            WM_GETMINMAXINFO already constrains maximized bounds, so no
+            InflateRect needed here — that caused double-deflation. }
+          Result := 0;
+          Exit;
+        end;
+      end;
+
+    WM_GETMINMAXINFO:
+      begin
+        { Constrain maximized size/position to the monitor's work area }
+        MMI := PFRMinMaxInfo(lp);
+        Mon := FRMonitorFromWindow(hWnd, FR_MONITOR_NEAREST);
+        FillChar(MI, SizeOf(MI), 0);
+        MI.cbSize := SizeOf(MI);
+        if FRGetMonitorInfo(Mon, @MI) then
+        begin
+          MMI^.ptMaxPosition.X := MI.rcWork.Left - MI.rcMonitor.Left;
+          MMI^.ptMaxPosition.Y := MI.rcWork.Top  - MI.rcMonitor.Top;
+          MMI^.ptMaxSize.X     := MI.rcWork.Right  - MI.rcWork.Left;
+          MMI^.ptMaxSize.Y     := MI.rcWork.Bottom - MI.rcWork.Top;
+        end;
+        Result := 0;
+        Exit;
+      end;
+
+    WM_NCACTIVATE:
+      begin
+        { Prevent Windows from painting a NC frame on activate/deactivate }
+        Result := 1;
+        Exit;
+      end;
+
+    WM_NCHITTEST:
+      begin
+        Form := TFRMaterialForm(Pointer(dwRefData));
+        if Assigned(Form) then
+        begin
+          { Screen→client via GetWindowRect (avoids ScreenToClient ambiguity
+            between Windows and LCLIntf units). With zero NC area the
+            client origin equals the window origin. }
+          GetWindowRect(hWnd, rc);
+          pt.X := SmallInt(lp and $FFFF) - rc.Left;
+          pt.Y := SmallInt((lp shr 16) and $FFFF) - rc.Top;
+          w := rc.Right  - rc.Left;
+          h := rc.Bottom - rc.Top;
+
+          { Maximized → no resize borders, just caption or client }
+          if IsZoomed(hWnd) then
+          begin
+            if Assigned(Form.FTitleBar) and (pt.Y >= 0) and
+               (pt.Y < Form.FTitleBar.Height) then
+            begin
+              if (Form.FTitleBar.ButtonAtPos(pt.X, pt.Y) <> BTN_NONE) or
+                 (Form.FTitleBar.ActionAtPos(pt.X, pt.Y) >= 0) or
+                 ((Form.FTitleBar.LeadingIcon <> imClear) and
+                  (pt.X < PAD_H + ICON_SIZE + 12)) then
+                Result := HTCLIENT
+              else
+                Result := HTCAPTION;
+            end
+            else
+              Result := HTCLIENT;
+            Exit;
+          end;
+
+          { Normal state: resize borders (8 directions) }
+          bw := Form.FResizeBorderWidth;
+
+          if (pt.Y < bw) and (pt.X < bw) then
+            Result := HTTOPLEFT
+          else if (pt.Y < bw) and (pt.X >= w - bw) then
+            Result := HTTOPRIGHT
+          else if (pt.Y >= h - bw) and (pt.X < bw) then
+            Result := HTBOTTOMLEFT
+          else if (pt.Y >= h - bw) and (pt.X >= w - bw) then
+            Result := HTBOTTOMRIGHT
+          else if pt.Y < bw then
+            Result := HTTOP
+          else if pt.Y >= h - bw then
+            Result := HTBOTTOM
+          else if pt.X < bw then
+            Result := HTLEFT
+          else if pt.X >= w - bw then
+            Result := HTRIGHT
+          else if Assigned(Form.FTitleBar) and (pt.Y < Form.FTitleBar.Height) then
+          begin
+            if (Form.FTitleBar.ButtonAtPos(pt.X, pt.Y) <> BTN_NONE) or
+               (Form.FTitleBar.ActionAtPos(pt.X, pt.Y) >= 0) or
+               ((Form.FTitleBar.LeadingIcon <> imClear) and
+                (pt.X < PAD_H + ICON_SIZE + 12)) then
+              Result := HTCLIENT
+            else
+              Result := HTCAPTION;
+          end
+          else
+            Result := HTCLIENT;
+          Exit;
+        end;
+      end;
+  end;
+
+  Result := DefSubclassProc(hWnd, uMsg, wp, lp);
+end;
+{$ENDIF}
+
 { ?? TFRMaterialForm ?? }
 
 constructor TFRMaterialForm.Create(AOwner: TComponent);
@@ -784,12 +961,19 @@ begin
   {$IFDEF MSWINDOWS}
   if HandleAllocated then
   begin
-    { Remove WS_CAPTION and WS_THICKFRAME to eliminate native titlebar
-      and border completely. Resize handled by WM_NCHITTEST in LCL. }
+    { Remove WS_CAPTION to hide native titlebar.  KEEP WS_THICKFRAME —
+      it gives us DWM rounded corners (Win11), native resize cursors,
+      and Aero Snap support.  The visible thick-frame border is eliminated
+      by the WM_NCCALCSIZE handler in the subclass below. }
     Style := GetWindowLongPtr(Handle, GWL_STYLE);
-    Style := (Style and not (WS_CAPTION or WS_THICKFRAME))
-             or WS_MINIMIZEBOX or WS_MAXIMIZEBOX or WS_SYSMENU;
+    Style := (Style and not WS_CAPTION)
+             or WS_THICKFRAME or WS_MINIMIZEBOX or WS_MAXIMIZEBOX or WS_SYSMENU;
     SetWindowLongPtr(Handle, GWL_STYLE, Style);
+
+    { Install ComCtl32 subclass — handles WM_NCCALCSIZE + WM_GETMINMAXINFO }
+    SetWindowSubclass(Handle, @FRMaterialFormSubclassProc,
+      FR_SUBCLASS_ID, PtrUInt(Self));
+
     SetWindowPos(Handle, 0, 0, 0, 0, 0,
       SWP_FRAMECHANGED or SWP_NOMOVE or SWP_NOSIZE or SWP_NOZORDER);
   end;
@@ -799,6 +983,10 @@ end;
 
 procedure TFRMaterialForm.DestroyWnd;
 begin
+  {$IFDEF MSWINDOWS}
+  if HandleAllocated then
+    RemoveWindowSubclass(Handle, @FRMaterialFormSubclassProc, FR_SUBCLASS_ID);
+  {$ENDIF}
   inherited DestroyWnd;
 end;
 
