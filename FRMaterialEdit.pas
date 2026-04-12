@@ -10,6 +10,10 @@ uses
   Classes, Clipbrd, Controls, Dialogs, ExtCtrls, Forms, Graphics,
   {$IFDEF FPC} LCLType, LMessages, LResources, {$ENDIF} Math, MaskEdit, Menus, StdCtrls, SysUtils;
 
+const
+  { Altura padrão MD3 do MaterialEdit (igual ao Combo). }
+  EDIT_DEFAULT_H = 56;
+
 type
 
   { Posição do botão de pesquisa }
@@ -205,6 +209,7 @@ type
     procedure DoOnResize; override;
     procedure Loaded; override;
     procedure Paint; override;
+    procedure SetDensity(AValue: TFRMDDensity); override;
     procedure CMEnabledChanged(var Message: TLMessage); message CM_ENABLEDCHANGED;
   public
     constructor Create(AOwner: TComponent); override;
@@ -1553,10 +1558,27 @@ begin
   inherited DoExit;
 end;
 
+procedure TFRMaterialEditBase.SetDensity(AValue: TFRMDDensity);
+var
+  NewH: Integer;
+begin
+  inherited SetDensity(AValue);
+  { Ajusta a altura total do container usando baseline fixa,
+    da mesma forma que TFRMaterialCombo.SetDensity. }
+  NewH := EDIT_DEFAULT_H + MD3DensityDelta(AValue);
+  if NewH < 32 then NewH := 32;
+  if Height <> NewH then
+    Height := NewH;
+  if FAutoFontSize then
+    FEdit.Font.Size := MD3FontSizeForField(NewH, AValue);
+  InvalidatePaintCache;
+  FRMDSafeInvalidate(Self);
+end;
+
 procedure TFRMaterialEditBase.DoOnResize;
 var
-  AutoSizedHeight: longint;
-  BottomExtra, BtnSize: Integer;
+  BtnSize: Integer;
+  BottomExtra: Integer;
 begin
   BottomExtra := GetBottomMargin;
 
@@ -1570,24 +1592,6 @@ begin
     FEdit.BorderSpacing.Bottom := BottomExtra + 4
   else
     FEdit.BorderSpacing.Bottom := 4;
-
-  if IsNeededAdjustSize then
-  begin
-    { Aplica delta de densidade na altura do edit interno }
-    FEdit.Constraints.MinHeight := Max(24, FEdit.Height + MD3DensityDelta(Density));
-    AutoSizedHeight :=
-      FLabel.Height +
-      FLabel.BorderSpacing.Around +
-      FLabel.BorderSpacing.Bottom +
-      FLabel.BorderSpacing.Top +
-      FEdit.Constraints.MinHeight +
-      FEdit.BorderSpacing.Around +
-      FEdit.BorderSpacing.Bottom +  { ja inclui BottomExtra + 4 }
-      FEdit.BorderSpacing.Top;
-
-    if Self.Height <> AutoSizedHeight then
-      Self.Height := AutoSizedHeight;
-  end;
 
   { Dimensiona os botões proporcionais ao campo visível (excl. BottomMargin) }
   BtnSize := (Self.Height - BottomExtra) div 2;
@@ -1733,6 +1737,8 @@ begin
 
   Self.BorderStyle := bsNone;
   Self.ParentColor := True;
+  Self.Height := EDIT_DEFAULT_H;
+  Self.Width  := 200;
 
   FRMDRegisterComponent(Self as IFRMaterialComponent);
 

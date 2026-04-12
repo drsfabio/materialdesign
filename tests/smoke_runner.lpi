@@ -27,6 +27,9 @@
         <PackageName Value="frcomponents"/>
       </Item>
       <Item>
+        <PackageName Value="FRComponentsVirtual"/>
+      </Item>
+      <Item>
         <PackageName Value="LCL"/>
       </Item>
     </RequiredPackages>
@@ -43,6 +46,7 @@
       <Filename Value="smoke_runner"/>
     </Target>
     <SearchPaths>
+      <OtherUnitFiles Value=".."/>
       <IncludeFiles Value="$(ProjOutDir)"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>

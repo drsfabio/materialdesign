@@ -29,7 +29,7 @@ unit ufm_showcase;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, ExtCtrls, StdCtrls,
+  Classes, SysUtils, Math, Windows, Forms, Controls, Graphics, ExtCtrls, StdCtrls,
   laz.VirtualTrees,
   FRMaterial3Base, FRMaterialTheme, FRMaterialThemeManager, FRMaterialIcons,
   FRMaterialMasks,
@@ -38,13 +38,14 @@ uses
   FRMaterial3GridPanel, FRMaterial3Divider, FRMaterial3Button,
   FRMaterial3FAB, FRMaterial3Toggle, FRMaterial3Chip, FRMaterial3Slider,
   FRMaterial3Progress, FRMaterial3VirtualDataGrid, FRMaterial3Snackbar,
-  FRMaterialEdit, FRMaterial3Combo, FRMaterialDateEdit;
+  FRMaterialEdit, FRMaterial3Combo, FRMaterialDateEdit,
+  FRMaterial3TitleBar;
 
 type
 
   { TFmShowcase }
 
-  TFmShowcase = class(TForm)
+  TFmShowcase = class(TFRMaterialForm)
   private
     FThemeManager: TFRMaterialThemeManager;
     FSnackbar: TFRMaterialSnackbar;
@@ -52,9 +53,10 @@ type
 
     { Layout }
     FPnFundo: TPanel;
-    FAppBar: TFRMaterialAppBar;
+    { AppBar removido — ações migradas para TitleBar do TFRMaterialForm }
     FNavRail: TFRMaterialNavRail;
     FPnContent: TScrollBox;
+    FContentHeight: Integer;
 
     { Row 1 — KPI cards }
     FCardRevenue: TFRMaterialCard;
@@ -84,9 +86,18 @@ type
     FChipInput: TFRMaterialChip;
     FSegmented: TFRMaterialSegmentedButton;
     FSlider: TFRMaterialSlider;
+    FSliderLabel: TFRMaterialLabel;
     FProgress: TFRMaterialCircularProgress;
 
-    { Row 5 — Buttons grid: 5 styles (col) × 3 densities (row) + icon/split }
+    { Row 5 — Theme customization: color swatches + dark toggle + variant buttons }
+    FLblTheme: TFRMaterialLabel;
+    FPnTheme: TPanel;
+    FColorSwatches: array[0..5] of TPanel;
+    FDarkToggle: TFRMaterialSwitch;
+    FDarkToggleLabel: TFRMaterialLabel;
+    FBtnVariants: array[0..3] of TFRMaterialButton;
+
+    { Row 6 — Buttons grid: 5 styles (col) × 3 densities (row) + icon/split }
     FLblButtons: TFRMaterialLabel;
     FPnButtons: TPanel;
     FBtnRows: array[0..2, 0..4] of TFRMaterialButton; { [density][style] }
@@ -106,6 +117,7 @@ type
     procedure BuildFormRow(var Y: Integer);
     procedure BuildGrid(var Y: Integer);
     procedure BuildControlsRow(var Y: Integer);
+    procedure BuildThemeRow(var Y: Integer);
     procedure BuildButtonRow(var Y: Integer);
     procedure BuildFab;
     procedure PopulateGrid;
@@ -114,9 +126,15 @@ type
 
     procedure OnDarkModeClick(Sender: TObject);
     procedure OnVariantToggleClick(Sender: TObject);
+    procedure OnSwatchClick(Sender: TObject);
+    procedure OnDarkToggleChange(Sender: TObject);
+    procedure OnVariantBtnClick(Sender: TObject);
+    procedure OnSliderChange(Sender: TObject);
+    procedure OnSegmentedChange(Sender: TObject);
     procedure OnSnackClick(Sender: TObject);
     procedure OnGridReloadClick(Sender: TObject);
     procedure OnGridClearClick(Sender: TObject);
+    procedure OnContentResize(Sender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
   end;
@@ -145,10 +163,10 @@ begin
   Position       := poScreenCenter;
   Width          := FORM_W;
   Height         := FORM_H;
-  BorderIcons    := [biSystemMenu, biMinimize];
-  BorderStyle    := bsSingle;
-  Color          := MD3Colors.Surface;
+  Constraints.MinWidth  := 800;
+  Constraints.MinHeight := 600;
   DoubleBuffered := True;
+  OnResize       := @OnContentResize;
 
   { ThemeManager — default light theme with baseline palette.
     The dark mode toggle in the AppBar flips this at runtime. }
@@ -178,12 +196,15 @@ begin
   FPnContent := TScrollBox.Create(Self);
   FPnContent.Parent      := FPnFundo;
   FPnContent.BorderStyle := bsNone;
-  FPnContent.SetBounds(NAVRAIL_W, APPBAR_H,
-    FORM_W - NAVRAIL_W, FORM_H - APPBAR_H);
+  FPnContent.SetBounds(NAVRAIL_W, 0,
+    FORM_W - NAVRAIL_W, FORM_H);
   FPnContent.Anchors := [akLeft, akTop, akRight, akBottom];
   FPnContent.Color := MD3Colors.Surface;
+  FPnContent.AutoScroll := False;
   FPnContent.HorzScrollBar.Visible := False;
   FPnContent.VertScrollBar.Tracking := True;
+  FPnContent.VertScrollBar.Visible := True;
+  FPnContent.OnResize := @OnContentResize;
 
   Y := CONTENT_PAD;
   BuildKPICards;
@@ -191,51 +212,44 @@ begin
   BuildFormRow(Y);
   BuildGrid(Y);
   BuildControlsRow(Y);
+  BuildThemeRow(Y);
   BuildButtonRow(Y);
   BuildFab;
 
   PopulateGrid;
+
+  FContentHeight := Y + CONTENT_PAD;
+  FPnContent.VertScrollBar.Range := FContentHeight;
 end;
 
 procedure TFmShowcase.BuildAppBar;
 var
-  Act: TFRMaterialAppBarAction;
+  Act: TFRMaterialTitleBarAction;
 begin
-  FAppBar := TFRMaterialAppBar.Create(Self);
-  FAppBar.Parent    := FPnFundo;
-  FAppBar.Align     := alTop;
-  FAppBar.Height    := APPBAR_H;
-  FAppBar.Title     := 'FRComponents';
-  FAppBar.Subtitle  := 'Material Design 3 for Lazarus / Free Pascal';
-  FAppBar.NavIcon   := imMenu;
-  FAppBar.BarSize   := absMedium;
+  { Use the TitleBar built-in from TFRMaterialForm instead of a
+    separate AppBar.  The TitleBar already has min/max/close buttons. }
+  TitleBar.Title := 'FRCom';
+  TitleBar.LeadingIcon := imMenu;
 
-  { Search action }
-  Act := TFRMaterialAppBarAction(FAppBar.Actions.Add);
+  Act := TitleBar.Actions.Add;
   Act.IconMode := imSearch;
   Act.Hint     := 'Search';
 
-  { Variant toggle — alterna entre mvOutlined e mvFilled no theme
-    manager. Todos os edits com toVariant em SyncWithTheme respondem
-    ao toggle. }
-  Act := TFRMaterialAppBarAction(FAppBar.Actions.Add);
+  Act := TitleBar.Actions.Add;
   Act.IconMode := imEdit;
-  Act.Hint     := 'Toggle variant (outlined / filled)';
+  Act.Hint     := 'Toggle variant';
   Act.OnClick  := @OnVariantToggleClick;
 
-  { Dark mode toggle — real behavior }
-  Act := TFRMaterialAppBarAction(FAppBar.Actions.Add);
+  Act := TitleBar.Actions.Add;
   Act.IconMode := imNightlight;
   Act.Hint     := 'Toggle dark mode';
   Act.OnClick  := @OnDarkModeClick;
 
-  { Notifications action }
-  Act := TFRMaterialAppBarAction(FAppBar.Actions.Add);
+  Act := TitleBar.Actions.Add;
   Act.IconMode := imNotification;
   Act.Hint     := 'Notifications';
 
-  { User action }
-  Act := TFRMaterialAppBarAction(FAppBar.Actions.Add);
+  Act := TitleBar.Actions.Add;
   Act.IconMode := imPerson;
   Act.Hint     := 'Profile';
 end;
@@ -246,7 +260,7 @@ var
 begin
   FNavRail := TFRMaterialNavRail.Create(Self);
   FNavRail.Parent := FPnFundo;
-  FNavRail.SetBounds(0, APPBAR_H, NAVRAIL_W, FORM_H - APPBAR_H);
+  FNavRail.SetBounds(0, 0, NAVRAIL_W, FORM_H);
   FNavRail.Anchors := [akLeft, akTop, akBottom];
 
   Nav := TFRMaterialNavItem(FNavRail.Items.Add);
@@ -352,8 +366,6 @@ begin
 end;
 
 procedure TFmShowcase.BuildFormRow(var Y: Integer);
-const
-  ROW_H = 120;
 begin
   FLblForm := TFRMaterialLabel.Create(Self);
   FLblForm.Parent := FPnContent;
@@ -367,11 +379,12 @@ begin
   FGridForm := TFRMaterialGridPanel.Create(Self);
   FGridForm.Parent := FPnContent;
   FGridForm.SetBounds(CONTENT_PAD, Y,
-    FPnContent.ClientWidth - CONTENT_PAD * 2, ROW_H);
+    FPnContent.ClientWidth - CONTENT_PAD * 2, 200);
   FGridForm.ColumnCount := 12;
   FGridForm.GapH := 16;
   FGridForm.GapV := 12;
   FGridForm.AutoColSpan := True;
+  FGridForm.AutoHeight  := True;
 
   { Name — fsHuge (8 cols) }
   FEdName := TFRMaterialEdit.Create(Self);
@@ -442,7 +455,10 @@ begin
   FEdBudget.NumericValue := 12500.00;
   FEdBudget.FieldSize := TFRFieldSize.fsSmall;
 
-  Inc(Y, ROW_H + 24);
+  { Força re-layout agora que todos os FieldSizes estão definidos }
+  FGridForm.DoLayout;
+
+  Inc(Y, FGridForm.Height + 24);
 end;
 
 procedure TFmShowcase.BuildGrid(var Y: Integer);
@@ -469,6 +485,7 @@ begin
   FGrid.EmptyText := 'Nenhum cliente cadastrado';
   FGrid.EmptyHint := 'Clique em RELOAD para carregar exemplos';
   FGrid.LoadingText := 'Loading customers...';
+  FGrid.Margin := 4;  { Espaço para checkboxes do VirtualTreeView }
 
   with FGrid.Header.Columns.Add do begin Text := 'ID';           Width := 60;  end;
   with FGrid.Header.Columns.Add do begin Text := 'Nome';         Width := 240; end;
@@ -494,11 +511,15 @@ end;
 
 procedure TFmShowcase.PopulateGrid;
 
-  procedure Add(const AId, AName, AEmail, ACity, ARevenue, AStatus: string);
+  procedure Add(const AId, AName, AEmail, ACity, ARevenue, AStatus: string;
+    AChecked: Boolean = False);
   var
     Node: PVirtualNode;
   begin
     Node := FGrid.AddChild(nil);
+    FGrid.CheckType[Node] := ctCheckBox;
+    if AChecked then
+      FGrid.CheckState[Node] := csCheckedNormal;
     FGrid.Text[Node, 0] := AId;
     FGrid.Text[Node, 1] := AName;
     FGrid.Text[Node, 2] := AEmail;
@@ -511,13 +532,13 @@ begin
   FGrid.BeginUpdate;
   try
     FGrid.Clear;
-    Add('001', 'Ana Silva Rodrigues',  'ana.silva@example.com',    'São Paulo',      'R$ 12.500,00', 'Active');
+    Add('001', 'Ana Silva Rodrigues',  'ana.silva@example.com',    'São Paulo',      'R$ 12.500,00', 'Active',   True);
     Add('002', 'Bruno Carvalho',       'bruno.c@example.com',      'Rio de Janeiro', 'R$  8.720,50', 'Active');
-    Add('003', 'Carla Mendes Souza',   'carla.mendes@example.com', 'Belo Horizonte', 'R$ 24.150,00', 'Active');
+    Add('003', 'Carla Mendes Souza',   'carla.mendes@example.com', 'Belo Horizonte', 'R$ 24.150,00', 'Active',   True);
     Add('004', 'Diego Pereira',        'diego.p@example.com',      'Curitiba',       'R$  5.680,75', 'Trial');
     Add('005', 'Eduarda Martins',      'eduarda@example.com',      'São Paulo',      'R$ 15.320,00', 'Active');
     Add('006', 'Felipe Almeida Costa', 'felipe.a@example.com',     'Porto Alegre',   'R$  3.450,00', 'Inactive');
-    Add('007', 'Gabriela Lima',        'gabi.lima@example.com',    'Salvador',       'R$ 19.800,25', 'Active');
+    Add('007', 'Gabriela Lima',        'gabi.lima@example.com',    'Salvador',       'R$ 19.800,25', 'Active',   True);
     Add('008', 'Henrique Vasconcelos', 'henrique.v@example.com',   'Recife',         'R$  6.920,00', 'Trial');
   finally
     FGrid.EndUpdate;
@@ -587,19 +608,147 @@ begin
   FChipInput.ChipStyle := csFilter;
   Inc(X, 110);
 
-  { Slider }
+  { Segmented — variant selector (Standard / Filled / Outlined) }
+  FSegmented := TFRMaterialSegmentedButton.Create(Self);
+  FSegmented.Parent := FPnControls;
+  FSegmented.SetBounds(X, 12, 270, 36);
+  FSegmented.Items.Add('Standard');
+  FSegmented.Items.Add('Filled');
+  FSegmented.Items.Add('Outlined');
+  FSegmented.ItemIndex := 2; { mvOutlined = initial }
+  FSegmented.OnChange := @OnSegmentedChange;
+  Inc(X, 286);
+
+  { Slider — density (0=Normal, 1=Compact, 2=Dense, 3=UltraDense) }
   FSlider := TFRMaterialSlider.Create(Self);
   FSlider.Parent := FPnControls;
-  FSlider.SetBounds(X, 14, 220, 32);
-  FSlider.Max := 100;
-  FSlider.Value := 65;
-  Inc(X, 236);
+  FSlider.SetBounds(X, 14, 140, 32);
+  FSlider.Min := 0;
+  FSlider.Max := 3;
+  FSlider.Value := 0; { ddNormal = initial }
+  FSlider.Discrete := True;
+  FSlider.Steps := 3;
+  FSlider.ShowValueLabel := True;
+  FSlider.OnChange := @OnSliderChange;
+  Inc(X, 156);
+
+  FSliderLabel := TFRMaterialLabel.Create(Self);
+  FSliderLabel.Parent := FPnControls;
+  FSliderLabel.SetBounds(X, 20, 80, 20);
+  FSliderLabel.Caption := 'Normal';
+  FSliderLabel.Font.Size := 10;
+  FSliderLabel.ColorToken := ctOnSurface;
+  Inc(X, 96);
 
   { Progress circular }
   FProgress := TFRMaterialCircularProgress.Create(Self);
   FProgress.Parent := FPnControls;
   FProgress.SetBounds(X, 12, 36, 36);
   FProgress.Value := 72;
+
+  Inc(Y, ROW_H + 24);
+end;
+
+procedure TFmShowcase.BuildThemeRow(var Y: Integer);
+const
+  SWATCH_SZ = 32;
+  SWATCH_GAP = 10;
+  ROW_H = 48;
+  { 6 representative palettes + their seed colors (TColor = BGR) }
+  PALETTES: array[0..5] of TFRMDPalette =
+    (mpBaseline, mpBlue, mpGreen, mpOrange, mpRed, mpDeepPurple);
+  SWATCH_COLORS: array[0..5] of TColor =
+    ($00A45067, $00B85A1A, $00388E3C, $000D8CE5, $001B1BD6, $00A03B67);
+  { Variant buttons }
+  VARIANTS: array[0..2] of TFRMaterialVariant =
+    (mvStandard, mvFilled, mvOutlined);
+  VAR_CAPTIONS: array[0..2] of string =
+    ('Standard', 'Filled', 'Outlined');
+  VAR_STYLES: array[0..2] of TFRMDButtonStyle =
+    (mbsOutlined, mbsFilled, mbsOutlined);
+var
+  X, I: Integer;
+  Pn: TPanel;
+  Btn: TFRMaterialButton;
+begin
+  FLblTheme := TFRMaterialLabel.Create(Self);
+  FLblTheme.Parent := FPnContent;
+  FLblTheme.SetBounds(CONTENT_PAD, Y, 400, 20);
+  FLblTheme.Caption := 'THEME CUSTOMIZATION';
+  FLblTheme.Font.Size := 9;
+  FLblTheme.Font.Style := [fsBold];
+  FLblTheme.ColorToken := ctPrimary;
+  Inc(Y, 28);
+
+  FPnTheme := TPanel.Create(Self);
+  FPnTheme.Parent := FPnContent;
+  FPnTheme.SetBounds(CONTENT_PAD, Y,
+    FPnContent.ClientWidth - CONTENT_PAD * 2, ROW_H);
+  FPnTheme.BevelOuter := bvNone;
+  FPnTheme.Color := MD3Colors.Surface;
+  FPnTheme.ParentColor := False;
+
+  X := 8;
+
+  { 6 color swatches }
+  for I := 0 to 5 do
+  begin
+    Pn := TPanel.Create(Self);
+    Pn.Parent := FPnTheme;
+    Pn.SetBounds(X, (ROW_H - SWATCH_SZ) div 2, SWATCH_SZ, SWATCH_SZ);
+    Pn.BevelOuter := bvNone;
+    Pn.Color := SWATCH_COLORS[I];
+    Pn.ParentColor := False;
+    Pn.Cursor := crHandPoint;
+    Pn.Tag := Ord(PALETTES[I]);
+    Pn.OnClick := @OnSwatchClick;
+    FColorSwatches[I] := Pn;
+    Inc(X, SWATCH_SZ + SWATCH_GAP);
+  end;
+
+  Inc(X, 16);
+
+  { Dark mode toggle }
+  FDarkToggleLabel := TFRMaterialLabel.Create(Self);
+  FDarkToggleLabel.Parent := FPnTheme;
+  FDarkToggleLabel.SetBounds(X, (ROW_H - 20) div 2, 70, 20);
+  FDarkToggleLabel.Caption := 'Dark mode';
+  FDarkToggleLabel.Font.Size := 10;
+  FDarkToggleLabel.ColorToken := ctOnSurface;
+  Inc(X, 78);
+
+  FDarkToggle := TFRMaterialSwitch.Create(Self);
+  FDarkToggle.Parent := FPnTheme;
+  FDarkToggle.SetBounds(X, (ROW_H - 32) div 2, 52, 32);
+  FDarkToggle.Checked := False;
+  FDarkToggle.OnChange := @OnDarkToggleChange;
+  Inc(X, 72);
+
+  Inc(X, 16);
+
+  { 3 variant buttons + 1 density toggle }
+  for I := 0 to 2 do
+  begin
+    Btn := TFRMaterialButton.Create(Self);
+    Btn.Parent := FPnTheme;
+    Btn.SetBounds(X, (ROW_H - 36) div 2, 100, 36);
+    Btn.Caption := VAR_CAPTIONS[I];
+    Btn.ButtonStyle := VAR_STYLES[I];
+    Btn.Tag := Ord(VARIANTS[I]);
+    Btn.OnClick := @OnVariantBtnClick;
+    FBtnVariants[I] := Btn;
+    Inc(X, 108);
+  end;
+
+  { 4th button: toggle density compact/normal }
+  Btn := TFRMaterialButton.Create(Self);
+  Btn.Parent := FPnTheme;
+  Btn.SetBounds(X, (ROW_H - 36) div 2, 100, 36);
+  Btn.Caption := 'Compact';
+  Btn.ButtonStyle := mbsTonal;
+  Btn.Tag := 99; { special tag for density }
+  Btn.OnClick := @OnVariantBtnClick;
+  FBtnVariants[3] := Btn;
 
   Inc(Y, ROW_H + 24);
 end;
@@ -733,16 +882,71 @@ procedure TFmShowcase.OnDarkModeClick(Sender: TObject);
 begin
   FDarkMode := not FDarkMode;
   FThemeManager.DarkMode := FDarkMode;
-  { Re-apply root surface colors to propagate the new MD3Colors scheme
-    to the non-MD3 panels that host the content. }
+  FDarkToggle.Checked := FDarkMode;
   FPnFundo.Color   := MD3Colors.Surface;
   FPnContent.Color := MD3Colors.Surface;
   FPnControls.Color := MD3Colors.Surface;
   FPnButtons.Color := MD3Colors.Surface;
+  FPnTheme.Color   := MD3Colors.Surface;
   if FDarkMode then
     FSnackbar.Show('Dark mode on', stInfo)
   else
     FSnackbar.Show('Light mode on', stInfo);
+end;
+
+procedure TFmShowcase.OnSwatchClick(Sender: TObject);
+var
+  P: TFRMDPalette;
+begin
+  P := TFRMDPalette((Sender as TPanel).Tag);
+  FThemeManager.Palette := P;
+  FPnFundo.Color    := MD3Colors.Surface;
+  FPnContent.Color  := MD3Colors.Surface;
+  FPnControls.Color := MD3Colors.Surface;
+  FPnButtons.Color  := MD3Colors.Surface;
+  FPnTheme.Color    := MD3Colors.Surface;
+  FSnackbar.Show('Palette: ' + MD3PaletteName(P), stInfo);
+end;
+
+procedure TFmShowcase.OnDarkToggleChange(Sender: TObject);
+begin
+  FDarkMode := FDarkToggle.Checked;
+  FThemeManager.DarkMode := FDarkMode;
+  FPnFundo.Color   := MD3Colors.Surface;
+  FPnContent.Color := MD3Colors.Surface;
+  FPnControls.Color := MD3Colors.Surface;
+  FPnButtons.Color := MD3Colors.Surface;
+  FPnTheme.Color   := MD3Colors.Surface;
+  if FDarkMode then
+    FSnackbar.Show('Dark mode on', stInfo)
+  else
+    FSnackbar.Show('Light mode on', stInfo);
+end;
+
+procedure TFmShowcase.OnVariantBtnClick(Sender: TObject);
+var
+  Btn: TFRMaterialButton;
+begin
+  Btn := Sender as TFRMaterialButton;
+  if Btn.Tag = 99 then
+  begin
+    { Toggle density }
+    if FThemeManager.Density = ddNormal then
+    begin
+      FThemeManager.Density := ddCompact;
+      FSnackbar.Show('Density: Compact', stInfo);
+    end
+    else
+    begin
+      FThemeManager.Density := ddNormal;
+      FSnackbar.Show('Density: Normal', stInfo);
+    end;
+  end
+  else
+  begin
+    FThemeManager.Variant := TFRMaterialVariant(Btn.Tag);
+    FSnackbar.Show('Variant: ' + Btn.Caption, stInfo);
+  end;
 end;
 
 procedure TFmShowcase.OnVariantToggleClick(Sender: TObject);
@@ -760,6 +964,32 @@ begin
     Msg := 'Variant: Outlined';
   end;
   FSnackbar.Show(Msg, stInfo);
+end;
+
+procedure TFmShowcase.OnSliderChange(Sender: TObject);
+const
+  NAMES: array[0..3] of string = ('Normal', 'Compact', 'Dense', 'UltraDense');
+  DENS:  array[0..3] of TFRMDDensity = (ddNormal, ddCompact, ddDense, ddUltraDense);
+var
+  Idx: Integer;
+begin
+  Idx := EnsureRange(Round(FSlider.Value), 0, 3);
+  FThemeManager.Density := DENS[Idx];
+  FSliderLabel.Caption := NAMES[Idx];
+  FSnackbar.Show('Density: ' + NAMES[Idx], stInfo);
+end;
+
+procedure TFmShowcase.OnSegmentedChange(Sender: TObject);
+const
+  VARS: array[0..2] of TFRMaterialVariant = (mvStandard, mvFilled, mvOutlined);
+  NAMES: array[0..2] of string = ('Standard', 'Filled', 'Outlined');
+var
+  Idx: Integer;
+begin
+  Idx := FSegmented.ItemIndex;
+  if (Idx < 0) or (Idx > 2) then Exit;
+  FThemeManager.Variant := VARS[Idx];
+  FSnackbar.Show('Variant: ' + NAMES[Idx], stInfo);
 end;
 
 procedure TFmShowcase.OnSnackClick(Sender: TObject);
@@ -783,5 +1013,31 @@ begin
   FGrid.Clear;
   FSnackbar.Show('Grid cleared', stInfo);
 end;
+
+procedure TFmShowcase.OnContentResize(Sender: TObject);
+var
+  W, ViewportW, SbW: Integer;
+begin
+  { TScrollBox.Width/.ClientWidth pode refletir o Range (largura virtual)
+    quando filhos excedem a area visível. Calculamos o viewport real
+    a partir do ClientWidth do form, que é sempre confiável. }
+  ViewportW := Self.ClientWidth - NAVRAIL_W;
+  { Desconta scrollbar vertical se visível }
+  SbW := GetSystemMetrics(SM_CXVSCROLL);
+  if FPnContent.VertScrollBar.IsScrollBarVisible then
+    Dec(ViewportW, SbW);
+  W := ViewportW - CONTENT_PAD * 2;
+  if W < 100 then W := 100;
+  FGridForm.Width    := W;
+  FGrid.Width        := W;
+  FPnControls.Width  := W;
+  FPnTheme.Width     := W;
+  FPnButtons.Width   := W;
+
+  { Mantém o range vertical para scroll funcionar }
+  if FContentHeight > 0 then
+    FPnContent.VertScrollBar.Range := FContentHeight;
+end;
+
 
 end.

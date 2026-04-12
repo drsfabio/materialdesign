@@ -8,6 +8,10 @@ uses
   Classes, SysUtils, Controls, Graphics, LMessages,
   FRMaterialTheme, FRMaterial3Base;
 
+{.$DEFINE GRIDPANEL_FILELOG}
+
+procedure GridLog(const S: string);
+
 type
 
   TFRMaterialGridPanel = class;
@@ -62,16 +66,19 @@ type
     FItems: TFRGridItems;
     FUpdating: Boolean;
     FAutoColSpan: Boolean;
+    FAutoHeight: Boolean;
 
     procedure SetColumnCount(AValue: Integer);
     procedure SetGapH(AValue: Integer);
     procedure SetGapV(AValue: Integer);
     procedure SetItems(AValue: TFRGridItems);
     procedure SetAutoColSpan(AValue: Boolean);
+    procedure SetAutoHeight(AValue: Boolean);
     function  ResolveSpan(AControl: TControl): Integer;
 
   protected
     procedure AlignControls(AControl: TControl; var ARect: TRect); override;
+    procedure Resize; override;
     procedure Paint; override;
     procedure CMControlChange(var Msg: TLMessage); message CM_CONTROLCHANGE;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -79,6 +86,11 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
+    { Forca o layout independente de HandleAllocated. Use quando
+      precisar posicionar filhos durante a construcao do form
+      (antes do handle existir). }
+    procedure DoLayout;
 
     procedure SetColSpan(AControl: TControl; ASpan: Integer);
     function  GetColSpan(AControl: TControl): Integer;
@@ -97,6 +109,11 @@ type
       ou que nao sao TFRMaterial3Control caem no fallback fsLarge (6 cols).
       Quando False (default), usa o ColSpan manual definido em Items. }
     property AutoColSpan: Boolean read FAutoColSpan write SetAutoColSpan default False;
+    { Quando True, o Height do grid eh recalculado automaticamente apos
+      o layout, de modo que todos os filhos fiquem visiveis sem corte.
+      Compativel com densidades e temas dinamicos — o grid redimensiona
+      conforme os filhos mudam de altura. }
+    property AutoHeight: Boolean read FAutoHeight write SetAutoHeight default False;
     property Items: TFRGridItems read FItems write SetItems;
 
     property Align;
@@ -111,6 +128,26 @@ type
 procedure Register;
 
 implementation
+
+var
+  GridLogFile: TextFile;
+  GridLogOpen: Boolean = False;
+
+{ ── File Logging ── }
+
+procedure GridLog(const S: string);
+begin
+  {$IFDEF GRIDPANEL_FILELOG}
+  if not GridLogOpen then
+  begin
+    AssignFile(GridLogFile, ExtractFilePath(ParamStr(0)) + 'gridpanel.log');
+    Rewrite(GridLogFile);
+    GridLogOpen := True;
+  end;
+  WriteLn(GridLogFile, S);
+  Flush(GridLogFile);
+  {$ENDIF}
+end;
 
 { ── Registration ── }
 
@@ -205,7 +242,7 @@ begin
   inherited;
   grid := GetGrid;
   if (grid <> nil) and (not grid.FUpdating) then
-    grid.ReAlign;
+    grid.DoLayout;
 end;
 
 { ════════════════════════════════════════════════════════
@@ -224,6 +261,7 @@ begin
   FGapV := 16;
   FUpdating := False;
   FAutoColSpan := False;
+  FAutoHeight  := False;
   FItems := TFRGridItems.Create(Self, TFRGridItem);
 
   Width  := 600;
@@ -245,7 +283,7 @@ begin
   if AValue > 24 then AValue := 24;
   if FColumnCount = AValue then Exit;
   FColumnCount := AValue;
-  ReAlign;
+  DoLayout;
 end;
 
 procedure TFRMaterialGridPanel.SetGapH(AValue: Integer);
@@ -253,7 +291,7 @@ begin
   if AValue < 0 then AValue := 0;
   if FGapH = AValue then Exit;
   FGapH := AValue;
-  ReAlign;
+  DoLayout;
 end;
 
 procedure TFRMaterialGridPanel.SetGapV(AValue: Integer);
@@ -261,7 +299,7 @@ begin
   if AValue < 0 then AValue := 0;
   if FGapV = AValue then Exit;
   FGapV := AValue;
-  ReAlign;
+  DoLayout;
 end;
 
 procedure TFRMaterialGridPanel.SetItems(AValue: TFRGridItems);
@@ -273,7 +311,14 @@ procedure TFRMaterialGridPanel.SetAutoColSpan(AValue: Boolean);
 begin
   if FAutoColSpan = AValue then Exit;
   FAutoColSpan := AValue;
-  ReAlign;
+  DoLayout;
+end;
+
+procedure TFRMaterialGridPanel.SetAutoHeight(AValue: Boolean);
+begin
+  if FAutoHeight = AValue then Exit;
+  FAutoHeight := AValue;
+  DoLayout;
 end;
 
 { Resolve o ColSpan efetivo de um controle.
@@ -363,6 +408,13 @@ begin
       item := FItems.Add;
       item.FControl := ctrl;
     end;
+    { Force child layout props — we manage ALL positioning.
+      Must happen here, NOT inside AlignControls, otherwise
+      setting Anchors triggers cascade re-layout via LCL. }
+    if ctrl.Align <> alNone then
+      ctrl.Align := alNone;
+    if ctrl.Anchors <> [akLeft, akTop] then
+      ctrl.Anchors := [akLeft, akTop];
   end
   else
   begin
@@ -395,6 +447,25 @@ end;
 
 { ── Layout engine ── }
 
+procedure TFRMaterialGridPanel.DoLayout;
+var
+  R: TRect;
+begin
+  if csDestroying in ComponentState then Exit;
+  if FUpdating then Exit;
+  if (Width <= 0) or (ControlCount = 0) then Exit;
+  GridLog('DoLayout Width=' + IntToStr(Width) + ' CC=' + IntToStr(ControlCount));
+  R := Rect(0, 0, Width, Height);
+  AlignControls(nil, R);
+end;
+
+procedure TFRMaterialGridPanel.Resize;
+begin
+  inherited Resize;
+  GridLog('Resize Width=' + IntToStr(Width) + ' Height=' + IntToStr(Height));
+  DoLayout;
+end;
+
 procedure TFRMaterialGridPanel.AlignControls(AControl: TControl; var ARect: TRect);
 var
   i, col, span: Integer;
@@ -403,11 +474,16 @@ var
   ctrl: TControl;
   cx, cy, cw: Integer;
   rowMaxH: Integer;
+  totalH: Integer;
 begin
   if ControlCount = 0 then Exit;
+  if FUpdating then Exit;
 
   areaW := ARect.Right - ARect.Left;
   if areaW <= 0 then Exit;
+
+  FUpdating := True;
+  try
 
   colW := (areaW - (FColumnCount - 1) * FGapH) / FColumnCount;
   if colW < 1 then colW := 1;
@@ -415,6 +491,8 @@ begin
   col := 0;
   cy := ARect.Top;
   rowMaxH := 0;
+
+  GridLog('AlignControls areaW=' + IntToStr(areaW) + ' CC=' + IntToStr(ControlCount));
 
   for i := 0 to ControlCount - 1 do
   begin
@@ -437,6 +515,12 @@ begin
 
     ctrl.SetBounds(cx, cy, cw, ctrl.Height);
 
+    GridLog('  child[' + IntToStr(i) + '] ' + ctrl.Name +
+      ' span=' + IntToStr(span) +
+      ' SetBounds(' + IntToStr(cx) + ',' + IntToStr(cy) + ',' +
+      IntToStr(cw) + ',' + IntToStr(ctrl.Height) + ')' +
+      ' After: L=' + IntToStr(ctrl.Left) + ' W=' + IntToStr(ctrl.Width));
+
     if ctrl.Height > rowMaxH then
       rowMaxH := ctrl.Height;
 
@@ -449,6 +533,27 @@ begin
       col := 0;
       rowMaxH := 0;
     end;
+  end;
+
+  { AutoHeight: ajusta o Height do grid para acomodar todos os filhos.
+    - col > 0  → ultima linha ainda aberta, soma rowMaxH pendente.
+    - col = 0 e cy > ARect.Top → ultima linha foi fechada pelo loop,
+      cy ja avancou com GapV extra — subtrai.
+    - Nenhum filho visivel (cy = ARect.Top) → totalH = 0. }
+  if FAutoHeight then
+  begin
+    if (col > 0) and (rowMaxH > 0) then
+      totalH := cy + rowMaxH
+    else if cy > ARect.Top then
+      totalH := cy - FGapV
+    else
+      totalH := 0;
+    if Self.Height <> totalH then
+      Self.Height := totalH;
+  end;
+
+  finally
+    FUpdating := False;
   end;
 end;
 

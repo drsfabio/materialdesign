@@ -24,7 +24,7 @@ unit FRMaterial3Combo;
 interface
 
 uses
-  Classes, SysUtils, Controls, Graphics, Forms, ExtCtrls,
+  Classes, SysUtils, Controls, Graphics, Forms, ExtCtrls, Clipbrd,
   {$IFDEF FPC} LCLType, LCLIntf, LResources, {$ENDIF}
   BGRABitmap, BGRABitmapTypes,
   FRMaterialTheme, FRMaterial3Base, FRMaterialIcons;
@@ -61,6 +61,12 @@ type
     { Caret blink }
     FCaretTimer: TTimer;
     FCaretVisible: Boolean;
+    { Cursor de texto e seleção no search field }
+    FCaretPos: Integer;         { posição do caret no FFilterText (0..Length) }
+    FSelStart: Integer;         { inicio da seleção (0..Length), -1 = sem seleção }
+    FSelEnd: Integer;           { fim da seleção (0..Length), -1 = sem seleção }
+    FSearchFieldRect: TRect;    { rect do search field, calculado no Paint }
+    FSearchTextLeft: Integer;   { x onde o texto do filtro começa }
     procedure DoCaretTick(Sender: TObject);
     procedure PaintPopup;
     function ItemAtY(AY: Integer): Integer;   { retorna indice filtrado, -1 se fora }
@@ -68,6 +74,13 @@ type
     procedure EnsureCursorVisible;
     procedure PickCurrent;
     function PrintableChar(Key: Word; Shift: TShiftState): Char;
+    { Helpers do search field editável }
+    function HasSelection: Boolean;
+    function GetSelRange(out AStart, AEnd: Integer): Boolean;
+    procedure DeleteSelection;
+    procedure InsertAtCaret(const S: string);
+    procedure ResetCaretBlink;
+    function CaretPosFromX(AX: Integer): Integer;
   protected
     procedure Paint; override;
     procedure EraseBackground({%H-}DC: HDC); override;
@@ -161,6 +174,13 @@ implementation
 uses
   Math;
 
+{$IFDEF WINDOWS}
+function CreateRoundRectRgn(X1, Y1, X2, Y2, W, H: Integer): HRGN;
+  stdcall; external 'gdi32.dll';
+function SetWindowRgn(hWnd: HWND; hRgn: HRGN; bRedraw: LongBool): Integer;
+  stdcall; external 'user32.dll';
+{$ENDIF}
+
 const
   COMBO_DEFAULT_H      = 56;
   COMBO_PADDING_H      = MD3_FIELD_PADDING_H;
@@ -207,6 +227,11 @@ begin
   FPadding    := POPUP_PADDING;
   FRadius     := POPUP_RADIUS;
   FFilterText := '';
+  FCaretPos   := 0;
+  FSelStart   := -1;
+  FSelEnd     := -1;
+  FSearchTextLeft := 0;
+  FSearchFieldRect := Rect(0, 0, 0, 0);
   FTopIndex   := 0;
 
   { Fonte do popup segue a do controle pai — garante que texto do item
@@ -255,6 +280,15 @@ begin
 
   Color := ColorToRGB(MD3Colors.Surface);
 
+  { Clip the popup form to a rounded rectangle so corners are
+    truly transparent — BGRA AA blends against Surface pre-fill. }
+  {$IFDEF WINDOWS}
+  HandleNeeded;
+  SetWindowRgn(Handle,
+    CreateRoundRectRgn(-1, -1, Width + 2, Height + 2,
+      FRadius * 2 + 2, FRadius * 2 + 2), True);
+  {$ENDIF}
+
   { Popula o filtro inicial (todos os items) e posiciona o cursor no
     item atualmente selecionado, se houver. }
   RebuildFilter;
@@ -269,6 +303,87 @@ procedure TFRMDComboPopup.DoCaretTick(Sender: TObject);
 begin
   FCaretVisible := not FCaretVisible;
   Invalidate;
+end;
+
+function TFRMDComboPopup.HasSelection: Boolean;
+begin
+  Result := (FSelStart >= 0) and (FSelEnd >= 0) and (FSelStart <> FSelEnd);
+end;
+
+function TFRMDComboPopup.GetSelRange(out AStart, AEnd: Integer): Boolean;
+begin
+  if not HasSelection then Exit(False);
+  if FSelStart < FSelEnd then
+  begin
+    AStart := FSelStart;
+    AEnd   := FSelEnd;
+  end
+  else
+  begin
+    AStart := FSelEnd;
+    AEnd   := FSelStart;
+  end;
+  Result := True;
+end;
+
+procedure TFRMDComboPopup.DeleteSelection;
+var
+  S, E: Integer;
+begin
+  if not GetSelRange(S, E) then Exit;
+  Delete(FFilterText, S + 1, E - S);
+  FCaretPos := S;
+  FSelStart := -1;
+  FSelEnd   := -1;
+end;
+
+procedure TFRMDComboPopup.InsertAtCaret(const S: string);
+begin
+  if HasSelection then
+    DeleteSelection;
+  Insert(S, FFilterText, FCaretPos + 1);
+  Inc(FCaretPos, Length(S));
+end;
+
+procedure TFRMDComboPopup.ResetCaretBlink;
+begin
+  FCaretVisible := True;
+  if Assigned(FCaretTimer) then
+  begin
+    FCaretTimer.Enabled := False;
+    FCaretTimer.Enabled := True;
+  end;
+end;
+
+function TFRMDComboPopup.CaretPosFromX(AX: Integer): Integer;
+var
+  bmp: TBGRABitmap;
+  i, tw: Integer;
+begin
+  Result := Length(FFilterText);
+  if FFilterText = '' then Exit(0);
+  bmp := TBGRABitmap.Create(1, 1);
+  try
+    bmp.FontName    := Self.Font.Name;
+    bmp.FontStyle   := Self.Font.Style;
+    bmp.FontHeight  := FFontHeight;
+    bmp.FontQuality := fqFineClearTypeRGB;
+    for i := 1 to Length(FFilterText) do
+    begin
+      tw := bmp.TextSize(Copy(FFilterText, 1, i)).cx;
+      if FSearchTextLeft + tw >= AX then
+      begin
+        { Verifica se esta mais perto do char anterior ou do atual }
+        if (i > 1) and (AX - FSearchTextLeft - bmp.TextSize(Copy(FFilterText, 1, i - 1)).cx <
+            tw - (AX - FSearchTextLeft)) then
+          Exit(i - 1)
+        else
+          Exit(i);
+      end;
+    end;
+  finally
+    bmp.Free;
+  end;
 end;
 
 procedure TFRMDComboPopup.RebuildFilter;
@@ -308,7 +423,7 @@ begin
 
   { Reset do caret para visivel — garante que o usuario ve feedback
     instantaneo ao digitar, sem esperar o proximo tick do blink. }
-  FCaretVisible := True;
+  ResetCaretBlink;
 end;
 
 procedure TFRMDComboPopup.EnsureCursorVisible;
@@ -379,9 +494,10 @@ var
   iconBmp: TBGRABitmap;
   iconHex, displayText: string;
   searchTop, searchBottom, dividerY: Integer;
-  textW, caretX, emptyY: Integer;
+  caretX, emptyY: Integer;
   thumbHeight, thumbTop, trackX: Integer;
   totalScrollable: Integer;
+  selS, selE, selX1, selX2, textH: Integer;
 begin
   if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
@@ -422,8 +538,7 @@ begin
         searchRect.Top + ((searchRect.Bottom - searchRect.Top - 18) div 2),
         False);
 
-    { Texto do filtro (ou placeholder cinza quando vazio) + caret
-      piscando sempre visivel como affordance de input.
+    { Texto do filtro (ou placeholder cinza quando vazio) + caret + seleção.
       Usa bmp.TextOut com fqFineClearTypeRGB + FontHeight hardcoded
       para consistencia com o combo principal (evita discrepancia
       de PPI entre TCustomControl e TForm). }
@@ -431,14 +546,27 @@ begin
     bmp.FontStyle   := Self.Font.Style;
     bmp.FontHeight  := FFontHeight;
     bmp.FontQuality := fqFineClearTypeRGB;
+    textH := bmp.TextSize('Ay').cy;
     textY := searchRect.Top +
-      ((searchRect.Bottom - searchRect.Top - bmp.TextSize('Ay').cy) div 2);
+      ((searchRect.Bottom - searchRect.Top - textH) div 2);
     textLeft := searchRect.Left + 36;
+
+    { Salva posição do search field para mouse click }
+    FSearchFieldRect := searchRect;
+    FSearchTextLeft  := textLeft;
+
     if FFilterText <> '' then
     begin
+      { Desenha seleção highlight atrás do texto }
+      if GetSelRange(selS, selE) then
+      begin
+        selX1 := textLeft + bmp.TextSize(Copy(FFilterText, 1, selS)).cx;
+        selX2 := textLeft + bmp.TextSize(Copy(FFilterText, 1, selE)).cx;
+        bmp.FillRect(selX1, textY, selX2, textY + textH,
+          ColorToBGRA(primaryColor, 80), dmDrawWithTransparency);
+      end;
       bmp.TextOut(textLeft, textY, FFilterText, ColorToBGRA(onSurfaceColor));
-      textW := bmp.TextSize(FFilterText).cx;
-      caretX := textLeft + textW + 2;
+      caretX := textLeft + bmp.TextSize(Copy(FFilterText, 1, FCaretPos)).cx;
     end
     else
     begin
@@ -449,7 +577,7 @@ begin
     { Caret piscando sempre desenhado quando FCaretVisible. }
     if FCaretVisible then
       bmp.DrawLineAntialias(caretX, textY,
-        caretX, textY + bmp.TextSize('Ay').cy,
+        caretX, textY + textH,
         ColorToBGRA(primaryColor), 1.8);
 
     { 3) Divisor fino abaixo do search }
@@ -603,6 +731,19 @@ var
 begin
   inherited MouseDown(Button, Shift, X, Y);
   if Button <> mbLeft then Exit;
+
+  { Clique no search field posiciona o caret no texto }
+  if (Y >= FSearchFieldRect.Top) and (Y < FSearchFieldRect.Bottom) and
+     (X >= FSearchFieldRect.Left) and (X < FSearchFieldRect.Right) then
+  begin
+    FCaretPos := CaretPosFromX(X);
+    FSelStart := -1;
+    FSelEnd   := -1;
+    ResetCaretBlink;
+    Invalidate;
+    Exit;
+  end;
+
   Idx := ItemAtY(Y);
   if Idx < 0 then Exit;
   FCursorIndex := Idx;
@@ -630,6 +771,8 @@ end;
 procedure TFRMDComboPopup.KeyDown(var Key: Word; Shift: TShiftState);
 var
   Ch: Char;
+  ClipText, SelText: string;
+  S, E: Integer;
 begin
   inherited KeyDown(Key, Shift);
   case Key of
@@ -670,17 +813,91 @@ begin
       Invalidate;
       Key := 0;
     end;
+    VK_LEFT:
+    begin
+      if ssCtrl in Shift then
+      begin
+        { Ctrl+Left: pular palavra }
+        while (FCaretPos > 0) and (FFilterText[FCaretPos] = ' ') do
+          Dec(FCaretPos);
+        while (FCaretPos > 0) and (FFilterText[FCaretPos] <> ' ') do
+          Dec(FCaretPos);
+      end
+      else if FCaretPos > 0 then
+        Dec(FCaretPos);
+      if ssShift in Shift then
+      begin
+        if FSelStart < 0 then FSelStart := FCaretPos + 1;
+        FSelEnd := FCaretPos;
+      end
+      else
+      begin
+        FSelStart := -1;
+        FSelEnd   := -1;
+      end;
+      ResetCaretBlink;
+      Invalidate;
+      Key := 0;
+    end;
+    VK_RIGHT:
+    begin
+      if ssCtrl in Shift then
+      begin
+        { Ctrl+Right: pular palavra }
+        while (FCaretPos < Length(FFilterText)) and (FFilterText[FCaretPos + 1] <> ' ') do
+          Inc(FCaretPos);
+        while (FCaretPos < Length(FFilterText)) and (FFilterText[FCaretPos + 1] = ' ') do
+          Inc(FCaretPos);
+      end
+      else if FCaretPos < Length(FFilterText) then
+        Inc(FCaretPos);
+      if ssShift in Shift then
+      begin
+        if FSelStart < 0 then FSelStart := FCaretPos - 1;
+        FSelEnd := FCaretPos;
+      end
+      else
+      begin
+        FSelStart := -1;
+        FSelEnd   := -1;
+      end;
+      ResetCaretBlink;
+      Invalidate;
+      Key := 0;
+    end;
     VK_HOME:
     begin
-      FCursorIndex := 0;
-      EnsureCursorVisible;
+      if ssShift in Shift then
+      begin
+        if FSelStart < 0 then FSelStart := FCaretPos;
+        FCaretPos := 0;
+        FSelEnd := 0;
+      end
+      else
+      begin
+        FCaretPos := 0;
+        FSelStart := -1;
+        FSelEnd   := -1;
+      end;
+      ResetCaretBlink;
       Invalidate;
       Key := 0;
     end;
     VK_END:
     begin
-      FCursorIndex := FFilteredCount - 1;
-      EnsureCursorVisible;
+      if ssShift in Shift then
+      begin
+        if FSelStart < 0 then FSelStart := FCaretPos;
+        FCaretPos := Length(FFilterText);
+        FSelEnd := FCaretPos;
+      end
+      else
+      begin
+        FCaretPos := Length(FFilterText);
+        FSelStart := -1;
+        FSelEnd   := -1;
+      end;
+      ResetCaretBlink;
       Invalidate;
       Key := 0;
     end;
@@ -702,23 +919,102 @@ begin
     end;
     VK_BACK:
     begin
-      if FFilterText <> '' then
+      if HasSelection then
       begin
-        SetLength(FFilterText, Length(FFilterText) - 1);
+        DeleteSelection;
+        FCaretPos := Min(FCaretPos, Length(FFilterText));
+        RebuildFilter;
+        Invalidate;
+      end
+      else if FCaretPos > 0 then
+      begin
+        Delete(FFilterText, FCaretPos, 1);
+        Dec(FCaretPos);
+        RebuildFilter;
+        Invalidate;
+      end;
+      Key := 0;
+    end;
+    VK_DELETE:
+    begin
+      if HasSelection then
+      begin
+        DeleteSelection;
+        FCaretPos := Min(FCaretPos, Length(FFilterText));
+        RebuildFilter;
+        Invalidate;
+      end
+      else if FCaretPos < Length(FFilterText) then
+      begin
+        Delete(FFilterText, FCaretPos + 1, 1);
         RebuildFilter;
         Invalidate;
       end;
       Key := 0;
     end;
   else
-    { Letras/digitos/espaco vao para o filtro via KeyDown. UTF8KeyPress
-      tambem cobre acentos — aqui tratamos so ASCII como fallback. }
-    if (not (ssCtrl in Shift)) and (not (ssAlt in Shift)) then
+    { Ctrl+A / Ctrl+C / Ctrl+X / Ctrl+V }
+    if ssCtrl in Shift then
     begin
+      case Key of
+        Ord('A'):
+        begin
+          if FFilterText <> '' then
+          begin
+            FSelStart := 0;
+            FSelEnd   := Length(FFilterText);
+            FCaretPos := Length(FFilterText);
+            ResetCaretBlink;
+            Invalidate;
+          end;
+          Key := 0;
+        end;
+        Ord('C'):
+        begin
+          if GetSelRange(S, E) then
+          begin
+            SelText := Copy(FFilterText, S + 1, E - S);
+            Clipboard.AsText := SelText;
+          end;
+          Key := 0;
+        end;
+        Ord('X'):
+        begin
+          if GetSelRange(S, E) then
+          begin
+            SelText := Copy(FFilterText, S + 1, E - S);
+            Clipboard.AsText := SelText;
+            DeleteSelection;
+            RebuildFilter;
+            Invalidate;
+          end;
+          Key := 0;
+        end;
+        Ord('V'):
+        begin
+          ClipText := Clipboard.AsText;
+          if ClipText <> '' then
+          begin
+            { Remove quebras de linha do texto colado }
+            ClipText := StringReplace(ClipText, #13#10, ' ', [rfReplaceAll]);
+            ClipText := StringReplace(ClipText, #10, ' ', [rfReplaceAll]);
+            ClipText := StringReplace(ClipText, #13, ' ', [rfReplaceAll]);
+            InsertAtCaret(ClipText);
+            RebuildFilter;
+            Invalidate;
+          end;
+          Key := 0;
+        end;
+      end;
+    end
+    else if (not (ssAlt in Shift)) then
+    begin
+      { Letras/digitos/espaco vao para o filtro via KeyDown. UTF8KeyPress
+        tambem cobre acentos — aqui tratamos so ASCII como fallback. }
       Ch := PrintableChar(Key, Shift);
       if Ch <> #0 then
       begin
-        FFilterText := FFilterText + Ch;
+        InsertAtCaret(Ch);
         RebuildFilter;
         Invalidate;
         Key := 0;
@@ -735,13 +1031,13 @@ begin
   if UTF8Key = '' then Exit;
   First := UTF8Key[1];
   { ASCII imprimivel: ja foi processado pelo KeyDown (alpha/num/space).
-    Aqui pegamos caracteres UTF-8 multibyte (acentos). }
+    Aqui pegamos caracteres UTF-8 multibyte (acentos) e pontuação. }
   if (Length(UTF8Key) > 1) or (First >= #32) then
   begin
     if (Length(UTF8Key) > 1) or
        ((First >= #32) and not (First in ['a'..'z','A'..'Z','0'..'9',' '])) then
     begin
-      FFilterText := FFilterText + UTF8Key;
+      InsertAtCaret(UTF8Key);
       RebuildFilter;
       Invalidate;
       UTF8Key := '';
@@ -776,6 +1072,7 @@ begin
   FLabelProgress := 0;
   FPopupOpen     := False;
   TabStop        := True;
+  Cursor         := crIBeam;
   Width          := 240;
   Height         := COMBO_DEFAULT_H;
 
@@ -947,7 +1244,9 @@ var
   notchLeft, notchRight: Integer;
   txt: string;
   labelScaled: Boolean;
-  arrowPoly: array[0..2] of TPoint;
+  arrowBmp: TBGRABitmap;
+  ac: TBGRAPixel;
+  pts: array[0..2] of TPointF;
 begin
   { Resolve cores conforme variant/focus. Borda e underline usam
     OnSurfaceVariant unfocused (mesmo token que FRMaterialEdit
@@ -1050,30 +1349,35 @@ begin
     Canvas.TextOut(COMBO_PADDING_H, textY, txt);
   end;
 
-  { 5) Triangulo de dropdown (preenchido, GDI Polygon nao-AA) }
+  { 5) Triangulo de dropdown — BGRA anti-aliased }
   arrowX := Width - COMBO_PADDING_H - COMBO_ARROW_SIZE;
   arrowY := Height div 2 - 2;
-  if FPopupOpen then
   begin
-    arrowPoly[0] := Point(arrowX, arrowY + COMBO_ARROW_SIZE div 2);
-    arrowPoly[1] := Point(arrowX + COMBO_ARROW_SIZE,
-      arrowY + COMBO_ARROW_SIZE div 2);
-    arrowPoly[2] := Point(arrowX + COMBO_ARROW_SIZE div 2,
-      arrowY - COMBO_ARROW_SIZE div 2);
-  end
-  else
-  begin
-    arrowPoly[0] := Point(arrowX, arrowY - COMBO_ARROW_SIZE div 2);
-    arrowPoly[1] := Point(arrowX + COMBO_ARROW_SIZE,
-      arrowY - COMBO_ARROW_SIZE div 2);
-    arrowPoly[2] := Point(arrowX + COMBO_ARROW_SIZE div 2,
-      arrowY + COMBO_ARROW_SIZE div 2);
+    arrowBmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
+    try
+      ac := ColorToBGRA(arrowColor);
+      if FPopupOpen then
+      begin
+        pts[0] := PointF(arrowX, arrowY + COMBO_ARROW_SIZE / 2);
+        pts[1] := PointF(arrowX + COMBO_ARROW_SIZE,
+          arrowY + COMBO_ARROW_SIZE / 2);
+        pts[2] := PointF(arrowX + COMBO_ARROW_SIZE / 2,
+          arrowY - COMBO_ARROW_SIZE / 2);
+      end
+      else
+      begin
+        pts[0] := PointF(arrowX, arrowY - COMBO_ARROW_SIZE / 2);
+        pts[1] := PointF(arrowX + COMBO_ARROW_SIZE,
+          arrowY - COMBO_ARROW_SIZE / 2);
+        pts[2] := PointF(arrowX + COMBO_ARROW_SIZE / 2,
+          arrowY + COMBO_ARROW_SIZE / 2);
+      end;
+      arrowBmp.FillPolyAntialias(pts, ac);
+      arrowBmp.Draw(Canvas, 0, 0, False);
+    finally
+      arrowBmp.Free;
+    end;
   end;
-  Canvas.Brush.Color := arrowColor;
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Pen.Color   := arrowColor;
-  Canvas.Pen.Style   := psSolid;
-  Canvas.Polygon(arrowPoly);
 end;
 
 procedure TFRMaterialCombo.MouseDown(Button: TMouseButton;

@@ -122,12 +122,12 @@ type
     FResizeBorderWidth: Integer;
     {$IFDEF MSWINDOWS}
     procedure WMNCHitTest(var Msg: TLMNCHITTEST); message LM_NCHITTEST;
-    procedure WMNCCalcSize(var Msg: TLMessage); message LM_NCCALCSIZE;
     {$ENDIF}
     procedure SetupDWMShadow;
     procedure TitleBarDblClick(Sender: TObject);
   protected
     procedure CreateWnd; override;
+    procedure DestroyWnd; override;
     procedure DoShow; override;
     procedure Resize; override;
   public
@@ -749,6 +749,15 @@ constructor TFRMaterialForm.CreateNew(AOwner: TComponent; Num: Integer);
 begin
   inherited CreateNew(AOwner, Num);
   FResizeBorderWidth := 6;
+  { bsSizeable preserves WS_OVERLAPPEDWINDOW (resize, minimize, maximize,
+    Aero Snap). CreateWnd removes WS_CAPTION to hide the native titlebar. }
+  BorderStyle := bsSizeable;
+  Color := MD3Colors.Surface;
+  FTitleBar := TFRMaterialTitleBar.Create(Self);
+  FTitleBar.Parent := Self;
+  FTitleBar.Align := alTop;
+  FTitleBar.Height := TITLEBAR_HEIGHT;
+  FTitleBar.Title := Caption;
 end;
 
 destructor TFRMaterialForm.Destroy;
@@ -761,26 +770,36 @@ end;
 procedure TFRMaterialForm.AfterConstruction;
 begin
   inherited AfterConstruction;
-
-  { Remove native border }
-  BorderStyle := bsNone;
   Color := MD3Colors.Surface;
-
-  { Create internal titlebar }
-  if not Assigned(FTitleBar) then
-  begin
-    FTitleBar := TFRMaterialTitleBar.Create(Self);
-    FTitleBar.Parent := Self;
-    FTitleBar.Align := alTop;
-    FTitleBar.Height := TITLEBAR_HEIGHT;
-    FTitleBar.Title := Caption;
-  end;
+  { TitleBar already created in CreateNew }
 end;
 
 procedure TFRMaterialForm.CreateWnd;
+{$IFDEF MSWINDOWS}
+var
+  Style: LONG_PTR;
+{$ENDIF}
 begin
   inherited CreateWnd;
+  {$IFDEF MSWINDOWS}
+  if HandleAllocated then
+  begin
+    { Remove WS_CAPTION and WS_THICKFRAME to eliminate native titlebar
+      and border completely. Resize handled by WM_NCHITTEST in LCL. }
+    Style := GetWindowLongPtr(Handle, GWL_STYLE);
+    Style := (Style and not (WS_CAPTION or WS_THICKFRAME))
+             or WS_MINIMIZEBOX or WS_MAXIMIZEBOX or WS_SYSMENU;
+    SetWindowLongPtr(Handle, GWL_STYLE, Style);
+    SetWindowPos(Handle, 0, 0, 0, 0, 0,
+      SWP_FRAMECHANGED or SWP_NOMOVE or SWP_NOSIZE or SWP_NOZORDER);
+  end;
+  {$ENDIF}
   SetupDWMShadow;
+end;
+
+procedure TFRMaterialForm.DestroyWnd;
+begin
+  inherited DestroyWnd;
 end;
 
 procedure TFRMaterialForm.DoShow;
@@ -808,14 +827,13 @@ var
 begin
   if not HandleAllocated then Exit;
   try
-    Margins.cxLeftWidth := 1;
-    Margins.cxRightWidth := 1;
+    { 1px top margin — Chrome trick: activates DWM shadow without
+      rendering a visible titlebar or border. }
+    Margins.cxLeftWidth := 0;
+    Margins.cxRightWidth := 0;
     Margins.cyTopHeight := 1;
-    Margins.cyBottomHeight := 1;
+    Margins.cyBottomHeight := 0;
     DwmExtendFrameIntoClientArea(Handle, @Margins);
-
-    Policy := 2; // DWMNCRP_ENABLED
-    DwmSetWindowAttribute(Handle, DWMWA_NCRENDERING_POLICY, @Policy, SizeOf(Policy));
   except
   end;
 end;
@@ -886,15 +904,6 @@ begin
     Msg.Result := HTCLIENT;
 end;
 
-procedure TFRMaterialForm.WMNCCalcSize(var Msg: TLMessage);
-begin
-  { For borderless forms, we want the entire client area.
-    Simply accept the proposed rect as-is (no non-client area). }
-  if Msg.WParam = 1 then
-    Msg.Result := 0
-  else
-    inherited;
-end;
 {$ENDIF}
 
 { ?? Registration ?? }

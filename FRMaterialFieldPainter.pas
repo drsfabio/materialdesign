@@ -174,22 +174,26 @@ begin
     end;
     mvOutlined:
     begin
-      P.Canvas.Brush.Style := bsClear;
       if P.IsLocked then
         PenW := 1
       else if P.IsFocused and P.IsEnabled then
         PenW := 2
       else
         PenW := 1;
-      P.Canvas.Pen.Width := PenW;
-        
-      if CR > 0 then
-        P.Canvas.RoundRect(LeftPos, FieldTop, RightPos, DecoBottom - 1, CR, CR)
-      else
-        P.Canvas.Rectangle(LeftPos, FieldTop, RightPos, DecoBottom - 1);
 
-      { MD3 Notch: apaga a borda superior onde o label flutuante fica,
-        criando o visual de "recorte" característico do Outlined }
+      { GDI outlined border — always draw with Pen.Width=1 for
+        pixel-perfect uniform edges.  For focused state (PenW=2),
+        draw two concentric 1px RoundRects to guarantee identical
+        thickness on all four sides regardless of GDI pen behavior. }
+      P.Canvas.Pen.Width   := 1;
+      P.Canvas.Brush.Style := bsClear;
+      P.Canvas.RoundRect(LeftPos, FieldTop, RightPos, DecoBottom, CR, CR);
+      if PenW >= 2 then
+        P.Canvas.RoundRect(LeftPos + 1, FieldTop + 1,
+          RightPos - 1, DecoBottom - 1, CR, CR);
+
+      { MD3 Notch: paint background over the top border where the
+        floating label sits, creating the characteristic "cutout". }
       if (P.LabelText <> '') and (P.LabelProgress > 0.3) then
       begin
         P.Canvas.Font.Assign(P.LabelFont);
@@ -199,12 +203,13 @@ begin
         if P.IsRequired then
           NotchRight := NotchRight + P.Canvas.TextWidth(' *') + 2;
         NotchRight := NotchRight + 4;
-        P.Canvas.Pen.Color   := P.BgColor;
-        P.Canvas.Brush.Color := P.BgColor;
+        P.Canvas.Pen.Style   := psClear;
         P.Canvas.Brush.Style := bsSolid;
+        P.Canvas.Brush.Color := P.ParentBgColor;
         P.Canvas.FillRect(NotchLeft, FieldTop - 1, NotchRight, FieldTop + PenW + 1);
+        P.Canvas.Pen.Style := psSolid;
       end;
-        
+
       P.Canvas.Pen.Width   := 1;
       P.Canvas.Brush.Style := bsSolid;
     end;

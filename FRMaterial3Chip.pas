@@ -370,7 +370,9 @@ function TFRMaterialSegmentedButton.PaintCached(ABmp: TBGRABitmap): Boolean;
 var
   i, sw, x1, x2, r: Integer;
   bgColor, textColor, borderColor: TColor;
+  bc, fc: TBGRAPixel;
   isSel: Boolean;
+  opts: TRoundRectangleOptions;
   aRect: TRect;
 begin
   Result := True;
@@ -379,11 +381,9 @@ begin
   r := Height div 2;
   sw := GetSegmentWidth;
   borderColor := MD3Colors.Outline;
+  bc := ColorToBGRA(ColorToRGB(borderColor));
 
-  { Full outline }
-  MD3RoundRect(ABmp, 0.5, 0.5, Width - 1.5, Height - 1.5, r, borderColor, 1.0);
-
-  { Segment fills }
+  { Draw each segment with proper per-corner rounding }
   for i := 0 to FItems.Count - 1 do
   begin
     x1 := i * sw;
@@ -396,27 +396,23 @@ begin
     else
       isSel := (i = FItemIndex);
 
+    { Determine which corners to square off }
+    opts := [];
+    if i > 0 then
+      opts := opts + [rrTopLeftSquare, rrBottomLeftSquare];
+    if i < FItems.Count - 1 then
+      opts := opts + [rrTopRightSquare, rrBottomRightSquare];
+
     if isSel then
     begin
       bgColor := MD3Colors.SecondaryContainer;
-      if (i = 0) and (i = FItems.Count - 1) then
-        { Single segment — round all 4 corners }
-        MD3FillRoundRect(ABmp, x1, 0, x2 - 1, Height - 1, r, bgColor)
-      else if i = 0 then
-        { First segment — round left corners only: extend right to hide right rounding }
-        MD3FillRoundRect(ABmp, x1, 0, x2 + r, Height - 1, r, bgColor)
-      else if i = FItems.Count - 1 then
-        { Last segment — round right corners only: extend left to hide left rounding }
-        MD3FillRoundRect(ABmp, x1 - r, 0, x2 - 1, Height - 1, r, bgColor)
-      else
-        { Middle segment — no rounding }
-        MD3FillRoundRect(ABmp, x1, 0, x2, Height - 1, 0, bgColor);
-    end;
-
-    { Divider between segments }
-    if i > 0 then
-      ABmp.DrawLineAntialias(x1, 0, x1, Height,
-        ColorToBGRA(ColorToRGB(borderColor)), 1.0);
+      fc := ColorToBGRA(ColorToRGB(bgColor));
+      ABmp.RoundRectAntialias(x1 + 0.5, 0.5, x2 - 0.5, Height - 1.5,
+        r, r, bc, 1.0, fc, opts);
+    end
+    else
+      ABmp.RoundRectAntialias(x1 + 0.5, 0.5, x2 - 0.5, Height - 1.5,
+        r, r, bc, 1.0, opts);
   end;
 
   { Text labels }

@@ -97,6 +97,13 @@ implementation
 
 uses Math, StdCtrls, LCLType, LCLIntf;
 
+{$IFDEF WINDOWS}
+function CreateRoundRectRgn(X1, Y1, X2, Y2, W, H: Integer): HRGN;
+  stdcall; external 'gdi32.dll';
+function SetWindowRgn(hWnd: HWND; hRgn: HRGN; bRedraw: LongBool): Integer;
+  stdcall; external 'user32.dll';
+{$ENDIF}
+
 const
   ANIM_DURATION = 250; { ms — MD3 standard duration }
   ANIM_INTERVAL = 16;  { ~60 fps }
@@ -109,6 +116,7 @@ const
   SNACKBAR_PADDING_V = 14;
   SNACKBAR_MIN_H = 48;
   SNACKBAR_RADIUS = 16;       { pill-like MD3 corners }
+  SHADOW_PAD     = 6;        { extra padding around body for shadow }
   ICON_SIZE = 24;
   CLOSE_BTN_SIZE = 24;
   ACTION_GAP = 12;
@@ -127,7 +135,6 @@ type
     procedure InvalidatePaintCache;
     procedure GetTypeColors(out ABg, AText, AAction, AIconColor: TColor);
     function CalcContentHeight(AMaxTextW: Integer): Integer;
-    function GetParentBgColor: TColor;
   protected
     function PaintCached(ABmp: TBGRABitmap): Boolean; virtual;
     procedure Paint; override;
@@ -210,50 +217,120 @@ begin
   FPaintCacheH := 0;
 end;
 
-function TSnackbarPanel.GetParentBgColor: TColor;
-begin
-  { MD3Colors.Surface é a referência confiável para cor de fundo:
-    atualiza automaticamente com dark mode toggle, independente
-    do estado de Parent.Brush.Color que pode ficar stale. }
-  Result := ColorToRGB(MD3Colors.Surface);
-end;
-
 function TSnackbarPanel.PaintCached(ABmp: TBGRABitmap): Boolean;
 var
   bgColor, txtColor, actColor, icoColor: TColor;
+  textLeft, textRight: Integer;
+  actionW, padV: Integer;
+  aRect: TRect;
+  ts: TTextStyle;
+  hexColor: string;
 begin
   Result := True;
   GetTypeColors(bgColor, txtColor, actColor, icoColor);
-  { Preenche o bitmap inteiro com a cor do parent PRIMEIRO (opaco).
-    Depois desenha o rounded rect por cima. Assim os pixels AA dos
-    cantos arredondados se blendam corretamente com a cor do fundo,
-    sem depender de EraseBackground ou transparência. }
-  ABmp.Fill(ColorToBGRA(GetParentBgColor));
-  MD3DrawShadow(ABmp, 0, 0, Width, Height, SNACKBAR_RADIUS, elLevel3);
-  MD3FillRoundRect(ABmp, 0, 0, Width, Height, SNACKBAR_RADIUS, bgColor);
+
+  { Pre-fill with parent bg for AA blending at corners }
+  ABmp.Fill(ColorToBGRA(ColorToRGB(MD3Colors.Surface)));
+
+  { Shadow — drawn within SHADOW_PAD area around the body }
+  MD3DrawShadow(ABmp,
+    SHADOW_PAD, SHADOW_PAD,
+    Width - SHADOW_PAD, Height - SHADOW_PAD,
+    SNACKBAR_RADIUS, elLevel3);
+
+  { Body — anti-aliased rounded rect inside the shadow area }
+  MD3FillRoundRect(ABmp,
+    SHADOW_PAD - 0.5, SHADOW_PAD - 0.5,
+    Width - SHADOW_PAD + 0.5, Height - SHADOW_PAD + 0.5,
+    SNACKBAR_RADIUS, bgColor);
+
+  { BGRA font setup — equivalent to Canvas.Font.Size := 10 }
+  ABmp.FontHeight := -MulDiv(10, Screen.PixelsPerInch, 72);
+  ABmp.FontQuality := fqFineClearTypeRGB;
+  ABmp.FontStyle := [];
+
+  textLeft := SHADOW_PAD + SNACKBAR_PADDING_H;
+  textRight := Width - SHADOW_PAD - SNACKBAR_PADDING_H;
+
+  { Leading icon — composited into the BGRA bitmap }
+  if FSnackbar.FLeadingIcon <> imClear then
+  begin
+    hexColor := FRColorToSVGHex(icoColor);
+    if FIconCache = nil then
+      FIconCache := FRGetCachedIcon(FSnackbar.FLeadingIcon, hexColor, 2.0, ICON_SIZE, ICON_SIZE);
+    if Assigned(FIconCache) then
+      ABmp.PutImage(textLeft, (Height - ICON_SIZE) div 2, FIconCache, dmDrawWithTransparency);
+    textLeft := textLeft + ICON_SIZE + 12;
+  end;
+
+  { Close button — antialiased X }
+  if FSnackbar.FShowCloseButton then
+  begin
+    ABmp.DrawLineAntialias(
+      textRight - CLOSE_BTN_SIZE + 6, (Height - CLOSE_BTN_SIZE) div 2 + 6,
+      textRight - 6, (Height + CLOSE_BTN_SIZE) div 2 - 6,
+      ColorToBGRA(ColorToRGB(txtColor)), 2.0);
+    ABmp.DrawLineAntialias(
+      textRight - 6, (Height - CLOSE_BTN_SIZE) div 2 + 6,
+      textRight - CLOSE_BTN_SIZE + 6, (Height + CLOSE_BTN_SIZE) div 2 - 6,
+      ColorToBGRA(ColorToRGB(txtColor)), 2.0);
+    textRight := textRight - CLOSE_BTN_SIZE - ACTION_GAP;
+  end;
+
+  { Action text }
+  if FSnackbar.FActionText <> '' then
+  begin
+    ABmp.FontStyle := [fsBold];
+    actionW := ABmp.TextSize(FSnackbar.FActionText).cx + 24;
+    aRect := Rect(textRight - actionW, SHADOW_PAD, textRight, Height - SHADOW_PAD);
+    MD3DrawTextBGRA(ABmp, FSnackbar.FActionText, aRect, actColor,
+      taRightJustify, True, True);
+    ABmp.FontStyle := [];
+    textRight := textRight - actionW - ACTION_GAP;
+  end;
+
+  { Message text }
+  padV := SNACKBAR_PADDING_V + (FDensityDelta div 2);
+  if padV < 6 then padV := 6;
+  aRect := Rect(textLeft, SHADOW_PAD + padV, textRight, Height - SHADOW_PAD - padV);
+
+  if Height > (SNACKBAR_MIN_H + FDensityDelta + SHADOW_PAD * 2) then
+  begin
+    { Multiline — word-wrapped BGRA text }
+    FillChar(ts, SizeOf(ts), 0);
+    ts.Wordbreak := True;
+    ts.SingleLine := False;
+    ts.Alignment := taLeftJustify;
+    ts.Layout := tlTop;
+    ts.Clipping := True;
+    ABmp.TextRect(aRect, aRect.Left, aRect.Top, FSnackbar.FMessage, ts,
+      ColorToBGRA(ColorToRGB(txtColor)));
+  end
+  else
+    MD3DrawTextBGRA(ABmp, FSnackbar.FMessage, aRect, txtColor,
+      taLeftJustify, True, True);
 end;
 
 procedure TSnackbarPanel.EraseBackground(DC: HDC);
+var
+  ARect: TRect;
 begin
-  { Suprimido — o PaintCached preenche o bitmap inteiro (incluindo
-    os cantos) com a cor do parent, então não precisamos de um erase
-    separado que pode flickar ou ter cor desatualizada. }
+  if DC = 0 then Exit;
+  ARect := Rect(0, 0, Width, Height);
+  { Always use MD3Colors.Surface — the snackbar is parented to the Form
+    whose Color may NOT be updated after dark-mode/palette toggles.
+    MD3Colors.Surface is always in sync with the current scheme. }
+  Brush.Color := MD3Colors.Surface;
+  LCLIntf.FillRect(DC, ARect, HBRUSH(Brush.Reference.Handle));
 end;
 
 procedure TSnackbarPanel.Paint;
 var
-  aRect: TRect;
-  textLeft, textRight: Integer;
-  bgColor, txtColor, actColor, icoColor: TColor;
-  hexColor: string;
-  actionW, padV: Integer;
   bmp: TBGRABitmap;
 begin
   if (Width <= 0) or (Height <= 0) then Exit;
 
-  GetTypeColors(bgColor, txtColor, actColor, icoColor);
-
-  { Use paint cache if available and valid }
+  { Create/validate cached bitmap — full content (bg + text + icons) }
   if (FPaintCache = nil) or (FPaintCacheW <> Width) or (FPaintCacheH <> Height) then
   begin
     FreeAndNil(FPaintCache);
@@ -263,7 +340,9 @@ begin
     PaintCached(FPaintCache);
   end;
 
-  { Apply alpha for animation }
+  { Single opaque blit — bitmap is pre-filled with Surface bg so
+    corners are already correctly blended.  During fade animation
+    (FAlpha < 255), duplicate + ApplyGlobalOpacity + alpha-blit. }
   if FAlpha < 255 then
   begin
     bmp := FPaintCache.Duplicate as TBGRABitmap;
@@ -276,64 +355,6 @@ begin
   end
   else
     FPaintCache.Draw(Canvas, 0, 0, False);
-
-  { Calculate text area }
-  textLeft := SNACKBAR_PADDING_H;
-  textRight := Width - SNACKBAR_PADDING_H;
-
-  { Leading icon }
-  if FSnackbar.FLeadingIcon <> imClear then
-  begin
-    hexColor := FRColorToSVGHex(icoColor);
-    if FIconCache = nil then
-      FIconCache := FRGetCachedIcon(FSnackbar.FLeadingIcon, hexColor, 2.0, ICON_SIZE, ICON_SIZE);
-    if Assigned(FIconCache) then
-      FIconCache.Draw(Canvas, textLeft, (Height - ICON_SIZE) div 2, False);
-    textLeft := textLeft + ICON_SIZE + 12;
-  end;
-
-  { Close button — draw X with canvas lines }
-  if FSnackbar.FShowCloseButton then
-  begin
-    Canvas.Pen.Color := txtColor;
-    Canvas.Pen.Width := 2;
-    Canvas.Pen.Style := psSolid;
-    Canvas.Line(
-      textRight - CLOSE_BTN_SIZE + 6, (Height - CLOSE_BTN_SIZE) div 2 + 6,
-      textRight - 6, (Height + CLOSE_BTN_SIZE) div 2 - 6
-    );
-    Canvas.Line(
-      textRight - 6, (Height - CLOSE_BTN_SIZE) div 2 + 6,
-      textRight - CLOSE_BTN_SIZE + 6, (Height + CLOSE_BTN_SIZE) div 2 - 6
-    );
-    textRight := textRight - CLOSE_BTN_SIZE - ACTION_GAP;
-  end;
-
-  { Action text }
-  if FSnackbar.FActionText <> '' then
-  begin
-    Canvas.Font.Size := 10;
-    actionW := Canvas.TextWidth(FSnackbar.FActionText) + 24;
-    aRect := Rect(textRight - actionW, 0, textRight, Height);
-    MD3DrawText(Canvas, FSnackbar.FActionText, aRect, actColor, taRightJustify, True);
-    textRight := textRight - actionW - ACTION_GAP;
-  end;
-
-  { Message text — multiline uses DrawText with DT_WORDBREAK,
-    single-line uses MD3DrawText with vertical centering }
-  padV := SNACKBAR_PADDING_V + (FDensityDelta div 2);
-  if padV < 6 then padV := 6;
-  aRect := Rect(textLeft, padV, textRight, Height - padV);
-  if Height > (SNACKBAR_MIN_H + FDensityDelta) then
-  begin
-    Canvas.Font.Size := 10;
-    Canvas.Font.Color := txtColor;
-    Canvas.Brush.Style := bsClear;
-    DrawText(Canvas.Handle, PChar(FSnackbar.FMessage), Length(FSnackbar.FMessage),
-      aRect, DT_LEFT or DT_WORDBREAK);
-  end
-  else
-    MD3DrawText(Canvas, FSnackbar.FMessage, aRect, txtColor, taLeftJustify, True);
 end;
 
 procedure TSnackbarPanel.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -347,7 +368,7 @@ begin
   GetTypeColors(bgColor, txtColor, actColor, icoColor);
 
   { Check close button hit }
-  closeLeft := Width - SNACKBAR_PADDING_H - CLOSE_BTN_SIZE;
+  closeLeft := Width - SHADOW_PAD - SNACKBAR_PADDING_H - CLOSE_BTN_SIZE;
   if FSnackbar.FShowCloseButton and (X >= closeLeft) then
   begin
     FSnackbar.OnCloseClick(Self);
@@ -362,7 +383,7 @@ begin
     if FSnackbar.FShowCloseButton then
       actionLeft := closeLeft - ACTION_GAP - actionW
     else
-      actionLeft := Width - SNACKBAR_PADDING_H - actionW;
+      actionLeft := Width - SHADOW_PAD - SNACKBAR_PADDING_H - actionW;
     if X >= actionLeft then
       FSnackbar.OnActionClick(Self);
   end;
@@ -565,6 +586,8 @@ begin
   if ownerForm = nil then Exit;
 
   snkPanel := TSnackbarPanel.Create(ownerForm);
+  snkPanel.ControlStyle := snkPanel.ControlStyle + [csOpaque];
+  snkPanel.DoubleBuffered := True;
   snkPanel.FSnackbar := Self;
   snkPanel.FAlpha := 0;
 
@@ -605,12 +628,12 @@ begin
   { Calculate height based on text }
   panelH := snkPanel.CalcContentHeight(maxTextW);
 
-  snkPanel.Width := panelW;
-  snkPanel.Height := panelH;
+  snkPanel.Width := panelW + SHADOW_PAD * 2;
+  snkPanel.Height := panelH + SHADOW_PAD * 2;
   { Centraliza horizontalmente respeitando a margem lateral. Se o form
     for menor que MIN_WIDTH + margens, o clamp acima ja cortou o
     panelW — aqui so posicionamos. }
-  snkPanel.Left := (ownerForm.ClientWidth - panelW) div 2;
+  snkPanel.Left := (ownerForm.ClientWidth - panelW) div 2 - SHADOW_PAD;
 
   { Start off-screen for animation — alem do rect visivel mais o
     SNACKBAR_BOTTOM_MARGIN, para a slide-up animation terminar com
@@ -625,6 +648,12 @@ begin
     Show. }
   snkPanel.Anchors := [akBottom];
   snkPanel.BringToFront;
+
+  { Clip the panel to a rounded rectangle — the OS handles transparency
+    at corners, so the snackbar floats cleanly over any background. }
+  { No region clipping — shadow needs to extend beyond the rounded body.
+    The BGRA pre-fill with Surface color handles the AA blending. }
+
   FPanel := snkPanel;
   FPanel.FreeNotification(Self);
 

@@ -250,6 +250,7 @@ type
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure SetDensity(AValue: TFRMDDensity); virtual;
+    procedure SetFieldSize(AValue: TFRFieldSize); virtual;
     function InteractionState: TFRMDInteractionState;
     { Desenha o efeito ripple (círculo expandindo do ponto de clique) }
     procedure PaintRipple(ABmp: TBGRABitmap; ARippleColor: TColor);
@@ -283,7 +284,7 @@ type
     { Tamanho semântico usado pelo TFRMaterialGridPanel quando AutoColSpan=True.
       Em fsAuto, o Grid infere a largura por MaxLength (edits genéricos) ou
       por classe do componente (currency, date, spin, memo...). }
-    property FieldSize: TFRFieldSize read FFieldSize write FFieldSize default fsAuto;
+    property FieldSize: TFRFieldSize read FFieldSize write SetFieldSize default fsAuto;
     property SyncWithTheme: TFRMDSyncOptions read FSyncWithTheme write FSyncWithTheme default [toColor, toDensity, toVariant];
   end;
 
@@ -348,7 +349,7 @@ type
 
 implementation
 
-uses Math;
+uses Math, FRMaterial3GridPanel;
 
 { ══════════════════════════════════════════════════════════════════════════
   Lifecycle guards — implementation
@@ -1337,6 +1338,22 @@ begin
   FRMDSafeInvalidate(Self);
   if not (csLoading in ComponentState) then
     DoOnResize;
+end;
+
+procedure TFRMaterial3Control.SetFieldSize(AValue: TFRFieldSize);
+begin
+  if FFieldSize = AValue then Exit;
+  FFieldSize := AValue;
+  { Notifica o parent (GridPanel) para re-layout quando AutoColSpan esta ativo.
+    Chama DoLayout (que funciona sem handle) se o parent for GridPanel,
+    senao faz ReAlign normal. }
+  if (Parent <> nil) and not (csLoading in ComponentState) then
+  begin
+    if Parent is TFRMaterialGridPanel then
+      TFRMaterialGridPanel(Parent).DoLayout
+    else
+      Parent.ReAlign;
+  end;
 end;
 
 procedure TFRMaterialCustomControl.SetValidationState(AValue: TFRValidationState);

@@ -27,7 +27,8 @@ uses
   Generics.Collections,
   BGRABitmap, BGRABitmapTypes,
   {$IFDEF FPC} LCLType, LCLIntf, LResources, LMessages, {$ENDIF}
-  laz.VirtualTrees, FRMaterial3Base, FRMaterialTheme, FRMaterialIcons,
+  laz.VirtualTrees,
+  FRMaterial3Base, FRMaterialTheme, FRMaterialIcons,
   FRMaterialEdit, FRMaterial3Button;
 
 type
@@ -129,6 +130,8 @@ type
   TFRMaterialVirtualDataGrid = class(TLazVirtualStringTree, IFRMaterialComponent)
   private
     FSyncWithTheme: TFRMDSyncOptions;
+    { Cell text storage — key = NodeIndex * MaxColumns + Column }
+    FCellTexts: TDictionary<Int64, String>;
     { Sort }
     FDensity: TFRMDDensity;
     FZebraStripes: Boolean;
@@ -172,6 +175,7 @@ type
     procedure ApplyParsedValue(Node: PVirtualNode; Column: TColumnIndex;
       const NewText: String; const Cfg: TFRMDEditColumnConfig);
     procedure ScheduleNextEdit(Node: PVirtualNode);
+    function CellKey(Node: PVirtualNode; Column: TColumnIndex): Int64; inline;
     { Sort/Filter internals }
     procedure DoInternalSort;
     procedure ApplyFilter;
@@ -218,6 +222,9 @@ type
       Column: TColumnIndex): IVTEditLink; override;
     procedure DoNewText(Node: PVirtualNode; Column: TColumnIndex;
       const Text: String); override;
+    procedure DoGetText(Node: PVirtualNode; Column: TColumnIndex;
+      TextType: TVSTTextType; var AText: String); override;
+    procedure DoFreeNode(Node: PVirtualNode); override;
     function DoCancelEdit: Boolean; override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -507,6 +514,7 @@ begin
     destrutor ainda encontra um FFilterTexts valido e libera corretamente
     em vez de tentar liberar um ponteiro aleatorio. }
   FFilterTexts       := TDictionary<Integer, String>.Create;
+  FCellTexts         := TDictionary<Int64, String>.Create;
   FDensity           := ddNormal;
   FZebraStripes      := False;
   FSortCol           := -1;
@@ -583,6 +591,7 @@ end;
 destructor TFRMaterialVirtualDataGrid.Destroy;
 begin
   FreeAndNil(FLoadingTimer);
+  FreeAndNil(FCellTexts);
   FreeAndNil(FFilterTexts);
   inherited;
 end;
@@ -1624,12 +1633,41 @@ procedure TFRMaterialVirtualDataGrid.DoNewText(Node: PVirtualNode;
 var
   cfg: TFRMDEditColumnConfig;
 begin
+  { Store text in internal dictionary }
+  FCellTexts.AddOrSetValue(CellKey(Node, Column), Text);
+
   if GetEditColumnConfig(Column, cfg) then
     ApplyParsedValue(Node, Column, Text, cfg);
 
   inherited DoNewText(Node, Column, Text);
   InvalidateNode(Node);
   ScheduleNextEdit(Node);
+end;
+
+procedure TFRMaterialVirtualDataGrid.DoGetText(Node: PVirtualNode;
+  Column: TColumnIndex; TextType: TVSTTextType; var AText: String);
+begin
+  if not FCellTexts.TryGetValue(CellKey(Node, Column), AText) then
+    AText := '';
+  { Let user OnGetText override if assigned }
+  inherited DoGetText(Node, Column, TextType, AText);
+end;
+
+procedure TFRMaterialVirtualDataGrid.DoFreeNode(Node: PVirtualNode);
+var
+  i: Integer;
+begin
+  { Remove all cell texts for this node }
+  if Assigned(FCellTexts) and (Header.Columns.Count > 0) then
+    for i := 0 to Header.Columns.Count - 1 do
+      FCellTexts.Remove(CellKey(Node, i));
+  inherited DoFreeNode(Node);
+end;
+
+function TFRMaterialVirtualDataGrid.CellKey(Node: PVirtualNode;
+  Column: TColumnIndex): Int64;
+begin
+  Result := Int64(PtrUInt(Node)) xor (Int64(Column) shl 48);
 end;
 
 function TFRMaterialVirtualDataGrid.DoCancelEdit: Boolean;
@@ -2230,6 +2268,7 @@ begin
   else
     FEdit.Variant := mvOutlined;
   FEdit.BorderRadius := 4;
+  FEdit.Color := Self.Color;  { Outlined: bg deve casar com o popup }
   FEdit.Edit.OnKeyDown := EditKeyDown;
 
   curFilter := AGrid.GetFilterText(AColumn);
