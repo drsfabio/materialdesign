@@ -623,8 +623,8 @@ begin
   { SetWindowRgn for coarse clip + BGRA antialias for smooth edges }
   {$IFDEF MSWINDOWS}
   SetWindowRgn(snkPanel.Handle,
-    CreateRoundRectRgn(0, 0, panelW + 1, panelH + 1,
-      SNACKBAR_RADIUS * 2, SNACKBAR_RADIUS * 2), True);
+    CreateRoundRectRgn(-1, -1, panelW + 2, panelH + 2,
+      SNACKBAR_RADIUS * 2 + 2, SNACKBAR_RADIUS * 2 + 2), True);
   {$ENDIF}
 
   FPanel := snkPanel;
