@@ -252,7 +252,7 @@ type
     property PopupMenu: TPopupmenu read GetEditPopupMenu write SetEditPopupMenu;
     property ReadOnly: Boolean read GetEditReadOnly write SetEditReadOnly default False;
     { Quando True, exibe um botão "×" à direita do campo ao digitar texto }
-    property ShowClearButton: Boolean read GetShowClearButton write SetShowClearButton default False;
+    property ShowClearButton: Boolean read GetShowClearButton write SetShowClearButton default True;
     { Quando True, exibe um botão com ícone de lupa ao lado do campo }
     property ShowSearchButton: Boolean read GetShowSearchButton write SetShowSearchButton default False;
     { Posição do botão de pesquisa: bpLeft (esquerda) ou bpRight (direita, padrão) }
@@ -335,6 +335,8 @@ type
   TFRMaterialEdit = class(specialize TFRMaterialEditBase<TFRInternalMaskEdit>)
   private
     FTextMask: TFRTextMaskType;
+    FMaskKind: TFRMaskKind;
+    FLocale: TFRLocale;
     FApplyingMask: Boolean;
     FUserOnChange: TNotifyEvent;
     FUserOnKeyPress: TKeyPressEvent;
@@ -376,11 +378,19 @@ type
     procedure SetOnEditEndDrag(AValue: TEndDragEvent);
     procedure SetOnEditStartDrag(AValue: TStartDragEvent);
 
-    { Máscara PT-BR }
+    { Máscara PT-BR legacy (TFRTextMaskType) }
     function GetTextMask: TFRTextMaskType;
     procedure SetTextMask(AValue: TFRTextMaskType);
     procedure MaskKeyPress(Sender: TObject; var Key: Char);
     procedure MaskChange(Sender: TObject);
+
+    { Mascara via MaskKind + Locale — API unificada com i18n.
+      Resolve o pattern em runtime via FRMaskKindPattern e aplica
+      direto em FEdit.EditMask. Cada Set re-resolve, suportando
+      toggle de Locale sem perder o MaskKind. }
+    procedure SetMaskKind(AValue: TFRMaskKind);
+    procedure SetLocale(AValue: TFRLocale);
+    procedure ApplyMaskKind;
     function GetUserOnChange: TNotifyEvent;
     procedure SetUserOnChange(AValue: TNotifyEvent);
     function GetUserOnKeyPress: TKeyPressEvent;
@@ -449,8 +459,17 @@ type
     property ShowClearButton;
     property ShowSearchButton: Boolean read GetShowSearchButton write SetShowSearchButton default False;
     property SearchButtonPosition;
-    { Máscara PT-BR com formatação automática e validação }
+    { Máscara PT-BR legacy com formatação automática e validação.
+      API nova: use MaskKind + Locale abaixo para formatos i18n. }
     property TextMask: TFRTextMaskType read GetTextMask write SetTextMask default tmtNone;
+    { Mascara unificada por tipo semantico + locale. Resolve o pattern
+      via FRMaskKindPattern em runtime. Kinds brasileiros (fmkCpfBR,
+      fmkCnpjBR, etc.) ignoram Locale; internacionais (fmkPhone, fmkDate,
+      fmkTime, fmkPostalCode) respeitam Locale para o layout. }
+    property MaskKind: TFRMaskKind read FMaskKind write SetMaskKind default fmkNone;
+    { Locale para mascaras internacionais. Default pt-BR. Toggle de
+      Locale re-aplica o pattern correspondente ao MaskKind atual. }
+    property Locale: TFRLocale read FLocale write SetLocale default locPtBR;
     { Filtro de entrada: restringe os caracteres que podem ser digitados }
     property InputFilter: TFRInputFilter read FInputFilter write SetInputFilter default ifNone;
     { Caracteres permitidos quando InputFilter = ifCustom (ex: '0123456789.,') }
@@ -652,12 +671,12 @@ var
 begin
   if csLoading in ComponentState then Exit;
 
-  { Reinicia larguras dos painéis }
-  FLeftPanelWidth  := 4; { Margem inicial }
-  FRightPanelWidth := 4; { Margem inicial }
-  
-  LeftCursor  := 4;
-  RightCursor := 4;
+  { Reinicia larguras dos painéis — MD3 spec: 16dp de padding horizontal }
+  FLeftPanelWidth  := MD3_FIELD_PADDING_H;
+  FRightPanelWidth := MD3_FIELD_PADDING_H;
+
+  LeftCursor  := MD3_FIELD_PADDING_H;
+  RightCursor := MD3_FIELD_PADDING_H;
 
   { Limpa âncoras dos botões antes de reconfigurar }
   FClearButton.Anchors  := [];
@@ -740,6 +759,21 @@ begin
     Inc(FRightPanelWidth, FClearButton.Width + 4);
   end;
 
+  { Reserva espaço para Prefix/Suffix dentro do campo.
+    MD3 layout: |-- padding --|-- prefix --|-- edit text --|-- suffix --|-- padding --|
+    O FieldPainter desenha o prefix em EditLeft - PrefixW, então a margem
+    esquerda do edit precisa incluir a largura do prefix. }
+  if FPrefixText <> '' then
+  begin
+    Canvas.Font.Assign(FEdit.Font);
+    Inc(FLeftPanelWidth, Canvas.TextWidth(FPrefixText + ' '));
+  end;
+  if FSuffixText <> '' then
+  begin
+    Canvas.Font.Assign(FEdit.Font);
+    Inc(FRightPanelWidth, Canvas.TextWidth(FSuffixText + ' '));
+  end;
+
   { Aplica as margens calculadas ao painel central (FEdit) }
   FEdit.BorderSpacing.Left  := FLeftPanelWidth;
   FEdit.BorderSpacing.Right := FRightPanelWidth;
@@ -792,6 +826,7 @@ procedure TFRMaterialEditBase.SetPrefixText(const AValue: string);
 begin
   if FPrefixText = AValue then Exit;
   FPrefixText := AValue;
+  AnchorButtons;
   FRMDSafeInvalidate(Self);
 end;
 
@@ -799,6 +834,7 @@ procedure TFRMaterialEditBase.SetSuffixText(const AValue: string);
 begin
   if FSuffixText = AValue then Exit;
   FSuffixText := AValue;
+  AnchorButtons;
   FRMDSafeInvalidate(Self);
 end;
 
@@ -1695,17 +1731,9 @@ begin
   FLabel := TBoundLabel.Create(Self);
   inherited Create(AOwner);
 
-  if Assigned(FRMaterialDefaultThemeManager) then
-    Self.ApplyTheme(FRMaterialDefaultThemeManager)
-  else
-  begin
-    Self.AccentColor   := clHighlight;
-    Self.DisabledColor := $00B8AFA8;
-  end;
-  
   Self.BorderStyle := bsNone;
   Self.ParentColor := True;
-  
+
   FRMDRegisterComponent(Self as IFRMaterialComponent);
 
   FLabel.Align := alNone;
@@ -1714,8 +1742,8 @@ begin
   FLabel.Top := 4;
   FLabel.BorderSpacing.Around := 0;
   FLabel.BorderSpacing.Bottom := 4;
-  FLabel.BorderSpacing.Left := 4;
-  FLabel.BorderSpacing.Right := 4;
+  FLabel.BorderSpacing.Left := MD3_FIELD_PADDING_H;
+  FLabel.BorderSpacing.Right := MD3_FIELD_PADDING_H;
   FLabel.BorderSpacing.Top := 4;
   FLabel.Font.Color := $00B8AFA8;
   FLabel.Font.Style := [fsBold];
@@ -1732,8 +1760,8 @@ begin
   FEdit.AutoSize := True;
   FEdit.BorderSpacing.Around := 0;
   FEdit.BorderSpacing.Bottom := 4;
-  FEdit.BorderSpacing.Left := 4;
-  FEdit.BorderSpacing.Right := 4;
+  FEdit.BorderSpacing.Left := MD3_FIELD_PADDING_H;
+  FEdit.BorderSpacing.Right := MD3_FIELD_PADDING_H;
   FEdit.BorderSpacing.Top := 0;
   FEdit.BorderStyle := bsNone;
   FEdit.ParentColor := True;
@@ -1809,7 +1837,7 @@ begin
   FCopyButton.OnClick     := @CopyButtonClick;
   FCopyButton.SetSubComponent(True);
 
-  FShowClearButton      := False;
+  FShowClearButton      := True;
   FShowSearchButton     := False;
   FSearchButtonPosition := bpRight;
   FVariant              := mvStandard;
@@ -1836,6 +1864,18 @@ begin
   FAutoFontSize     := True;
 
   FEdit.Text := '';
+
+  { ApplyTheme DEPOIS de todas as inicializacoes de campo. Antes
+    estava no inicio do Create e FVariant/FBorderRadius/FShowClearButton
+    eram sobrescritos logo apos — deixando o edit "preso" em mvStandard
+    independente do Variant do ThemeManager global. }
+  if Assigned(FRMaterialDefaultThemeManager) then
+    Self.ApplyTheme(FRMaterialDefaultThemeManager)
+  else
+  begin
+    Self.AccentColor   := clHighlight;
+    Self.DisabledColor := $00B8AFA8;
+  end;
 end;
 
 destructor TFRMaterialEditBase.Destroy;
@@ -1884,9 +1924,16 @@ begin
     Self.ParentColor := True;
   end;
 
-  { Cores de texto — OnSurface contrasta com Surface/Container }
+  { Cores de texto — OnSurface contrasta com Surface/Container.
+    Explicit em FEdit.Font.Color: ParentFont=True nao propaga confiavelmente
+    em runtime quando Self.Font.Color muda via ApplyTheme (LCL snapshota a
+    Font no momento do SetParentFont). Sem esta linha, dark mode deixa o
+    texto do edit em clBlack hardcoded pelo construtor — invisivel contra
+    Surface escuro. }
   Self.Font.Color := MD3Colors.OnSurface;
   FLabel.Font.Color := MD3Colors.OnSurfaceVariant;
+  if Assigned(FEdit) then
+    FEdit.Font.Color := MD3Colors.OnSurface;
   if Assigned(FSearchButton) then
   begin
     FSearchButton.NormalColor := MD3Colors.Primary;
@@ -2058,6 +2105,64 @@ begin
   FRMDSafeInvalidate(Self);
 end;
 
+procedure TFRMaterialEdit.SetMaskKind(AValue: TFRMaskKind);
+begin
+  if FMaskKind = AValue then Exit;
+  FMaskKind := AValue;
+  ApplyMaskKind;
+end;
+
+procedure TFRMaterialEdit.SetLocale(AValue: TFRLocale);
+begin
+  if FLocale = AValue then Exit;
+  FLocale := AValue;
+  { Apenas reaplica se tem MaskKind ativo — caso contrario o locale
+    eh so informativo e nao altera renderizacao. }
+  if FMaskKind <> fmkNone then
+    ApplyMaskKind;
+end;
+
+procedure TFRMaterialEdit.ApplyMaskKind;
+var
+  pattern: string;
+  maxLen: Integer;
+begin
+  { Resolve o pattern via library. MaskKind precedence sobre TextMask
+    e NumericMask: se o dev set MaskKind, desativamos os outros para
+    nao conflitar os handlers de keypress. }
+  if FMaskKind = fmkNone then
+  begin
+    { Limpa a mascara sem mexer nos outros caminhos (TextMask/NumericMask)
+      — se eles estavam ativos, continuam funcionando. }
+    if (FTextMask = tmtNone) and (FNumericMask = nmtNone) then
+    begin
+      FEdit.EditMask := '';
+      FEdit.MaxLength := 0;
+    end;
+    Exit;
+  end;
+
+  { Desativa os caminhos legacy para evitar conflito de handlers. }
+  if FTextMask <> tmtNone then
+    FTextMask := tmtNone;
+  if FNumericMask <> nmtNone then
+    FNumericMask := nmtNone;
+
+  pattern := FRMaskKindPattern(FMaskKind, FLocale);
+  maxLen  := FRMaskKindMaxLen(FMaskKind, FLocale);
+
+  { Para kinds brasileiros documentais (CPF/CNPJ/CEP/PIS etc.) usamos
+    o FRApplyMaskPattern via handler de KeyPress em vez de EditMask
+    nativo — o EditMask do LCL eh rigido e nao auto-completa. }
+  FEdit.EditMask := pattern;
+  if maxLen > 0 then
+    FEdit.MaxLength := maxLen
+  else
+    FEdit.MaxLength := 0;
+
+  FRMDSafeInvalidate(Self);
+end;
+
 function TFRMaterialEdit.GetUserOnChange: TNotifyEvent;
 begin
   Result := FUserOnChange;
@@ -2202,6 +2307,8 @@ constructor TFRMaterialEdit.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FTextMask         := tmtNone;
+  FMaskKind         := fmkNone;
+  FLocale           := locPtBR;
   FApplyingMask     := False;
   FInputFilter      := ifNone;
   FAllowedChars     := '';

@@ -39,9 +39,10 @@ uses
   FRMaterial3Sheet, FRMaterial3DatePicker, FRMaterial3TimePicker,
   FRMaterial3Carousel, FRMaterial3TreeView, FRMaterial3List,
   FRMaterial3PageControl, FRMaterial3DataGrid, FRMaterial3VirtualDataGrid,
-  FRMaterialCurrencyEdit, FRMaterialDateEdit, FRMaterialComboEdit,
+  FRMaterialDateEdit,
   FRMaterialCheckComboEdit, FRMaterialMemoEdit, FRMaterialSpinEdit,
-  FRMaterialSearchEdit, FRMaterialMaskEdit;
+  FRMaterialSearchEdit, FRMaterialMaskEdit, FRMaterial3Toolbox,
+  FRMaterial3Combo;
 
 type
   TTestProc = procedure(Host: TWinControl);
@@ -195,6 +196,49 @@ begin
     c.Parent := Host;
   finally
     c.Free;
+  end;
+end;
+
+procedure Test_Combo(Host: TWinControl);
+var c: TFRMaterialCombo;
+begin
+  c := TFRMaterialCombo.Create(Host);
+  try
+    c.Parent := Host;
+    c.Items.Add('A'); c.Items.Add('B'); c.Items.Add('C');
+    c.ItemIndex := 1;
+    c.Caption := 'Test';
+  finally
+    c.Free;
+  end;
+end;
+
+procedure Test_Toolbox(Host: TWinControl);
+var
+  tb: TFRMaterialToolbox;
+  btn: TFRMaterialButton;
+  s: TFRMDToolboxStyle;
+begin
+  { Exercita todas as variantes e auto-layout com filhos reais }
+  for s := Low(TFRMDToolboxStyle) to High(TFRMDToolboxStyle) do
+  begin
+    tb := TFRMaterialToolbox.Create(Host);
+    try
+      tb.Parent := Host;
+      tb.ToolboxStyle := s;
+      tb.Orientation := toHorizontal;
+      tb.ContentPadding := 8;
+      tb.ItemSpacing := 8;
+      btn := TFRMaterialButton.Create(tb);
+      btn.Parent := tb;
+      btn.Caption := 'A';
+      btn := TFRMaterialButton.Create(tb);
+      btn.Parent := tb;
+      btn.Caption := 'B';
+      tb.Orientation := toVertical;
+    finally
+      tb.Free;
+    end;
   end;
 end;
 
@@ -390,18 +434,6 @@ begin
   end;
 end;
 
-procedure Test_CurrencyEdit(Host: TWinControl);
-var c: TFRMaterialCurrencyEdit;
-begin
-  c := TFRMaterialCurrencyEdit.Create(Host);
-  try
-    c.Parent := Host;
-    c.Value := 99.99;
-  finally
-    c.Free;
-  end;
-end;
-
 procedure Test_DateEdit(Host: TWinControl);
 var c: TFRMaterialDateEdit;
 begin
@@ -409,17 +441,6 @@ begin
   try
     c.Parent := Host;
     c.Date := Now;
-  finally
-    c.Free;
-  end;
-end;
-
-procedure Test_ComboEdit(Host: TWinControl);
-var c: TFRMaterialComboEdit;
-begin
-  c := TFRMaterialComboEdit.Create(Host);
-  try
-    c.Parent := Host;
   finally
     c.Free;
   end;
@@ -615,6 +636,8 @@ begin
     Run('TFRMaterialChip',             @Test_Chip,             Host);
     Run('TFRMaterialDivider',          @Test_Divider,          Host);
     Run('TFRMaterialCard',             @Test_Card,             Host);
+    Run('TFRMaterialToolbox',          @Test_Toolbox,          Host);
+    Run('TFRMaterialCombo',            @Test_Combo,            Host);
     Run('TFRMaterialGridPanel',        @Test_GridPanel,        Host);
     Run('TFRMaterialLinearProgress',   @Test_LinearProgress,   Host);
     Run('TFRMaterialCircularProgress', @Test_CircularProgress, Host);
@@ -631,9 +654,7 @@ begin
     Run('TFRMaterialListView',         @Test_ListView,         Host);
     Run('TFRMaterialVirtualDataGrid',  @Test_VirtualDataGrid,  Host);
     Run('TFRMaterialDataGrid',         @Test_DataGrid,         Host);
-    Run('TFRMaterialCurrencyEdit',     @Test_CurrencyEdit,     Host);
     Run('TFRMaterialDateEdit',         @Test_DateEdit,         Host);
-    Run('TFRMaterialComboEdit',        @Test_ComboEdit,        Host);
     Run('TFRMaterialCheckComboEdit',   @Test_CheckComboEdit,   Host);
     Run('TFRMaterialMemoEdit',         @Test_MemoEdit,         Host);
     Run('TFRMaterialSpinEdit',         @Test_SpinEdit,         Host);

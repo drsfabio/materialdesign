@@ -101,14 +101,17 @@ const
   ANIM_DURATION = 250; { ms — MD3 standard duration }
   ANIM_INTERVAL = 16;  { ~60 fps }
   EXIT_DURATION = 200;  { ms — slightly faster exit }
-  SNACKBAR_MARGIN = 16;
-  SNACKBAR_PADDING_H = 16;
+  SNACKBAR_MARGIN = 24;       { margem lateral/vertical ao form }
+  SNACKBAR_BOTTOM_MARGIN = 24; { distancia do fundo do form }
+  SNACKBAR_MAX_WIDTH = 568;   { MD3 spec max width }
+  SNACKBAR_MIN_WIDTH = 344;   { MD3 spec min width }
+  SNACKBAR_PADDING_H = 20;
   SNACKBAR_PADDING_V = 14;
   SNACKBAR_MIN_H = 48;
-  SNACKBAR_RADIUS = 4;
+  SNACKBAR_RADIUS = 16;       { pill-like MD3 corners }
   ICON_SIZE = 24;
   CLOSE_BTN_SIZE = 24;
-  ACTION_GAP = 8;
+  ACTION_GAP = 12;
 
 type
   TSnackbarPanel = class(TCustomControl)
@@ -120,12 +123,15 @@ type
     FIconCache: TBGRABitmap;
     FCloseIconCache: TBGRABitmap;
     FAlpha: Byte;
+    FDensityDelta: Integer;
     procedure InvalidatePaintCache;
     procedure GetTypeColors(out ABg, AText, AAction, AIconColor: TColor);
     function CalcContentHeight(AMaxTextW: Integer): Integer;
+    function GetParentBgColor: TColor;
   protected
     function PaintCached(ABmp: TBGRABitmap): Boolean; virtual;
     procedure Paint; override;
+    procedure EraseBackground({%H-}DC: HDC); override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
   public
     destructor Destroy; override;
@@ -176,12 +182,17 @@ function TSnackbarPanel.CalcContentHeight(AMaxTextW: Integer): Integer;
 var
   R: TRect;
   flags: Cardinal;
+  minH, padV: Integer;
 begin
+  minH := SNACKBAR_MIN_H + FDensityDelta;
+  if minH < 32 then minH := 32;
+  padV := SNACKBAR_PADDING_V + (FDensityDelta div 2);
+  if padV < 6 then padV := 6;
   R := Rect(0, 0, AMaxTextW, 0);
   Canvas.Font.Size := 10;
   flags := DT_CALCRECT or DT_WORDBREAK or DT_LEFT;
   DrawText(Canvas.Handle, PChar(FSnackbar.FMessage), Length(FSnackbar.FMessage), R, flags);
-  Result := Max(SNACKBAR_MIN_H, R.Bottom - R.Top + SNACKBAR_PADDING_V * 2);
+  Result := Max(minH, R.Bottom - R.Top + padV * 2);
 end;
 
 destructor TSnackbarPanel.Destroy;
@@ -199,14 +210,34 @@ begin
   FPaintCacheH := 0;
 end;
 
+function TSnackbarPanel.GetParentBgColor: TColor;
+begin
+  { MD3Colors.Surface é a referência confiável para cor de fundo:
+    atualiza automaticamente com dark mode toggle, independente
+    do estado de Parent.Brush.Color que pode ficar stale. }
+  Result := ColorToRGB(MD3Colors.Surface);
+end;
+
 function TSnackbarPanel.PaintCached(ABmp: TBGRABitmap): Boolean;
 var
   bgColor, txtColor, actColor, icoColor: TColor;
 begin
   Result := True;
   GetTypeColors(bgColor, txtColor, actColor, icoColor);
-  MD3DrawShadow(ABmp, 0, 0, Width - 1, Height - 1, SNACKBAR_RADIUS, elLevel3);
-  MD3FillRoundRect(ABmp, 0, 0, Width - 1, Height - 1, SNACKBAR_RADIUS, bgColor);
+  { Preenche o bitmap inteiro com a cor do parent PRIMEIRO (opaco).
+    Depois desenha o rounded rect por cima. Assim os pixels AA dos
+    cantos arredondados se blendam corretamente com a cor do fundo,
+    sem depender de EraseBackground ou transparência. }
+  ABmp.Fill(ColorToBGRA(GetParentBgColor));
+  MD3DrawShadow(ABmp, 0, 0, Width, Height, SNACKBAR_RADIUS, elLevel3);
+  MD3FillRoundRect(ABmp, 0, 0, Width, Height, SNACKBAR_RADIUS, bgColor);
+end;
+
+procedure TSnackbarPanel.EraseBackground(DC: HDC);
+begin
+  { Suprimido — o PaintCached preenche o bitmap inteiro (incluindo
+    os cantos) com a cor do parent, então não precisamos de um erase
+    separado que pode flickar ou ter cor desatualizada. }
 end;
 
 procedure TSnackbarPanel.Paint;
@@ -215,7 +246,7 @@ var
   textLeft, textRight: Integer;
   bgColor, txtColor, actColor, icoColor: TColor;
   hexColor: string;
-  actionW: Integer;
+  actionW, padV: Integer;
   bmp: TBGRABitmap;
 begin
   if (Width <= 0) or (Height <= 0) then Exit;
@@ -290,8 +321,10 @@ begin
 
   { Message text — multiline uses DrawText with DT_WORDBREAK,
     single-line uses MD3DrawText with vertical centering }
-  aRect := Rect(textLeft, SNACKBAR_PADDING_V, textRight, Height - SNACKBAR_PADDING_V);
-  if Height > SNACKBAR_MIN_H then
+  padV := SNACKBAR_PADDING_V + (FDensityDelta div 2);
+  if padV < 6 then padV := 6;
+  aRect := Rect(textLeft, padV, textRight, Height - padV);
+  if Height > (SNACKBAR_MIN_H + FDensityDelta) then
   begin
     Canvas.Font.Size := 10;
     Canvas.Font.Color := txtColor;
@@ -441,7 +474,7 @@ begin
 
     if FPosition = spBottom then
     begin
-      startTop := ownerForm.ClientHeight - SNACKBAR_MARGIN - snkPanel.Height;
+      startTop := ownerForm.ClientHeight - SNACKBAR_BOTTOM_MARGIN - snkPanel.Height;
       targetTop := ownerForm.ClientHeight;
       snkPanel.Top := startTop + Round((targetTop - startTop) * eased);
     end
@@ -474,7 +507,7 @@ begin
     if FPosition = spBottom then
     begin
       startTop := ownerForm.ClientHeight;
-      targetTop := ownerForm.ClientHeight - SNACKBAR_MARGIN - snkPanel.Height;
+      targetTop := ownerForm.ClientHeight - SNACKBAR_BOTTOM_MARGIN - snkPanel.Height;
       snkPanel.Top := startTop + Round((targetTop - startTop) * eased);
     end
     else
@@ -508,6 +541,7 @@ var
   snkPanel: TSnackbarPanel;
   panelW, panelH: Integer;
   maxTextW: Integer;
+  tm: IFRMaterialThemeManager;
 begin
   { If already showing, hide without animation first. Mesmo pattern do
     DoAnimTick: desabilita antes de free pra que mensagens na fila nao
@@ -533,10 +567,28 @@ begin
   snkPanel := TSnackbarPanel.Create(ownerForm);
   snkPanel.FSnackbar := Self;
   snkPanel.FAlpha := 0;
+
+  { Read density from ThemeManager for layout sizing }
+  if Assigned(FRMaterialDefaultThemeManager) and
+     Supports(FRMaterialDefaultThemeManager, IFRMaterialThemeManager, tm) then
+    snkPanel.FDensityDelta := MD3DensityDelta(tm.Density)
+  else
+    snkPanel.FDensityDelta := 0;
+
   snkPanel.Parent := ownerForm;
 
-  { Calculate width }
+  { Calculate width — clamp entre MIN_WIDTH e MAX_WIDTH, respeitando o
+    espaco disponivel do form menos as margens laterais. MD3 spec: o
+    snackbar ocupa no maximo 568dp horizontalmente em desktop, ficando
+    centralizado ou end-aligned. Aqui centramos para preservar a
+    simetria visual do showcase. }
   panelW := ownerForm.ClientWidth - SNACKBAR_MARGIN * 2;
+  if panelW > SNACKBAR_MAX_WIDTH then
+    panelW := SNACKBAR_MAX_WIDTH;
+  if panelW < SNACKBAR_MIN_WIDTH then
+    panelW := SNACKBAR_MIN_WIDTH;
+  if panelW > ownerForm.ClientWidth - SNACKBAR_MARGIN * 2 then
+    panelW := ownerForm.ClientWidth - SNACKBAR_MARGIN * 2;
 
   { Calculate available text width for multiline measurement }
   maxTextW := panelW - SNACKBAR_PADDING_H * 2;
@@ -555,15 +607,23 @@ begin
 
   snkPanel.Width := panelW;
   snkPanel.Height := panelH;
-  snkPanel.Left := SNACKBAR_MARGIN;
+  { Centraliza horizontalmente respeitando a margem lateral. Se o form
+    for menor que MIN_WIDTH + margens, o clamp acima ja cortou o
+    panelW — aqui so posicionamos. }
+  snkPanel.Left := (ownerForm.ClientWidth - panelW) div 2;
 
-  { Start off-screen for animation }
+  { Start off-screen for animation — alem do rect visivel mais o
+    SNACKBAR_BOTTOM_MARGIN, para a slide-up animation terminar com
+    margem bonita do fundo. }
   if FPosition = spBottom then
     snkPanel.Top := ownerForm.ClientHeight  { below screen }
   else
     snkPanel.Top := -panelH;  { above screen }
 
-  snkPanel.Anchors := [akLeft, akRight, akBottom];
+  { Anchors sem akLeft/akRight: a gente nao quer o snackbar esticar
+    quando o form redimensiona. Fixa largura, re-centra no proximo
+    Show. }
+  snkPanel.Anchors := [akBottom];
   snkPanel.BringToFront;
   FPanel := snkPanel;
   FPanel.FreeNotification(Self);

@@ -177,8 +177,8 @@ begin
   FLabel.Top := 4;
   FLabel.BorderSpacing.Around := 0;
   FLabel.BorderSpacing.Bottom := 4;
-  FLabel.BorderSpacing.Left := 4;
-  FLabel.BorderSpacing.Right := 4;
+  FLabel.BorderSpacing.Left := MD3_FIELD_PADDING_H;
+  FLabel.BorderSpacing.Right := MD3_FIELD_PADDING_H;
   FLabel.BorderSpacing.Top := 4;
   FLabel.Font.Color := $00B8AFA8;
   FLabel.Font.Style := [fsBold];
@@ -191,8 +191,8 @@ begin
 
   FMemo.Align := alClient;
   FMemo.BorderSpacing.Around := 0;
-  FMemo.BorderSpacing.Left := 4;
-  FMemo.BorderSpacing.Right := 4;
+  FMemo.BorderSpacing.Left := MD3_FIELD_PADDING_H;
+  FMemo.BorderSpacing.Right := MD3_FIELD_PADDING_H;
   FMemo.BorderSpacing.Bottom := 4;
   FMemo.BorderStyle := bsNone;
   FMemo.ParentColor := True;

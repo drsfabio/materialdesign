@@ -735,8 +735,8 @@ begin
   FLabel.Top                  := 4;
   FLabel.BorderSpacing.Around := 0;
   FLabel.BorderSpacing.Bottom := 4;
-  FLabel.BorderSpacing.Left   := 4;
-  FLabel.BorderSpacing.Right  := 4;
+  FLabel.BorderSpacing.Left   := MD3_FIELD_PADDING_H;
+  FLabel.BorderSpacing.Right  := MD3_FIELD_PADDING_H;
   FLabel.BorderSpacing.Top    := 4;
   FLabel.Font.Color           := $00B8AFA8;
   FLabel.Font.Style           := [fsBold];
@@ -753,8 +753,8 @@ begin
   FMaskEdit.AutoSelect           := True;
   FMaskEdit.BorderSpacing.Around := 0;
   FMaskEdit.BorderSpacing.Bottom := 4;
-  FMaskEdit.BorderSpacing.Left   := 4;
-  FMaskEdit.BorderSpacing.Right  := 4;
+  FMaskEdit.BorderSpacing.Left   := MD3_FIELD_PADDING_H;
+  FMaskEdit.BorderSpacing.Right  := MD3_FIELD_PADDING_H;
   FMaskEdit.BorderSpacing.Top    := 0;
   FMaskEdit.BorderStyle          := bsNone;
   FMaskEdit.ParentColor          := True;

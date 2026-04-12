@@ -161,10 +161,12 @@ procedure MD3StateLayer(ABmp: TBGRABitmap; X1, Y1, X2, Y2: Single;
 procedure MD3DrawText(ACanvas: TCanvas; const AText: string; ARect: TRect;
   AColor: TColor; AHAlign: TAlignment = taCenter; AVCenter: Boolean = True);
 
-{ Draws text on a TBGRABitmap with proper antialiasing on transparent backgrounds.
-  Use this instead of MD3DrawText inside PaintCached methods. }
+{ Draws text on a TBGRABitmap with antialiasing.
+  AClearType=False (default): grayscale AA, safe on transparent backgrounds.
+  AClearType=True: ClearType RGB subpixel AA, sharper but requires opaque background. }
 procedure MD3DrawTextBGRA(ABmp: TBGRABitmap; const AText: string; ARect: TRect;
-  AColor: TColor; AHAlign: TAlignment = taCenter; AVCenter: Boolean = True);
+  AColor: TColor; AHAlign: TAlignment = taCenter; AVCenter: Boolean = True;
+  AClearType: Boolean = False);
 
 { Desenha sombra MD3 com nível de elevação. }
 procedure MD3DrawShadow(ABmp: TBGRABitmap; X1, Y1, X2, Y2: Single;
@@ -801,15 +803,21 @@ var
   rx: Integer;
 begin
   c := ColorToBGRA(ColorToRGB(AFill), AAlpha);
-  { Use at least 4px radius per MD3 spec for filled fields }
   rx := ARadius;
-  if rx <= 0 then rx := 4;
-  { Draw normally rounded rect, then fill bottom corners as squares }
-  ABmp.FillRoundRectAntialias(X1, Y1, X2, Y2, rx, rx, c);
-  { Overdraw bottom-left corner }
-  ABmp.FillRect(Round(X1), Round(Y2) - rx, Round(X1) + rx, Round(Y2) + 1, c, dmDrawWithTransparency);
-  { Overdraw bottom-right corner }
-  ABmp.FillRect(Round(X2) - rx + 1, Round(Y2) - rx, Round(X2) + 1, Round(Y2) + 1, c, dmDrawWithTransparency);
+  if rx <= 0 then
+  begin
+    { BorderRadius=0: cantos totalmente retos }
+    ABmp.FillRect(Round(X1), Round(Y1), Round(X2) + 1, Round(Y2) + 1, c, dmDrawWithTransparency);
+  end
+  else
+  begin
+    { Draw normally rounded rect, then fill bottom corners as squares }
+    ABmp.FillRoundRectAntialias(X1, Y1, X2, Y2, rx, rx, c);
+    { Overdraw bottom-left corner }
+    ABmp.FillRect(Round(X1), Round(Y2) - rx, Round(X1) + rx, Round(Y2) + 1, c, dmDrawWithTransparency);
+    { Overdraw bottom-right corner }
+    ABmp.FillRect(Round(X2) - rx + 1, Round(Y2) - rx, Round(X2) + 1, Round(Y2) + 1, c, dmDrawWithTransparency);
+  end;
 end;
 
 procedure MD3RoundRect(ABmp: TBGRABitmap; X1, Y1, X2, Y2: Single;
@@ -857,13 +865,17 @@ begin
 end;
 
 procedure MD3DrawTextBGRA(ABmp: TBGRABitmap; const AText: string; ARect: TRect;
-  AColor: TColor; AHAlign: TAlignment; AVCenter: Boolean);
+  AColor: TColor; AHAlign: TAlignment; AVCenter: Boolean;
+  AClearType: Boolean);
 var
   sz: TSize;
   tx, ty: Integer;
 begin
   if AText = '' then Exit;
-  ABmp.FontQuality := fqFineAntialiasing;
+  if AClearType then
+    ABmp.FontQuality := fqFineClearTypeRGB
+  else
+    ABmp.FontQuality := fqFineAntialiasing;
   sz := ABmp.TextSize(AText);
   case AHAlign of
     taLeftJustify:  tx := ARect.Left;
@@ -888,11 +900,17 @@ begin
   if ALevel = elLevel0 then Exit;
   off := MD3ElevationOffset(ALevel);
   layers := EnsureRange(off, 1, 4);
+  { Shadow sempre preto (clBlack) — NAO MD3Colors.OnSurface. O token
+    OnSurface flipa em dark mode (vira claro), transformando a sombra
+    em um halo claro ao redor do componente, visivel como "cantos de
+    cor quadra diferente". Sombra real e sempre dark por fisica;
+    contra fundo claro aparece escura e contra fundo escuro praticamente
+    desaparece (correto). }
   for i := layers downto 1 do
   begin
     alpha := EnsureRange(30 div i, 5, 30);
     MD3FillRoundRect(ABmp, X1 + i, Y1 + i + off, X2 - i, Y2 + off,
-      ARadius, MD3Colors.OnSurface, alpha);
+      ARadius, clBlack, alpha);
   end;
 end;
 
@@ -904,6 +922,12 @@ begin
   FHovered := False;
   FPressed := False;
   FFieldSize := fsAuto;
+  { SyncWithTheme precisa ser inicializado explicitamente em runtime —
+    o "default [toColor, toDensity, toVariant]" na declaracao da
+    property so afeta streaming LFM. Sem essa linha, componentes
+    criados via Create(Owner) ficam com FSyncWithTheme = [] e o
+    ThemeManager nunca propaga Variant/Density/Color para eles. }
+  FSyncWithTheme := [toColor, toDensity, toVariant];
   FRippleProgress := 0;
   FRippleFading := False;
   FRippleFadeProgress := 0;

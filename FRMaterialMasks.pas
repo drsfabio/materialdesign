@@ -38,6 +38,37 @@ uses
 type
   TFRTextMaskType = (tmtNone, tmtCpfCnpj, tmtCep, tmtChaveNFe, tmtBoleto, tmtTelefone);
 
+  { Locales suportados por TFRMaskKind. Nomenclatura alinhada ao ISO
+    3166-1 alpha-2 em sufixo maiusculo. Adicione novos conforme
+    necessidade — cada novo locale precisa ser resolvido em
+    FRMaskKindPattern abaixo. }
+  TFRLocale = (locPtBR, locEnUS, locEsES);
+
+  { Enumeracao unificada de mascaras conhecidas. A regra e:
+
+      - Formatos que existem em todo pais com layouts diferentes
+        (phone, date, time, postalCode) nao tem sufixo e resolvem o
+        pattern em runtime via TFRLocale.
+
+      - Formatos INHERENTEMENTE nacionais (identificadores fiscais/
+        documentais que nao existem fora do pais de origem) carregam
+        o sufixo ISO-3166 (_BR / _US / _ES ...). Evita colisao
+        semantica no autocomplete e deixa claro no LFM/IDE que o
+        campo e especifico de um pais.
+
+    Pattern resolvido por FRMaskKindPattern. MaxLen por
+    FRMaskKindMaxLen. A validacao especifica (DVs de CPF/CNPJ etc.)
+    continua em FRValidate* individuais. }
+  TFRMaskKind = (
+    fmkNone,
+    { Internacionais — resolvem layout via Locale }
+    fmkPhone, fmkDate, fmkTime, fmkPostalCode,
+    { Brasil — identificadores nacionais inerentes }
+    fmkCpfBR, fmkCnpjBR, fmkCpfCnpjBR, fmkPisBR, fmkPlacaBR, fmkTituloEleitorBR,
+    { US — placeholders para extensao futura }
+    fmkSsnUS, fmkEinUS, fmkZipUS
+  );
+
   TFRValidationState = (vsNone, vsValid, vsInvalid);
 
   { Filtro de entrada — restringe caracteres permitidos }
@@ -112,6 +143,28 @@ function FRNumericDecimals(AMaskType: TFRNumericMaskType): Integer;
 
 { Verifica se um caractere é permitido pelo filtro de entrada }
 function FRIsCharAllowed(AFilter: TFRInputFilter; AChar: Char): Boolean;
+
+{ ══════════════════════════════════════════════════════════════════════════
+  MaskKind + Locale — API unificada para mascaras com i18n
+  ══════════════════════════════════════════════════════════════════════════ }
+
+{ Retorna o pattern de mascara (estilo TEdit.EditMask/FRApplyMaskPattern)
+  para o MaskKind + Locale informados. Resultado vazio significa "sem
+  mascara". Para TFRMaskKind onde o locale nao altera o resultado
+  (fmkCpfBR, fmkCnpjBR etc.), ALocale e ignorado. }
+function FRMaskKindPattern(AKind: TFRMaskKind; ALocale: TFRLocale): string;
+
+{ MaxLength textual apos aplicar a mascara do par (kind, locale). Util
+  para popular MaxLength/TabStop do TEdit sem precisar contar caractere
+  manualmente. Resultado 0 = sem limite. }
+function FRMaskKindMaxLen(AKind: TFRMaskKind; ALocale: TFRLocale): Integer;
+
+{ Nome amigavel do locale (pt-BR, en-US, es-ES). }
+function FRLocaleName(ALocale: TFRLocale): string;
+
+{ Resolve o locale a partir de DefaultFormatSettings/Lazarus. Util para
+  inicializar TFRMaterialEdit.Locale sem hardcode. }
+function FRDetectSystemLocale: TFRLocale;
 
 implementation
 
@@ -369,8 +422,9 @@ begin
   FmtStr := '#,##0.' + StringOfChar('0', Max(Decimals, 1));
   Result := FormatFloat(FmtStr, AValue, FS);
 
-  if AMaskType = nmtMoney then
-    Result := 'R$ ' + Result;
+  { O símbolo monetário (R$) não é mais incluído na formatação numérica.
+    Quando necessário, deve ser exibido via PrefixText do componente edit,
+    mantendo o conteúdo editável apenas como valor numérico. }
 end;
 
 function FRParseNumericText(const AText: string): Currency;
@@ -417,6 +471,118 @@ begin
   else
     Result := True;
   end;
+end;
+
+{ ══════════════════════════════════════════════════════════════════════════
+  MaskKind + Locale
+  ══════════════════════════════════════════════════════════════════════════ }
+
+function FRMaskKindPattern(AKind: TFRMaskKind; ALocale: TFRLocale): string;
+begin
+  case AKind of
+    fmkNone:
+      Result := '';
+
+    { ── Brasil — mascaras fixas, ALocale irrelevante ── }
+    fmkCpfBR:
+      Result := '000.000.000-00';
+    fmkCnpjBR:
+      Result := '00.000.000/0000-00';
+    fmkCpfCnpjBR:
+      { Mascara mais longa (CNPJ). O handler de input precisa truncar
+        para o shape de CPF quando a entrada tiver <=11 digitos. Isto
+        casa com o que o TextMask=tmtCpfCnpj ja faz via
+        FRMaskForDigits. Use FRMaskForDigits em runtime. }
+      Result := '00.000.000/0000-00';
+    fmkPisBR:
+      Result := '000.00000.00-0';
+    fmkPlacaBR:
+      { Formato Mercosul (ABC-1D23). '9' eh placeholder para digito +
+        '?' para letra no LCL — mas nao temos parser proprio, entao
+        usamos '0' generico. }
+      Result := 'AAA-0A00';
+    fmkTituloEleitorBR:
+      Result := '0000 0000 0000';
+
+    { ── US — placeholders iniciais ── }
+    fmkSsnUS:
+      Result := '000-00-0000';
+    fmkEinUS:
+      Result := '00-0000000';
+    fmkZipUS:
+      Result := '00000-0000';
+
+    { ── Internacionais com layout por locale ── }
+    fmkPhone:
+      case ALocale of
+        locPtBR: Result := '(00) 00000-0000';
+        locEnUS: Result := '(000) 000-0000';
+        locEsES: Result := '000 000 000';
+      else
+        Result := '(00) 00000-0000';
+      end;
+
+    fmkDate:
+      case ALocale of
+        locPtBR, locEsES: Result := '00/00/0000';
+        locEnUS:          Result := '00/00/0000'; { MM/DD/YYYY — mesmo shape }
+      else
+        Result := '00/00/0000';
+      end;
+
+    fmkTime:
+      case ALocale of
+        locPtBR, locEsES: Result := '00:00';
+        locEnUS:          Result := '00:00';
+      else
+        Result := '00:00';
+      end;
+
+    fmkPostalCode:
+      case ALocale of
+        locPtBR: Result := '00000-000';
+        locEnUS: Result := '00000-0000';
+        locEsES: Result := '00000';
+      else
+        Result := '00000';
+      end;
+  else
+    Result := '';
+  end;
+end;
+
+function FRMaskKindMaxLen(AKind: TFRMaskKind; ALocale: TFRLocale): Integer;
+begin
+  Result := Length(FRMaskKindPattern(AKind, ALocale));
+end;
+
+function FRLocaleName(ALocale: TFRLocale): string;
+begin
+  case ALocale of
+    locPtBR: Result := 'pt-BR';
+    locEnUS: Result := 'en-US';
+    locEsES: Result := 'es-ES';
+  else
+    Result := 'pt-BR';
+  end;
+end;
+
+function FRDetectSystemLocale: TFRLocale;
+var
+  sDate: string;
+begin
+  { Heuristica simples: DefaultFormatSettings.ShortDateFormat no
+    Brasil comeca com 'd' (dd/mm/yyyy), no US comeca com 'M'
+    (M/d/yyyy). Fallback: ShortDateFormat contendo '/' com ordem
+    dia-primeiro = BR. Se nada bater, cai em pt-BR (projeto Work-ERP
+    serve mercado brasileiro). }
+  sDate := LowerCase(DefaultFormatSettings.ShortDateFormat);
+  if (Length(sDate) > 0) and (sDate[1] = 'm') then
+    Result := locEnUS
+  else if Pos('d', sDate) > 0 then
+    Result := locPtBR
+  else
+    Result := locPtBR;
 end;
 
 end.

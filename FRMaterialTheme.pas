@@ -98,6 +98,12 @@ type
     property Variant: TFRMaterialVariant read GetVariant;
   end;
 
+const
+  { Padding horizontal padrão para campos MD3 (label, texto, notch).
+    Usado por Edits, Combos e qualquer componente que precise alinhar
+    o conteúdo do campo à mesma posição horizontal.  MD3 spec: 16dp. }
+  MD3_FIELD_PADDING_H = 16;
+
 var
   FRMaterialDefaultThemeManager: TObject = nil;
 

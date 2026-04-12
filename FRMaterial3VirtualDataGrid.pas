@@ -27,7 +27,8 @@ uses
   Generics.Collections,
   BGRABitmap, BGRABitmapTypes,
   {$IFDEF FPC} LCLType, LCLIntf, LResources, LMessages, {$ENDIF}
-  laz.VirtualTrees, FRMaterial3Base, FRMaterialTheme;
+  laz.VirtualTrees, FRMaterial3Base, FRMaterialTheme, FRMaterialIcons,
+  FRMaterialEdit, FRMaterial3Button;
 
 type
   { ── Sort ── }
@@ -83,9 +84,9 @@ type
   private
     FGrid: TFRMaterialVirtualDataGrid;
     FColumn: Integer;
-    FEdit: TEdit;
-    FBtnApply: TPanel;
-    FBtnClear: TPanel;
+    FEdit: TFRMaterialEdit;
+    FBtnApply: TFRMaterialButton;
+    FBtnClear: TFRMaterialButton;
     FClosing: Boolean;
     procedure EditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure BtnApplyClick(Sender: TObject);
@@ -621,7 +622,20 @@ begin
   Color             := ColorToRGB(MD3Colors.Surface);
   Font.Color        := ColorToRGB(MD3Colors.OnSurface);
   Header.Font.Color := ColorToRGB(MD3Colors.OnSurface);
+  Header.Background := ColorToRGB(MD3Colors.SurfaceContainerHighest);
   ApplyNodeHeight;
+
+  { Dark mode toggle: forcar repaint total. O VT tem cache interno de
+    background dos nodes — sem invalidar esse cache, as rows continuam
+    pintando com as cores do tema anterior ate o proximo node change.
+    Invalidate + InvalidateChildren garante que DoBeforeCellPaint
+    rode de novo em cada celula visivel, lendo MD3Colors atualizados. }
+  if HandleAllocated and not (csLoading in ComponentState) then
+  begin
+    Invalidate;
+    if RootNode <> nil then
+      InvalidateChildren(RootNode, True);
+  end;
 end;
 
 { Mede a maior altura de caption do header considerando word-wrap dentro
@@ -670,8 +684,9 @@ begin
       maxH := textRect.Height;
   end;
 
-  { Padding vertical MD3: 8px top + 8px bottom }
-  Result := maxH + 16;
+  { Padding vertical: 6px top + 6px bottom — suficiente para captions
+    comuns sem deixar o header desproporcional. }
+  Result := maxH + 12;
 end;
 
 procedure TFRMaterialVirtualDataGrid.ApplyNodeHeight;
@@ -682,11 +697,12 @@ begin
   if H < 24 then H := 24;
   DefaultNodeHeight := H;
 
-  { Header auto-height: maior entre o minimo por densidade e o que o
-    caption mais alto precisa (com word-wrap). Mantem 56px como
-    minimo MD3 para captions curtos. }
-  headerH := 56 + MD3DensityDelta(FDensity);
-  if headerH < 40 then headerH := 40;
+  { Header auto-height:
+      - Minimo MD3 compacto = 40px (caption de 1 linha comfortable)
+      - Se MeasureHeaderCaptionHeight calcular algo maior (caption de
+        2 linhas), expande. }
+  headerH := 40 + MD3DensityDelta(FDensity);
+  if headerH < 32 then headerH := 32;
 
   if HandleAllocated and (Header.Columns.Count > 0) then
   begin
@@ -2168,6 +2184,7 @@ constructor TFRMDFilterPopup.CreatePopup(AGrid: TFRMaterialVirtualDataGrid;
 var
   LblTitle: TLabel;
   curFilter: String;
+  tm: IFRMaterialThemeManager;
 begin
   inherited CreateNew(nil);
   FGrid    := AGrid;
@@ -2176,8 +2193,8 @@ begin
 
   BorderStyle := bsNone;
   FormStyle   := fsStayOnTop;
-  Width       := 220;
-  Height      := 120;
+  Width       := 260;
+  Height      := 168;
   Color       := ColorToRGB(MD3Colors.SurfaceContainerHigh);
   Font.Color  := ColorToRGB(MD3Colors.OnSurface);
   Font.Height := -12;
@@ -2191,51 +2208,60 @@ begin
   { Title label }
   LblTitle := TLabel.Create(Self);
   LblTitle.Parent     := Self;
-  LblTitle.SetBounds(12, 8, Width - 24, 18);
+  LblTitle.SetBounds(16, 12, Width - 32, 18);
   LblTitle.Caption    := 'Filtrar: ' + AGrid.Header.Columns[AColumn].Text;
   LblTitle.Font.Style := [fsBold];
-  LblTitle.Font.Color := ColorToRGB(MD3Colors.OnSurface);
+  LblTitle.Font.Size  := 9;
+  LblTitle.Font.Color := ColorToRGB(MD3Colors.Primary);
 
-  { Edit }
-  FEdit := TEdit.Create(Self);
-  FEdit.Parent      := Self;
-  FEdit.SetBounds(12, 32, Width - 24, 26);
-  FEdit.BorderStyle := bsSingle;
-  FEdit.Color       := ColorToRGB(MD3Colors.SurfaceContainerHighest);
-  FEdit.Font.Color  := ColorToRGB(MD3Colors.OnSurface);
-  FEdit.Font.Height := -13;
-  FEdit.OnKeyDown   := EditKeyDown;
+  { MaterialEdit outlined — substitui TEdit legacy. Herda label flutuante,
+    variant, theme manager registration e contraste dinamico. }
+  FEdit := TFRMaterialEdit.Create(Self);
+  FEdit.Parent   := Self;
+  FEdit.SetBounds(16, 36, Width - 32, 56);
+  FEdit.Caption  := 'Texto do filtro';
+  { Herda variant e density do ThemeManager global se disponível }
+  if Assigned(FRMaterialDefaultThemeManager) and
+     Supports(FRMaterialDefaultThemeManager, IFRMaterialThemeManager, tm) then
+  begin
+    FEdit.Variant := tm.Variant;
+    FEdit.Density := tm.Density;
+  end
+  else
+    FEdit.Variant := mvOutlined;
+  FEdit.BorderRadius := 4;
+  FEdit.Edit.OnKeyDown := EditKeyDown;
 
   curFilter := AGrid.GetFilterText(AColumn);
-  FEdit.Text := curFilter;
+  if curFilter <> '' then
+    FEdit.Edit.Text := curFilter;
 
-  { Apply button }
-  FBtnApply := TPanel.Create(Self);
-  FBtnApply.Parent     := Self;
-  FBtnApply.SetBounds(12, 68, 90, 30);
-  FBtnApply.Caption    := '✓ Filtrar';
-  FBtnApply.Color      := ColorToRGB(MD3Colors.Primary);
-  FBtnApply.Font.Color := ColorToRGB(MD3Colors.OnPrimary);
-  FBtnApply.Font.Style := [fsBold];
-  FBtnApply.BevelOuter := bvNone;
-  FBtnApply.Cursor     := crHandPoint;
-  FBtnApply.OnClick    := BtnApplyClick;
+  { Apply button — filled (acao primaria) }
+  FBtnApply := TFRMaterialButton.Create(Self);
+  FBtnApply.Parent      := Self;
+  FBtnApply.SetBounds(16, 108, 110, 40);
+  FBtnApply.Caption     := 'FILTRAR';
+  FBtnApply.ButtonStyle := mbsFilled;
+  FBtnApply.IconMode    := imCheck;
+  FBtnApply.ShowIcon    := True;
+  FBtnApply.OnClick     := BtnApplyClick;
 
-  { Clear button }
-  FBtnClear := TPanel.Create(Self);
-  FBtnClear.Parent     := Self;
-  FBtnClear.SetBounds(112, 68, 90, 30);
-  FBtnClear.Caption    := '✕ Limpar';
-  FBtnClear.Color      := ColorToRGB(MD3Colors.SurfaceContainerHighest);
-  FBtnClear.Font.Color := ColorToRGB(MD3Colors.OnSurface);
-  FBtnClear.Font.Style := [fsBold];
-  FBtnClear.BevelOuter := bvNone;
-  FBtnClear.Cursor     := crHandPoint;
-  FBtnClear.OnClick    := BtnClearClick;
+  { Clear button — outlined (acao secundaria) }
+  FBtnClear := TFRMaterialButton.Create(Self);
+  FBtnClear.Parent      := Self;
+  FBtnClear.SetBounds(134, 108, 110, 40);
+  FBtnClear.Caption     := 'LIMPAR';
+  FBtnClear.ButtonStyle := mbsOutlined;
+  FBtnClear.IconMode    := imClear;
+  FBtnClear.ShowIcon    := True;
+  FBtnClear.OnClick     := BtnClearClick;
 
   Show;
-  FEdit.SetFocus;
-  FEdit.SelectAll;
+  if FEdit.Edit.CanFocus then
+  begin
+    FEdit.Edit.SetFocus;
+    FEdit.Edit.SelectAll;
+  end;
 end;
 
 procedure TFRMDFilterPopup.EditKeyDown(Sender: TObject; var Key: Word;
@@ -2267,7 +2293,7 @@ end;
 
 procedure TFRMDFilterPopup.DoApplyFilter;
 begin
-  FGrid.SetFilterText(FColumn, Trim(FEdit.Text));
+  FGrid.SetFilterText(FColumn, Trim(FEdit.Edit.Text));
   FGrid.Invalidate;
   CloseAndRelease;
 end;

@@ -8,19 +8,21 @@ unit frcomponents;
 interface
 
 uses
-  FRMaterialTheme, FRMaterialIcons, FRMaterialMasks, FRMaterialEdit, 
-  FRMaterialDateEdit, FRMaterialComboEdit, FRMaterialCheckComboEdit, 
-  FRMaterialMaskEdit, FRMaterialCurrencyEdit, FRMaterialMemoEdit, 
-  FRMaterialSpinEdit, FRMaterialSearchEdit, FRMaterial3Base, 
-  FRMaterial3Button, FRMaterial3FAB, FRMaterial3Toggle, FRMaterial3Chip, 
-  FRMaterial3Slider, FRMaterial3Progress, FRMaterial3Divider, 
-  FRMaterial3Dialog, FRMaterial3Snackbar, FRMaterial3Tooltip, FRMaterial3List, 
-  FRMaterial3Menu, FRMaterial3Tabs, FRMaterial3AppBar, FRMaterial3Nav, 
-  FRMaterial3TimePicker, FRMaterial3Sheet, FRMaterial3TreeView, 
-  FRMaterialThemeManager, FRMaterial3DataGrid, FRMaterialFieldPainter, 
-  FRMaterial3PageControl, FRMaterial3VirtualDataGrid, FRMaterial3Card, 
-  FRMaterial3Badge, FRMaterial3Carousel, FRMaterial3DatePicker, 
-  FRMaterial3GridPanel, FRMaterial3TitleBar, LazarusPackageIntf;
+  FRMaterialTheme, FRMaterialIcons, FRMaterialMasks, FRMaterialEdit,
+  FRMaterialDateEdit, FRMaterialCheckComboEdit,
+  FRMaterialMaskEdit, FRMaterialMemoEdit,
+  FRMaterialSpinEdit, FRMaterialSearchEdit, FRMaterial3Base,
+  FRMaterial3Button, FRMaterial3FAB, FRMaterial3Toggle, FRMaterial3Chip,
+  FRMaterial3Slider, FRMaterial3Progress, FRMaterial3Divider,
+  FRMaterial3Dialog, FRMaterial3Snackbar, FRMaterial3Tooltip, FRMaterial3List,
+  FRMaterial3Menu, FRMaterial3Tabs, FRMaterial3AppBar, FRMaterial3Nav,
+  FRMaterial3TimePicker, FRMaterial3Sheet, FRMaterial3TreeView,
+  FRMaterialThemeManager, FRMaterial3DataGrid, FRMaterialFieldPainter,
+  FRMaterial3PageControl, FRMaterial3VirtualDataGrid, FRMaterial3Card,
+  FRMaterial3Badge, FRMaterial3Carousel, FRMaterial3DatePicker,
+  FRMaterial3GridPanel, FRMaterial3TitleBar, FRMaterial3Label,
+  FRMaterial3Toolbox, FRMaterial3Combo,
+  LazarusPackageIntf;
 
 implementation
 
@@ -28,10 +30,8 @@ procedure Register;
 begin
   RegisterUnit('FRMaterialEdit', @FRMaterialEdit.Register);
   RegisterUnit('FRMaterialDateEdit', @FRMaterialDateEdit.Register);
-  RegisterUnit('FRMaterialComboEdit', @FRMaterialComboEdit.Register);
   RegisterUnit('FRMaterialCheckComboEdit', @FRMaterialCheckComboEdit.Register);
   RegisterUnit('FRMaterialMaskEdit', @FRMaterialMaskEdit.Register);
-  RegisterUnit('FRMaterialCurrencyEdit', @FRMaterialCurrencyEdit.Register);
   RegisterUnit('FRMaterialMemoEdit', @FRMaterialMemoEdit.Register);
   RegisterUnit('FRMaterialSpinEdit', @FRMaterialSpinEdit.Register);
   RegisterUnit('FRMaterialSearchEdit', @FRMaterialSearchEdit.Register);
@@ -64,6 +64,9 @@ begin
   RegisterUnit('FRMaterial3DatePicker', @FRMaterial3DatePicker.Register);
   RegisterUnit('FRMaterial3GridPanel', @FRMaterial3GridPanel.Register);
   RegisterUnit('FRMaterial3TitleBar', @FRMaterial3TitleBar.Register);
+  RegisterUnit('FRMaterial3Label', @FRMaterial3Label.Register);
+  RegisterUnit('FRMaterial3Toolbox', @FRMaterial3Toolbox.Register);
+  RegisterUnit('FRMaterial3Combo', @FRMaterial3Combo.Register);
 end;
 
 initialization

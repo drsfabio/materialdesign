@@ -139,6 +139,7 @@ type
     procedure SetPageControl(AValue: TFRMaterialPageControl);
   protected
     function PaintCached(ABmp: TBGRABitmap): Boolean; override;
+    procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
@@ -420,7 +421,7 @@ begin
       else
         clr := MD3Colors.OnSurfaceVariant;
       aRect := Rect(xPos, lblY1, xPos + iw, lblY2);
-      MD3DrawTextBGRA(ABmp, FItems[i].FCaption, aRect, clr, taCenter, True);
+      MD3DrawTextBGRA(ABmp, FItems[i].FCaption, aRect, clr, taCenter, True, True);
     end;
     ABmp.FontHeight := Abs(10 * 96 div 72);
   end;
@@ -581,7 +582,7 @@ begin
     if ABmp.FontHeight < 9 then ABmp.FontHeight := 9;
     ABmp.FontStyle := [fsBold];
     aRect := Rect(icoX, padX + 4, Width - padX, padX + 4 + ih);
-    MD3DrawTextBGRA(ABmp, FHeaderTitle, aRect, MD3Colors.OnSurfaceVariant, taLeftJustify, True);
+    MD3DrawTextBGRA(ABmp, FHeaderTitle, aRect, MD3Colors.OnSurfaceVariant, taLeftJustify, True, True);
     ABmp.FontStyle := [];
     ABmp.FontHeight := Abs(10 * 96 div 72);
   end;
@@ -595,7 +596,7 @@ begin
     else
       clr := MD3Colors.OnSurfaceVariant;
     aRect := Rect(icoX + icoSz + padX, yPos, Width - padX, yPos + ih);
-    MD3DrawTextBGRA(ABmp, FItems[i].FCaption, aRect, clr, taLeftJustify, True);
+    MD3DrawTextBGRA(ABmp, FItems[i].FCaption, aRect, clr, taLeftJustify, True, True);
     Inc(yPos, ih);
   end;
 
@@ -776,24 +777,8 @@ begin
     Inc(yPos, ih);
   end;
 
-  { labels under nav items }
-  yPos := padX + 4;
-  if FMenuIcon <> imClear then Inc(yPos, ih);
-  if FFabIcon <> imClear then Inc(yPos, fabH + padX + 4);
-
-  ABmp.FontHeight := Abs((Width * 8 div 80) * 96 div 72);
-  if ABmp.FontHeight < 7 then ABmp.FontHeight := 7;
-  for i := 0 to FItems.Count - 1 do
-  begin
-    if i = FItemIndex then
-      clr := MD3Colors.Primary
-    else
-      clr := MD3Colors.OnSurfaceVariant;
-    aRect := Rect(0, yPos + ih * 36 div 56, Width, yPos + ih);
-    MD3DrawTextBGRA(ABmp, FItems[i].FCaption, aRect, clr, taCenter, True);
-    Inc(yPos, ih);
-  end;
-  ABmp.FontHeight := Abs(10 * 96 div 72);
+  { Labels dos nav items são desenhados no Paint via Canvas (GDI ClearType),
+    não aqui no BGRA, para evitar texto serrilhado. }
 
   { Elevation shadow — adapts to Align: right edge for alLeft, left edge for alRight }
   if Align = alRight then
@@ -804,6 +789,44 @@ begin
     for i := 0 to 3 do
       ABmp.DrawVertLine(Width - 4 + i, 0, Height - 1,
         BGRA(0, 0, 0, Byte(20 - i * 5)));
+end;
+
+procedure TFRMaterialNavRail.Paint;
+var
+  i, yPos, ih, padX, fabH: Integer;
+  clr: TColor;
+  aRect: TRect;
+  fontSize: Integer;
+begin
+  inherited Paint; { blita o bitmap BGRA (shapes, ícones, sombra) }
+  if not FRMDCanPaint(Self) then Exit;
+
+  { Segundo passo: labels via Canvas (GDI ClearType) — texto nítido }
+  padX := Width * 12 div 80;
+  ih := 56 + MD3DensityDelta(Density);
+  fabH := Width * 56 div 80;
+
+  yPos := padX + 4;
+  if FMenuIcon <> imClear then Inc(yPos, ih);
+  if FFabIcon <> imClear then Inc(yPos, fabH + padX + 4);
+
+  fontSize := Width * 10 div 80;
+  if fontSize < 8 then fontSize := 8;
+  Canvas.Font.Assign(Self.Font);
+  Canvas.Font.Size := fontSize;
+  Canvas.Brush.Style := bsClear;
+
+  for i := 0 to FItems.Count - 1 do
+  begin
+    if i = FItemIndex then
+      clr := ColorToRGB(MD3Colors.Primary)
+    else
+      clr := ColorToRGB(MD3Colors.OnSurfaceVariant);
+    Canvas.Font.Color := clr;
+    aRect := Rect(0, yPos + ih * 36 div 56, Width, yPos + ih);
+    MD3DrawText(Canvas, FItems[i].FCaption, aRect, clr, taCenter, True);
+    Inc(yPos, ih);
+  end;
 end;
 
 procedure TFRMaterialNavRail.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);

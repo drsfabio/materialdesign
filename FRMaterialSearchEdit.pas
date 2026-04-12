@@ -154,8 +154,8 @@ begin
   FLabel.Top := 4;
   FLabel.BorderSpacing.Around := 0;
   FLabel.BorderSpacing.Bottom := 4;
-  FLabel.BorderSpacing.Left := 4;
-  FLabel.BorderSpacing.Right := 4;
+  FLabel.BorderSpacing.Left := MD3_FIELD_PADDING_H;
+  FLabel.BorderSpacing.Right := MD3_FIELD_PADDING_H;
   FLabel.BorderSpacing.Top := 4;
   FLabel.Font.Color := $00B8AFA8;
   FLabel.Font.Style := [fsBold];
@@ -204,7 +204,7 @@ begin
   FSearchButton.AnchorSide[akTop].Side     := asrTop;
   FSearchButton.AnchorSide[akBottom].Control := FEdit;
   FSearchButton.AnchorSide[akBottom].Side    := asrBottom;
-  FSearchButton.BorderSpacing.Left := 4;
+  FSearchButton.BorderSpacing.Left := MD3_FIELD_PADDING_H;
 
   { Botão de limpar à direita }
   FClearButton := TFRMaterialIconButton.Create(Self);

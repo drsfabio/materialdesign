@@ -149,8 +149,8 @@ begin
   FLabel.Top := 4;
   FLabel.BorderSpacing.Around := 0;
   FLabel.BorderSpacing.Bottom := 4;
-  FLabel.BorderSpacing.Left := 4;
-  FLabel.BorderSpacing.Right := 4;
+  FLabel.BorderSpacing.Left := MD3_FIELD_PADDING_H;
+  FLabel.BorderSpacing.Right := MD3_FIELD_PADDING_H;
   FLabel.BorderSpacing.Top := 4;
   FLabel.Font.Color := $00B8AFA8;
   FLabel.Font.Style := [fsBold];
@@ -200,7 +200,7 @@ begin
   FMinusButton.AnchorSide[akTop].Side     := asrTop;
   FMinusButton.AnchorSide[akBottom].Control := FEdit;
   FMinusButton.AnchorSide[akBottom].Side    := asrBottom;
-  FMinusButton.BorderSpacing.Left := 4;
+  FMinusButton.BorderSpacing.Left := MD3_FIELD_PADDING_H;
 
   { Botão Plus (+) à direita }
   FPlusButton := TFRMaterialIconButton.Create(Self);
