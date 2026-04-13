@@ -507,11 +507,10 @@ begin
     {$IFDEF FPC}
     FCalendarPopup.HandleNeeded;
     {$IFDEF MSWINDOWS}
-    { Region 2px larger than body on each side — BGRA antialiased
-      edges are fully preserved, GDI region never clips smooth pixels }
+    { Region 1px larger — combo popup technique: BGRA AA fully preserved }
     SetWindowRgn(FCalendarPopup.Handle,
-      CreateRoundRectRgn(-2, -2, FCalendarPopup.Width + 3,
-        FCalendarPopup.Height + 3, 12 * 2 + 6, 12 * 2 + 6), True);
+      CreateRoundRectRgn(-1, -1, FCalendarPopup.Width + 2,
+        FCalendarPopup.Height + 2, 12 * 2 + 2, 12 * 2 + 2), True);
     {$ENDIF}
     {$ENDIF}
   end;
