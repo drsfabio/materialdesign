@@ -40,36 +40,11 @@ const
     ''                                                               + LineEnding +
     'uses'                                                           + LineEnding +
     '  {$IFDEF UNIX}cthreads,{$ENDIF}'                              + LineEnding +
-    '  Interfaces,'                                                  + LineEnding +
-    '  Forms,'                                                       + LineEnding +
-    '  ufm_main;'                                                    + LineEnding +
-    ''                                                               + LineEnding +
-    '{$R *.res}'                                                     + LineEnding +
-    ''                                                               + LineEnding +
-    'begin'                                                          + LineEnding +
-    '  RequireDerivedFormResource := True;'                           + LineEnding +
-    '  Application.Scaled := True;'                                  + LineEnding +
-    '  Application.Initialize;'                                      + LineEnding +
-    '  Application.CreateForm(TFmMain, FmMain);'                     + LineEnding +
-    '  Application.Run;'                                             + LineEnding +
-    'end.';
-
-  SPasSource =
-    'unit ufm_main;'                                                 + LineEnding +
-    ''                                                               + LineEnding +
-    '{$mode objfpc}{$H+}'                                            + LineEnding +
-    ''                                                               + LineEnding +
-    'interface'                                                      + LineEnding +
-    ''                                                               + LineEnding +
-    'uses'                                                           + LineEnding +
-    '  Classes, SysUtils, Forms, Controls,'                          + LineEnding +
+    '  Interfaces, Classes, SysUtils, Forms, Controls,'              + LineEnding +
     '  FRMaterial3Base, FRMaterial3TitleBar,'                         + LineEnding +
     '  FRMaterialTheme, FRMaterialThemeManager;'                     + LineEnding +
     ''                                                               + LineEnding +
     'type'                                                           + LineEnding +
-    ''                                                               + LineEnding +
-    '  { TFmMain }'                                                  + LineEnding +
-    ''                                                               + LineEnding +
     '  TFmMain = class(TFRMaterialForm)'                             + LineEnding +
     '  private'                                                      + LineEnding +
     '    FThemeManager: TFRMaterialThemeManager;'                     + LineEnding +
@@ -80,23 +55,22 @@ const
     'var'                                                            + LineEnding +
     '  FmMain: TFmMain;'                                             + LineEnding +
     ''                                                               + LineEnding +
-    'implementation'                                                 + LineEnding +
-    ''                                                               + LineEnding +
     'constructor TFmMain.Create(AOwner: TComponent);'                + LineEnding +
     'begin'                                                          + LineEnding +
     '  inherited CreateNew(AOwner);'                                 + LineEnding +
-    ''                                                               + LineEnding +
     '  Caption  := ''My MD3 Application'';'                          + LineEnding +
     '  Width    := 1024;'                                            + LineEnding +
     '  Height   := 640;'                                             + LineEnding +
     '  Position := poScreenCenter;'                                  + LineEnding +
-    ''                                                               + LineEnding +
     '  FThemeManager := TFRMaterialThemeManager.Create(Self);'       + LineEnding +
-    '  FThemeManager.DarkMode := False;'                             + LineEnding +
-    ''                                                               + LineEnding +
     '  TitleBar.Title := Caption;'                                   + LineEnding +
     'end;'                                                           + LineEnding +
     ''                                                               + LineEnding +
+    'begin'                                                          + LineEnding +
+    '  Application.Scaled := True;'                                  + LineEnding +
+    '  Application.Initialize;'                                      + LineEnding +
+    '  Application.CreateForm(TFmMain, FmMain);'                     + LineEnding +
+    '  Application.Run;'                                             + LineEnding +
     'end.';
 
 { TFRMaterialFormProjectDescriptor }
@@ -134,8 +108,6 @@ begin
 
   { Project settings }
   AProject.Title := 'MD3 Application';
-  AProject.Flags := AProject.Flags - [pfMainUnitHasCreateFormStatements,
-    pfMainUnitHasTitleStatement, pfMainUnitHasScaledStatement];
   AProject.AddPackageDependency('LCL');
   AProject.AddPackageDependency('FRComponents');
 
@@ -143,16 +115,9 @@ begin
 end;
 
 function TFRMaterialFormProjectDescriptor.CreateStartFiles(
-  AProject: TLazProject): TModalResult;
-var
-  FormFile: TLazProjectFile;
+  {%H-}AProject: TLazProject): TModalResult;
 begin
-  { Main form unit }
-  FormFile := AProject.CreateProjectFile('ufm_main.pas');
-  FormFile.IsPartOfProject := True;
-  AProject.AddFile(FormFile, False);
-  FormFile.SetSourceText(SPasSource, True);
-
+  { Single-file template — everything is in the .lpr }
   Result := mrOk;
 end;
 
