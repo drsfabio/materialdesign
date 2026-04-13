@@ -594,24 +594,21 @@ begin
   FCalendarButton.Width  := BtnSize;
   FCalendarButton.Height := BtnSize;
 
-  { Calendar is rightmost. Push all base right-panel buttons left
-    by calendar width + gap, then position calendar at the edge. }
+  { Calendar is rightmost — explicit Left, same vertical center as
+    base buttons. Clear button repositioned just to its left. }
   FieldH := Self.Height;
   CenterY := (FieldH - BtnSize) div 2;
   if CenterY < 0 then CenterY := 0;
 
-  { Shift base buttons left to make room for calendar }
+  FCalendarButton.Anchors := [];
+  FCalendarButton.SetBounds(Self.Width - BtnSize - 8, CenterY, BtnSize, BtnSize);
+
   if ClearButton.Visible then
-    ClearButton.BorderSpacing.Right := ClearButton.BorderSpacing.Right + BtnSize + 8;
+  begin
+    ClearButton.Anchors := [];
+    ClearButton.Left := FCalendarButton.Left - ClearButton.Width - 2;
+  end;
 
-  { Calendar at rightmost position }
-  FCalendarButton.Anchors := [akRight];
-  FCalendarButton.AnchorSide[akRight].Control := Self;
-  FCalendarButton.AnchorSide[akRight].Side    := asrBottom;
-  FCalendarButton.BorderSpacing.Right := 8;
-  FCalendarButton.Top := CenterY;
-
-  { Push FEdit to fit all buttons }
   FEdit.BorderSpacing.Right := FRightPanelWidth + BtnSize + 8;
 end;
 
