@@ -586,6 +586,10 @@ begin
   Application.RemoveAsyncCalls(Self);
   FPendingEditNode   := nil;
   FPendingEditColumn := -1;
+  { Clear cell texts early so DoFreeNode doesn't access stale data
+    during the VT node cleanup cascade. }
+  if Assigned(FCellTexts) then
+    FCellTexts.Clear;
   if Assigned(FLoadingTimer) then
   begin
     FLoadingTimer.Enabled := False;
@@ -1651,8 +1655,10 @@ procedure TFRMaterialVirtualDataGrid.DoFreeNode(Node: PVirtualNode);
 var
   i: Integer;
 begin
-  { Remove all cell texts for this node }
-  if Assigned(FCellTexts) and (Header.Columns.Count > 0) then
+  { Remove all cell texts for this node.
+    Skip during destruction — FCellTexts was already cleared in
+    BeforeDestruction and Header may be partially freed. }
+  if Assigned(FCellTexts) and (FCellTexts.Count > 0) then
     for i := 0 to Header.Columns.Count - 1 do
       FCellTexts.Remove(CellKey(Node, i));
   inherited DoFreeNode(Node);
