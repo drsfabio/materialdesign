@@ -369,7 +369,12 @@ begin
   gridLeft := (Width - CELL_SIZE * GRID_COLS) div 2;
   gridTop := HEADER_H + DOW_H;
 
-  ABmp.Fill(ColorToBGRA(MD3Colors.Surface));
+  { Fill with outline color then draw rounded Surface body on top.
+    When inside DateEdit popup, the 1px outline = form's OutlineVariant
+    and the rounded body gives smooth corners via BGRA antialiasing. }
+  ABmp.Fill(ColorToBGRA(MD3Colors.OutlineVariant));
+  ABmp.FillRoundRectAntialias(0, 0, Width - 1, Height - 1, 12, 12,
+    ColorToBGRA(MD3Colors.Surface));
 
   { ── Header: Month Year ── }
   monthTitle := FormatSettings.LongMonthNames[FViewMonth] + ' ' + IntToStr(FViewYear);

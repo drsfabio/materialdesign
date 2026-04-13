@@ -25,9 +25,9 @@ unit FRMaterialDateEdit;
 interface
 
 uses
-  Classes, SysUtils, Controls, Graphics, Forms, Calendar,
+  Classes, SysUtils, Controls, Graphics, Forms,
   {$IFDEF FPC} LCLType, LResources, {$ENDIF}
-  FRMaterialTheme, FRMaterial3Base, FRMaterialIcons,
+  FRMaterialTheme, FRMaterial3Base, FRMaterial3DatePicker, FRMaterialIcons,
   FRMaterialInternalEdits, FRMaterialEdit;
 
 type
@@ -39,7 +39,7 @@ type
   private
     FCalendarButton: TFRMaterialIconButton;
     FCalendarPopup: TForm;
-    FCalendar: TCalendar;
+    FCalendar: TFRMaterialDatePicker;
     FDate: TDateTime;
     FDateFormat: TFRDateFormat;
     FUpdating: Boolean;
@@ -99,7 +99,15 @@ procedure Register;
 implementation
 
 uses
-  DateUtils;
+  DateUtils
+  {$IFDEF MSWINDOWS}, LCLIntf{$ENDIF};
+
+{$IFDEF MSWINDOWS}
+function CreateRoundRectRgn(X1, Y1, X2, Y2, W, H: Integer): HRGN;
+  stdcall; external 'gdi32.dll';
+function SetWindowRgn(hWnd: HWND; hRgn: HRGN; bRedraw: LongBool): Integer;
+  stdcall; external 'user32.dll';
+{$ENDIF}
 
 procedure Register;
 begin
@@ -483,21 +491,35 @@ begin
     FCalendarPopup := TForm.CreateNew(Self);
     FCalendarPopup.BorderStyle := bsNone;
     FCalendarPopup.FormStyle := fsStayOnTop;
-    FCalendarPopup.Width := 220;
-    FCalendarPopup.Height := 180;
-    FCalendarPopup.Color := MD3Colors.SurfaceContainerHigh;
+    FCalendarPopup.Color := MD3Colors.OutlineVariant;
     FCalendarPopup.OnDeactivate := @CalendarPopupDeactivate;
 
-    FCalendar := TCalendar.Create(FCalendarPopup);
+    FCalendar := TFRMaterialDatePicker.Create(FCalendarPopup);
     FCalendar.Parent := FCalendarPopup;
     FCalendar.Align := alClient;
-    FCalendar.OnDblClick := @CalendarDblClick;
+    FCalendar.BorderSpacing.Around := 1;  { 1px outline = form Color }
+    FCalendar.OnChange := @CalendarDblClick;
+
+    FCalendarPopup.Width := FCalendar.Width + 2;
+    FCalendarPopup.Height := FCalendar.Height + 2;
+
+    { Rounded corners — same technique as combo popup }
+    {$IFDEF FPC}
+    FCalendarPopup.HandleNeeded;
+    {$IFDEF MSWINDOWS}
+    { Region 2px larger than body on each side — BGRA antialiased
+      edges are fully preserved, GDI region never clips smooth pixels }
+    SetWindowRgn(FCalendarPopup.Handle,
+      CreateRoundRectRgn(-2, -2, FCalendarPopup.Width + 3,
+        FCalendarPopup.Height + 3, 12 * 2 + 6, 12 * 2 + 6), True);
+    {$ENDIF}
+    {$ENDIF}
   end;
 
   if FDate > 1 then
-    FCalendar.DateTime := FDate
+    FCalendar.Date := FDate
   else
-    FCalendar.DateTime := Now;
+    FCalendar.Date := Now;
 
   P := Self.ClientToScreen(Point(0, Self.Height));
   if P.X + FCalendarPopup.Width > Screen.Width then
@@ -511,7 +533,7 @@ end;
 
 procedure TFRMaterialDateEdit.CalendarDblClick(Sender: TObject);
 begin
-  Date := FCalendar.DateTime;
+  Date := FCalendar.Date;
   if Assigned(FCalendarPopup) then
     FCalendarPopup.Close;
   if FEdit.CanFocus then
@@ -560,37 +582,37 @@ end;
 
 procedure TFRMaterialDateEdit.DoOnResize;
 var
-  BtnSize, CenterY, FieldH, RightReserve: Integer;
+  BtnSize, CenterY, FieldH, BaseRight: Integer;
 begin
   inherited DoOnResize;
 
   if not Assigned(FCalendarButton) then Exit;
   if csLoading in ComponentState then Exit;
 
-  { Espacao reservado a direita: o que o base ja calculou (clear/search/
-    eye/copy) + nosso proprio botao. Como o base nao sabe do calendar,
-    somamos manualmente. }
   BtnSize := FEdit.Height - 2;
   if BtnSize < 20 then BtnSize := 20;
   FCalendarButton.Width  := BtnSize;
   FCalendarButton.Height := BtnSize;
 
-  RightReserve := FCalendarButton.Width + 6;
+  { Calendar is rightmost. Push all base right-panel buttons left
+    by calendar width + gap, then position calendar at the edge. }
+  FieldH := Self.Height;
+  CenterY := (FieldH - BtnSize) div 2;
+  if CenterY < 0 then CenterY := 0;
 
-  FCalendarButton.Anchors := [];
+  { Shift base buttons left to make room for calendar }
+  if ClearButton.Visible then
+    ClearButton.BorderSpacing.Right := ClearButton.BorderSpacing.Right + BtnSize + 8;
+
+  { Calendar at rightmost position }
   FCalendarButton.Anchors := [akRight];
   FCalendarButton.AnchorSide[akRight].Control := Self;
   FCalendarButton.AnchorSide[akRight].Side    := asrBottom;
-  FCalendarButton.BorderSpacing.Right := FEdit.BorderSpacing.Right;
-
-  FieldH := Self.Height;
-  CenterY := (FieldH - FCalendarButton.Height) div 2;
-  if CenterY < 0 then CenterY := 0;
+  FCalendarButton.BorderSpacing.Right := 8;
   FCalendarButton.Top := CenterY;
 
-  { Empurra a borda direita do FEdit para abrir espaco para o calendar
-    alem do que o base ja reservou para seus proprios botoes. }
-  FEdit.BorderSpacing.Right := FEdit.BorderSpacing.Right + RightReserve;
+  { Push FEdit to fit all buttons }
+  FEdit.BorderSpacing.Right := FRightPanelWidth + BtnSize + 8;
 end;
 
 procedure TFRMaterialDateEdit.ApplyTheme(const AThemeManager: TObject);
@@ -602,6 +624,8 @@ begin
     FCalendarButton.HoverColor  := MD3Colors.Primary;
     FCalendarButton.InvalidateCache;
   end;
+  if Assigned(FCalendarPopup) then
+    FCalendarPopup.Color := MD3Colors.OutlineVariant;
 end;
 
 end.
