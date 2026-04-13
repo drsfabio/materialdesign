@@ -108,6 +108,7 @@ begin
 
   { Project settings }
   AProject.Title := 'MD3 Application';
+  AProject.LazCompilerOptions.Win32GraphicApp := True;
   AProject.AddPackageDependency('LCL');
   AProject.AddPackageDependency('FRComponents');
 
