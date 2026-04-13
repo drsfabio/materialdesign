@@ -161,7 +161,10 @@ end;
 
 procedure Register;
 begin
-  RegisterProjectDescriptor(TFRMaterialFormProjectDescriptor.Create);
+  { TODO: RegisterProjectDescriptor causes 'Unknown category' on some
+    Lazarus versions. Disabled until proper category handling is implemented.
+    Use demo-template/app_template.lpi as standalone template instead. }
+  //RegisterProjectDescriptor(TFRMaterialFormProjectDescriptor.Create);
 end;
 
 end.
