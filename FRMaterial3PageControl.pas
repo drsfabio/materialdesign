@@ -679,7 +679,7 @@ var
   Y: Integer;
 begin
   { Allow clicks in the tab bar area to pass through to MouseDown at design-time }
-  Y := Message.LParamHi;
+  Y := HiWord(Message.LParam);
   if ((FTabPosition = tpTop) and (Y < FTabHeight)) or
      ((FTabPosition = tpBottom) and (Y >= Height - FTabHeight)) then
     Message.Result := 1  { let the click through }
