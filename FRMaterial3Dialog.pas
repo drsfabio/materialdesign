@@ -28,7 +28,7 @@ uses
   LCLIntf, LCLType, LMessages, Math, Dialogs,
   {$IFDEF FPC} LResources, {$ENDIF}
   BGRABitmap, BGRABitmapTypes, FRMaterialTheme, FRMaterial3Base, FRMaterial3Button,
-  FRMaterialIcons;
+  FRMaterialIcons, FRMaterial3TitleBar;
 
 type
   TFRMDDialogButton = (dbNone, dbOK, dbCancel, dbYes, dbNo, dbClose);
@@ -115,6 +115,7 @@ const
   ANIM_INTERVAL       = 16;  { ~60 fps }
   CORNER_RADIUS       = 28;  { MD3 extra-large shape }
   MAX_CONTENT_DEFAULT = 320; { max content height before scroll }
+  TITLEBAR_H          = 36;  { Altura do TFRMaterialTitleBar no topo do dialog }
 
 type
   { ── Internal scrim + dialog form ── }
@@ -143,7 +144,7 @@ type
     FDismissOnScrim: Boolean;
     FDismissOnEscape: Boolean;
     FScrimOpacity: Byte;
-    FLblTitle: TLabel;
+    FTitleBar: TFRMaterialTitleBar;
     FLblContent: TLabel;
     FScrollBox: TScrollBox;
     FBtnList: TFPList;
@@ -360,7 +361,9 @@ var
 
 begin
   inherited CreateNew(nil);
-  FResult := drNone;
+  { Default drCancel — garante que fechar por TitleBar X, Escape, scrim,
+    ALT+F4 ou qualquer outro meio retorne resultado semanticamente "cancelado". }
+  FResult := drCancel;
   FDefaultBtn := nil;
   FDismissOnScrim := ADismissOnScrim;
   FDismissOnEscape := ADismissOnEscape;
@@ -392,18 +395,16 @@ begin
   end;
   dlgWidth := EnsureRange(dlgWidth, DLG_MIN_W, DLG_MAX_W);
 
-  { Starting Y position }
-  curY := PADDING;
+  { Starting Y position — reserva TITLEBAR_H no topo para o TFRMaterialTitleBar }
+  curY := TITLEBAR_H + PADDING;
 
   { If icon requested, reserve space }
   if AIcon <> diNone then
     curY := curY + ICON_SIZE + ICON_GAP;
 
-  { Measure title height }
-  Canvas.Font.Name := themeFontName;
-  Canvas.Font.Size := 14;
-  Canvas.Font.Style := [fsBold];
-  titleH := Canvas.TextHeight('Tg');
+  { Title eh renderizado no TFRMaterialTitleBar — no corpo do dialog nao ha
+    mais FLblTitle separado. titleH=0 remove o gap extra. }
+  titleH := 0;
 
   { Measure content text height with word-wrap }
   Canvas.Font.Name := themeFontName;
@@ -421,8 +422,8 @@ begin
   if maxContentH <= 0 then
     maxContentH := MAX_CONTENT_DEFAULT;
 
-  { Calculate dialog height }
-  contentTop := curY + titleH + TITLE_GAP;
+  { Calculate dialog height — sem TITLE_GAP (title migrou para o TitleBar) }
+  contentTop := curY;
   dlgHeight := contentTop + Min(contentH + 4, maxContentH) + CONTENT_GAP + BTN_H + PADDING;
   if dlgHeight < 180 then dlgHeight := 180;
 
@@ -439,7 +440,16 @@ begin
   { Capture the screen content for see-through scrim }
   CaptureBackdrop;
 
-  { Icon — rendered directly on the panel's BGRABitmap }
+  { TitleBar MD3 no topo do card — apenas botao Close (X).
+    Clique no X chama frm.Close → FResult ja inicializado como drCancel retorna. }
+  FTitleBar := TFRMaterialTitleBar.Create(Self);
+  FTitleBar.Parent := FDialogPanel;
+  FTitleBar.Align := alTop;
+  FTitleBar.Height := TITLEBAR_H;
+  FTitleBar.Buttons := [tbbClose];
+  FTitleBar.Title := ATitle;
+
+  { Icon — rendered directly on the panel's BGRABitmap, abaixo do TitleBar }
   if AIcon <> diNone then
   begin
     case AIcon of
@@ -456,27 +466,8 @@ begin
     FDialogPanel.FIconBmp := FRRenderSVGIcon(
       FRGetIconSVG(iconMode, hexColor, 2.0), ICON_SIZE, ICON_SIZE);
     FDialogPanel.FIconLeft := (dlgWidth - ICON_SIZE) div 2;
-    FDialogPanel.FIconTop := PADDING;
+    FDialogPanel.FIconTop := TITLEBAR_H + PADDING;
   end;
-
-  { Title — centered when icon present, left-aligned otherwise }
-  FLblTitle := TLabel.Create(Self);
-  FLblTitle.Parent := FDialogPanel;
-  FLblTitle.Top := curY;
-  FLblTitle.AutoSize := False;
-  FLblTitle.Width := dlgWidth - PADDING * 2;
-  FLblTitle.Height := titleH + 4;
-  FLblTitle.Layout := tlCenter;
-  FLblTitle.Caption := ATitle;
-  FLblTitle.Transparent := True;
-  FLblTitle.ParentFont := False;
-  FLblTitle.Font.Name := themeFontName;
-  FLblTitle.Font.Size := 14;
-  FLblTitle.Font.Style := [fsBold];
-  FLblTitle.Font.Color := MD3Colors.OnSurface;
-  FLblTitle.Left := PADDING;
-  if AIcon <> diNone then
-    FLblTitle.Alignment := taCenter;
 
   { Content — scrollable if exceeds max height }
   if contentH + 4 > maxContentH then
@@ -754,9 +745,7 @@ begin
     if Screen.Forms[i] is TFRDialogForm then
     begin
       frm := TFRDialogForm(Screen.Forms[i]);
-      { Update label colors }
-      if Assigned(frm.FLblTitle) then
-        frm.FLblTitle.Font.Color := MD3Colors.OnSurface;
+      { Update label colors — TitleBar sincroniza via SyncWithTheme proprio }
       if Assigned(frm.FLblContent) then
         frm.FLblContent.Font.Color := MD3Colors.OnSurfaceVariant;
       { Update panel background }
