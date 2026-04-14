@@ -136,26 +136,18 @@ type
     destructor Destroy; override;
   end;
 
-  TFRDialogForm = class(TForm)
+  TFRDialogForm = class(TFRMaterialForm)
   private
     FResult: TFRMDDialogResult;
     FDialogPanel: TFRDialogPanel;
     FDefaultBtn: TFRMaterialButton;
     FDismissOnScrim: Boolean;
     FDismissOnEscape: Boolean;
-    FScrimOpacity: Byte;
-    FTitleBar: TFRMaterialTitleBar;
+    FScrimOpacity: Byte;  { mantido por compat API — sem efeito visual (janela modal tradicional) }
     FLblContent: TLabel;
     FScrollBox: TScrollBox;
     FBtnList: TFPList;
-    { Backdrop — captured screen content for see-through scrim }
-    FBackdrop: TBGRABitmap;
-    { Scrim cache }
-    FScrimCache: TBGRABitmap;
-    FScrimCacheW: Integer;
-    FScrimCacheH: Integer;
-    FScrimCacheAlpha: Byte;
-    { Animation state }
+    { Animation state — scale-up simples do card }
     FAnimTimer: TTimer;
     FAnimProgress: Single; { 0..1 }
     FAnimating: Boolean;
@@ -163,11 +155,8 @@ type
     FTargetPanelTop: Integer;
     procedure BtnClick(Sender: TObject);
     procedure DialogShow(Sender: TObject);
-    procedure ScrimClick(Sender: TObject);
     procedure DoAnimTick(Sender: TObject);
     procedure StartAnimation;
-    procedure CaptureBackdrop;
-    procedure ApplyCardRegion;
     function EaseOutCubic(T: Single): Single;
   protected
     procedure Paint; override;
@@ -204,53 +193,21 @@ begin
 end;
 
 procedure TFRDialogPanel.Paint;
-var
-  dlgForm: TFRDialogForm;
-  scrimAlpha: Byte;
 begin
   if (Width <= 0) or (Height <= 0) then Exit;
 
-  dlgForm := nil;
-  if Owner is TFRDialogForm then
-    dlgForm := TFRDialogForm(Owner);
-
   if FPaintCache = nil then
   begin
-    FPaintCache := TBGRABitmap.Create(Width, Height, BGRA(0, 0, 0, 0));
-
-    { 1. Backdrop — copy the captured screen region at our position,
-      so corners show the real content behind the scrim. }
-    if Assigned(dlgForm) and Assigned(dlgForm.FBackdrop) then
-      FPaintCache.PutImage(-Left, -Top, dlgForm.FBackdrop, dmSet)
-    else
-      FPaintCache.Fill(BGRA(0, 0, 0, 255));
-
-    { 2. Scrim overlay — match the form's current alpha (animated or final). }
-    if Assigned(dlgForm) then
-    begin
-      if dlgForm.FAnimating then
-        scrimAlpha := EnsureRange(dlgForm.Tag, 0, 255)
-      else
-        scrimAlpha := dlgForm.FScrimOpacity;
-    end
-    else
-      scrimAlpha := 128;
-
-    FPaintCache.FillRect(0, 0, Width, Height,
-      BGRA(0, 0, 0, scrimAlpha), dmDrawWithTransparency);
-
-    { 3. Rounded card — use pixel-edge coordinates (-0.5 .. W-0.5) so
-      straight edges are fully opaque; only corners get anti-aliased. }
-    FPaintCache.FillRoundRectAntialias(-0.5, -0.5, Width - 0.5, Height - 0.5,
-      CORNER_RADIUS, CORNER_RADIUS,
+    { Fundo opaco da cor do card + icon MD3 (se houver).
+      Cantos arredondados e shadow sao responsabilidade do TFRMaterialForm
+      via DWM (Windows). Sem scrim/backdrop — janela modal tradicional. }
+    FPaintCache := TBGRABitmap.Create(Width, Height,
       ColorToBGRA(MD3Colors.SurfaceContainerHigh));
 
-    { 4. Icon }
     if Assigned(FIconBmp) then
       FPaintCache.PutImage(FIconLeft, FIconTop, FIconBmp, dmDrawWithTransparency);
   end;
 
-  { Opaque blit — all pixels are fully composited (alpha=255). }
   FPaintCache.Draw(Canvas, 0, 0, False);
 end;
 
@@ -270,53 +227,23 @@ begin
 end;
 
 procedure TFRDialogForm.DoAnimTick(Sender: TObject);
-var
-  step: Single;
-  easedAlpha: Byte;
-  scale: Single;
 begin
-  step := ANIM_INTERVAL / ANIM_DURATION;
-  FAnimProgress := FAnimProgress + step;
-  if FAnimProgress >= 1.0 then
-  begin
-    FAnimProgress := 1.0;
-    FAnimating := False;
+  { Animacao removida — janela modal tradicional sem scale-up.
+    Foca o botao default imediatamente. }
+  FAnimating := False;
+  if Assigned(FAnimTimer) then
     FAnimTimer.Enabled := False;
-    { Focus the default button after animation — panel is now visible }
-    if Assigned(FDefaultBtn) and FDefaultBtn.Visible and FDefaultBtn.Enabled then
-      ActiveControl := FDefaultBtn;
-  end;
-
-  { Apply eased values }
-  scale := 0.85 + 0.15 * EaseOutCubic(FAnimProgress);
-  easedAlpha := EnsureRange(Round(FScrimOpacity * EaseOutCubic(FAnimProgress)), 0, 255);
-
-  if Assigned(FDialogPanel) then
-  begin
-    FDialogPanel.Width := Round(DLG_PREF_W * scale);
-    FDialogPanel.Height := Round(FDialogPanel.Tag * scale); { Tag stores target height }
-    FDialogPanel.Left := (ClientWidth - FDialogPanel.Width) div 2;
-    FDialogPanel.Top := (ClientHeight - FDialogPanel.Height) div 2;
-    FDialogPanel.InvalidateCache;
-    FDialogPanel.Visible := True;
-    ApplyCardRegion;
-  end;
-
-  { Repaint scrim with animated alpha }
-  Tag := easedAlpha; { store current scrim alpha in form Tag }
-  Invalidate;
+  if Assigned(FDefaultBtn) and FDefaultBtn.Visible and FDefaultBtn.Enabled then
+    ActiveControl := FDefaultBtn;
 end;
 
 procedure TFRDialogForm.StartAnimation;
 begin
-  FAnimProgress := 0;
-  FAnimating := True;
-  Tag := 0; { initial scrim alpha }
-  if Assigned(FDialogPanel) then
-    FDialogPanel.Visible := False;
-
+  FAnimating := False;
+  FAnimProgress := 1.0;
+  { Dispara um tick imediato para focar botao default — sem animacao visual. }
   FAnimTimer := TTimer.Create(Self);
-  FAnimTimer.Interval := ANIM_INTERVAL;
+  FAnimTimer.Interval := 1;
   FAnimTimer.OnTimer := @DoAnimTick;
   FAnimTimer.Enabled := True;
 end;
@@ -371,13 +298,14 @@ begin
   FBtnList := TFPList.Create;
   FAnimTimer := nil;
 
+  { Form modal tradicional — SEM scrim fullscreen.
+    bsNone mantido para que cantos arredondados do card sejam visiveis
+    sem moldura nativa. Position poScreenCenter centraliza na tela. }
   BorderStyle := bsNone;
-  Position := poDesigned;
-  Color := clBlack;
+  Position := poScreenCenter;
+  Color := MD3Colors.SurfaceContainerHigh;
   KeyPreview := True;
   OnShow := @DialogShow;
-  OnClick := @ScrimClick;
-  SetBounds(0, 0, Screen.Width, Screen.Height);
 
   { Theme font — use system font from theme, fallback to Segoe UI }
   themeFontName := Screen.SystemFont.Name;
@@ -395,8 +323,9 @@ begin
   end;
   dlgWidth := EnsureRange(dlgWidth, DLG_MIN_W, DLG_MAX_W);
 
-  { Starting Y position — reserva TITLEBAR_H no topo para o TFRMaterialTitleBar }
-  curY := TITLEBAR_H + PADDING;
+  { Starting Y position — TitleBar eh do form pai (TFRMaterialForm),
+    FDialogPanel soh contem o corpo do dialog. }
+  curY := PADDING;
 
   { If icon requested, reserve space }
   if AIcon <> diNone then
@@ -427,27 +356,27 @@ begin
   dlgHeight := contentTop + Min(contentH + 4, maxContentH) + CONTENT_GAP + BTN_H + PADDING;
   if dlgHeight < 180 then dlgHeight := 180;
 
-  { Dialog card panel }
+  { Form tem exatamente o tamanho do card + TitleBar — sem scrim fullscreen.
+    TFRMaterialForm ja criou TitleBar no topo automaticamente. }
+  Self.ClientWidth  := dlgWidth;
+  Self.ClientHeight := dlgHeight + TITLEBAR_H;
+
+  { Dialog content panel — alClient preenche area abaixo da TitleBar do pai }
   FDialogPanel := TFRDialogPanel.Create(Self);
   FDialogPanel.Parent := Self;
-  FDialogPanel.Width := dlgWidth;
-  FDialogPanel.Height := dlgHeight;
-  FDialogPanel.Tag := dlgHeight; { store target height for animation }
-  FDialogPanel.Anchors := [];
+  FDialogPanel.Align := alClient;
+  FDialogPanel.Tag := dlgHeight;
   FDialogPanel.FScrimAlpha := 0;
-  FDialogPanel.Color := MD3Colors.SurfaceContainerHigh;  { matches card — opaque draw prevents bleed }
+  FDialogPanel.Color := MD3Colors.SurfaceContainerHigh;
 
-  { Capture the screen content for see-through scrim }
-  CaptureBackdrop;
-
-  { TitleBar MD3 no topo do card — apenas botao Close (X).
+  { TitleBar MD3 do TFRMaterialForm — apenas botao Close (X).
     Clique no X chama frm.Close → FResult ja inicializado como drCancel retorna. }
-  FTitleBar := TFRMaterialTitleBar.Create(Self);
-  FTitleBar.Parent := FDialogPanel;
-  FTitleBar.Align := alTop;
-  FTitleBar.Height := TITLEBAR_H;
-  FTitleBar.Buttons := [tbbClose];
-  FTitleBar.Title := ATitle;
+  if Assigned(TitleBar) then
+  begin
+    TitleBar.Height := TITLEBAR_H;
+    TitleBar.Buttons := [tbbClose];
+    TitleBar.Title := ATitle;
+  end;
 
   { Icon — rendered directly on the panel's BGRABitmap, abaixo do TitleBar }
   if AIcon <> diNone then
@@ -466,7 +395,7 @@ begin
     FDialogPanel.FIconBmp := FRRenderSVGIcon(
       FRGetIconSVG(iconMode, hexColor, 2.0), ICON_SIZE, ICON_SIZE);
     FDialogPanel.FIconLeft := (dlgWidth - ICON_SIZE) div 2;
-    FDialogPanel.FIconTop := TITLEBAR_H + PADDING;
+    FDialogPanel.FIconTop := PADDING;
   end;
 
   { Content — scrollable if exceeds max height }
@@ -538,132 +467,32 @@ end;
 
 destructor TFRDialogForm.Destroy;
 begin
-  FreeAndNil(FBackdrop);
-  FreeAndNil(FScrimCache);
   FreeAndNil(FBtnList);
   inherited Destroy;
 end;
 
 procedure TFRDialogForm.DialogShow(Sender: TObject);
 begin
-  { Center panel }
-  if Assigned(FDialogPanel) then
-  begin
-    FTargetPanelLeft := (ClientWidth - FDialogPanel.Width) div 2;
-    FTargetPanelTop := (ClientHeight - FDialogPanel.Height) div 2;
-    FDialogPanel.Left := FTargetPanelLeft;
-    FDialogPanel.Top := FTargetPanelTop;
-  end;
-
-  { Aplica regiao arredondada no painel do card }
-  ApplyCardRegion;
-
-  { Start entrance animation }
+  { TFRMaterialForm base ja centralizou via Position=poScreenCenter,
+    criou TitleBar + DWM shadow + cantos arredondados.
+    Nada mais a fazer alem de focar botao default no proximo tick. }
   StartAnimation;
-  { ActiveControl is set after animation completes in DoAnimTick }
-end;
-
-procedure TFRDialogForm.CaptureBackdrop;
-var
-  DC: HDC;
-  bmp: TBitmap;
-  w, h: Integer;
-begin
-  { Ensure any pending paints are flushed so we capture fresh content }
-  Application.ProcessMessages;
-
-  bmp := TBitmap.Create;
-  try
-    w := Screen.Width;
-    h := Screen.Height;
-    bmp.SetSize(w, h);
-
-    { Capture current screen via BitBlt — most reliable on Windows,
-      captures the actual visible content including all windows. }
-    DC := GetDC(0);
-    try
-      BitBlt(bmp.Canvas.Handle, 0, 0, w, h, DC, 0, 0, SRCCOPY);
-    finally
-      ReleaseDC(0, DC);
-    end;
-
-    FBackdrop := TBGRABitmap.Create(bmp);
-    { Windows TBitmap 32-bit often has alpha=0 in all pixels.
-      Force fully opaque so compositing in panel corners works. }
-    FBackdrop.AlphaFill(255, 0, FBackdrop.NbPixels);
-  finally
-    bmp.Free;
-  end;
-end;
-
-procedure TFRDialogForm.ApplyCardRegion;
-{$IFDEF WINDOWS}
-var
-  panelW, panelH, R: Integer;
-{$ENDIF}
-begin
-  {$IFDEF WINDOWS}
-  if not Assigned(FDialogPanel) then Exit;
-  if not FDialogPanel.HandleAllocated then Exit;
-
-  panelW := FDialogPanel.Width;
-  panelH := FDialogPanel.Height;
-  R := CORNER_RADIUS;
-
-  { Pixel-perfect expansion: GDI region 1px larger que o BGRA rounded rect,
-    preservando os pixels anti-aliased na borda. Mesmo padrao do Snackbar
-    e do Combo popup. }
-  SetWindowRgn(FDialogPanel.Handle,
-    CreateRoundRectRgn(-1, -1, panelW + 2, panelH + 2,
-      R * 2 + 2, R * 2 + 2), True);
-  {$ENDIF}
 end;
 
 procedure TFRDialogForm.Paint;
-var
-  scrimAlpha: Byte;
-  needsRebuild: Boolean;
 begin
-  if (ClientWidth <= 0) or (ClientHeight <= 0) then Exit;
-
-  { Draw captured backdrop opaque (alpha forced to 255 in CaptureBackdrop) }
-  if Assigned(FBackdrop) then
-    FBackdrop.Draw(Canvas, 0, 0, False);
-
-  { Scrim alpha — animated or full }
-  if FAnimating then
-    scrimAlpha := EnsureRange(Tag, 0, 255)
-  else
-    scrimAlpha := FScrimOpacity;
-
-  { Cache the scrim bitmap — only rebuild on size or alpha change }
-  needsRebuild := (FScrimCache = nil)
-    or (FScrimCacheW <> ClientWidth)
-    or (FScrimCacheH <> ClientHeight)
-    or (FScrimCacheAlpha <> scrimAlpha);
-
-  if needsRebuild then
-  begin
-    FreeAndNil(FScrimCache);
-    FScrimCache := TBGRABitmap.Create(ClientWidth, ClientHeight, BGRA(0, 0, 0, scrimAlpha));
-    FScrimCacheW := ClientWidth;
-    FScrimCacheH := ClientHeight;
-    FScrimCacheAlpha := scrimAlpha;
-  end;
-
-  { Alpha-blend scrim over the backdrop }
-  FScrimCache.Draw(Canvas, 0, 0, True);
+  { Sem pintura custom no form — TFRMaterialForm ja cuida de borda/shadow.
+    FDialogPanel (alClient) pinta o corpo. }
+  inherited Paint;
 end;
 
 procedure TFRDialogForm.Resize;
 begin
   inherited Resize;
+  { FDialogPanel = alClient, ajusta-se automaticamente ao resize.
+    InvalidateCache para refazer pintura com o novo tamanho. }
   if Assigned(FDialogPanel) then
-  begin
-    FDialogPanel.Left := (ClientWidth - FDialogPanel.Width) div 2;
-    FDialogPanel.Top := (ClientHeight - FDialogPanel.Height) div 2;
     FDialogPanel.InvalidateCache;
-  end;
 end;
 
 procedure TFRDialogForm.KeyDown(var Key: Word; Shift: TShiftState);
@@ -673,23 +502,6 @@ begin
   begin
     FResult := drCancel;
     ModalResult := mrCancel;
-  end;
-end;
-
-procedure TFRDialogForm.ScrimClick(Sender: TObject);
-var
-  pt: TPoint;
-begin
-  if not FDismissOnScrim then Exit;
-  pt := ScreenToClient(Mouse.CursorPos);
-  { Only dismiss if click is outside the dialog panel }
-  if Assigned(FDialogPanel) then
-  begin
-    if not PtInRect(FDialogPanel.BoundsRect, pt) then
-    begin
-      FResult := drCancel;
-      ModalResult := mrCancel;
-    end;
   end;
 end;
 
