@@ -54,6 +54,8 @@ type
     FCaptionNo: string;
     FCaptionClose: string;
     FMaxContentHeight: Integer;
+    FIconSize: Integer;
+    FIconAlignment: TAlignment;
     procedure SetTitle(const AValue: string);
     procedure SetContent(const AValue: string);
   public
@@ -78,6 +80,14 @@ type
     property CaptionClose: string read FCaptionClose write FCaptionClose;
     { Max height for content area before scroll kicks in (0 = auto) }
     property MaxContentHeight: Integer read FMaxContentHeight write FMaxContentHeight default 0;
+    { Tamanho em pixels do icone do dialog (diWarning/diInfo/etc). MD3 spec:
+      24 (small), 48 (medium), 64 (large). Range 16..96. }
+    property IconSize: Integer read FIconSize write FIconSize default 48;
+    { Alinhamento horizontal do icone no card do dialog.
+      taLeftJustify: icone a esquerda do conteudo (padrao MD3 headline).
+      taCenter: icone centralizado acima do conteudo (notificacao).
+      taRightJustify: icone a direita. }
+    property IconAlignment: TAlignment read FIconAlignment write FIconAlignment default taCenter;
   end;
 
 { Global helper — substitui MessageDlg com visual MD3 }
@@ -115,7 +125,7 @@ const
   ANIM_INTERVAL       = 16;  { ~60 fps }
   CORNER_RADIUS       = 28;  { MD3 extra-large shape }
   MAX_CONTENT_DEFAULT = 320; { max content height before scroll }
-  TITLEBAR_H          = 36;  { Altura do TFRMaterialTitleBar no topo do dialog }
+  TITLEBAR_H          = 48;  { Altura do TFRMaterialTitleBar no topo do dialog — spec MD3 }
 
 type
   { ── Internal scrim + dialog form ── }
@@ -167,7 +177,8 @@ type
       AButtons: TFRMDDialogButtons; AIcon: TFRMDDialogIcon;
       ACustomIcon: TFRIconMode; ADismissOnScrim, ADismissOnEscape: Boolean;
       const ACaptionOK, ACaptionCancel, ACaptionYes, ACaptionNo, ACaptionClose: string;
-      AMaxContentH: Integer; AScrimOpacity: Byte);
+      AMaxContentH: Integer; AScrimOpacity: Byte;
+      AIconSize: Integer; AIconAlignment: TAlignment);
     destructor Destroy; override;
   end;
 
@@ -252,7 +263,8 @@ constructor TFRDialogForm.CreateDialog(ATitle, AContent: string;
   AButtons: TFRMDDialogButtons; AIcon: TFRMDDialogIcon;
   ACustomIcon: TFRIconMode; ADismissOnScrim, ADismissOnEscape: Boolean;
   const ACaptionOK, ACaptionCancel, ACaptionYes, ACaptionNo, ACaptionClose: string;
-  AMaxContentH: Integer; AScrimOpacity: Byte);
+  AMaxContentH: Integer; AScrimOpacity: Byte;
+  AIconSize: Integer; AIconAlignment: TAlignment);
 var
   btn: TFRMaterialButton;
   btnX, titleH, contentH, contentTop, dlgHeight, curY: Integer;
@@ -327,9 +339,10 @@ begin
     FDialogPanel soh contem o corpo do dialog. }
   curY := PADDING;
 
-  { If icon requested, reserve space }
-  if AIcon <> diNone then
-    curY := curY + ICON_SIZE + ICON_GAP;
+  { If icon requested AND centered above content, reserve vertical space.
+    Se alinhado a esquerda/direita, o icone fica lateral ao texto (sem gap vertical). }
+  if (AIcon <> diNone) and (AIconAlignment = taCenter) then
+    curY := curY + AIconSize + ICON_GAP;
 
   { Title eh renderizado no TFRMaterialTitleBar — no corpo do dialog nao ha
     mais FLblTitle separado. titleH=0 remove o gap extra. }
@@ -393,8 +406,13 @@ begin
     end;
     hexColor := FRColorToSVGHex(MD3Colors.Primary);
     FDialogPanel.FIconBmp := FRRenderSVGIcon(
-      FRGetIconSVG(iconMode, hexColor, 2.0), ICON_SIZE, ICON_SIZE);
-    FDialogPanel.FIconLeft := (dlgWidth - ICON_SIZE) div 2;
+      FRGetIconSVG(iconMode, hexColor, 2.0), AIconSize, AIconSize);
+    case AIconAlignment of
+      taLeftJustify:  FDialogPanel.FIconLeft := PADDING;
+      taRightJustify: FDialogPanel.FIconLeft := dlgWidth - AIconSize - PADDING;
+    else { taCenter }
+      FDialogPanel.FIconLeft := (dlgWidth - AIconSize) div 2;
+    end;
     FDialogPanel.FIconTop := PADDING;
   end;
 
@@ -536,6 +554,8 @@ begin
   FCaptionClose    := 'Fechar';
   FScrimOpacity    := 128;
   FMaxContentHeight := 0;
+  FIconSize        := 48;
+  FIconAlignment   := taCenter;
 
   FRMDRegisterComponent(Self);
 end;
@@ -591,7 +611,7 @@ begin
   dlg := TFRDialogForm.CreateDialog(FTitle, FContent, FButtons, FDialogIcon,
     FCustomIcon, FDismissOnScrim, FDismissOnEscape,
     FCaptionOK, FCaptionCancel, FCaptionYes, FCaptionNo, FCaptionClose,
-    FMaxContentHeight, FScrimOpacity);
+    FMaxContentHeight, FScrimOpacity, FIconSize, FIconAlignment);
   try
     dlg.ShowModal;
     Result := dlg.FResult;
