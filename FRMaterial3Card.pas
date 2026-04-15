@@ -356,7 +356,9 @@ var
   maxRad: Single;
   ripAlpha: Byte;
   parentBg: TColor;
-  captionY: Integer;
+  captionY, lineH: Integer;
+  ts: TTextStyle;
+  capRect: TRect;
 begin
   if (Width <= 0) or (Height <= 0) then Exit;
 
@@ -439,10 +441,21 @@ begin
       ABmp.FontStyle  := [fsBold];
       ABmp.FontHeight := Abs(Font.Size * 96 div 72);
       ABmp.FontQuality := fqFineAntialiasing;
-      MD3DrawTextBGRA(ABmp, Caption,
-        Rect(16, captionY, Width - 16, captionY + ABmp.TextSize('Áy').cy),
-        MD3Colors.OnSurface, taLeftJustify, False, False);
-      captionY := captionY + ABmp.TextSize('Áy').cy + 4;
+      lineH := ABmp.TextSize('Áy').cy;
+      { Caption com word-wrap em ate 2 linhas — evita corte/elipse feia
+        em rotinas com nome longo (ex.: "1013 - Alterar Template do Sistema").
+        TextRect com Wordbreak quebra palavras inteiras; SubTitle entra logo
+        abaixo dinamicamente. }
+      FillChar(ts, SizeOf(ts), 0);
+      ts.Wordbreak  := True;
+      ts.SingleLine := False;
+      ts.Alignment  := taLeftJustify;
+      ts.Layout     := tlTop;
+      ts.Clipping   := True;
+      capRect := Rect(16, captionY, Width - 16, captionY + (lineH * 2) + 2);
+      ABmp.TextRect(capRect, capRect.Left, capRect.Top, Caption, ts,
+        ColorToBGRA(ColorToRGB(MD3Colors.OnSurface)));
+      captionY := capRect.Bottom + 2;
     end;
 
     if FSubTitle <> '' then

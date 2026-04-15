@@ -34,7 +34,7 @@ type
     { Novos ícones MD3 }
     imHome, imMenu, imArrowBack, imArrowForward, imMoreVert,
     imCheck, imEdit, imDelete, imShare, imStar,
-    imFavorite, imSettings, imPerson, imNotification, imMail, imPhone,
+    imFavorite, imSettings, imPerson, imNotification, imMail, imPhone, imLogout,
     imDownload, imUpload, imRefresh, imFilter, imAttach, imLink,
     imNightlight, imLightMode, imList, imDashboard,
     imExpandMore, imExpandLess, imFolder, imFolderOpen,
@@ -123,6 +123,7 @@ function FRPersonIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRNotificationIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRMailIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRPhoneIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRLogoutIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRDownloadIconSVG(const AHex: string; AStroke: Double = 2.5): string;
 function FRUploadIconSVG(const AHex: string; AStroke: Double = 2.5): string;
 function FRRefreshIconSVG(const AHex: string; AStroke: Double = 2.5): string;
@@ -536,6 +537,20 @@ begin
     '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
     '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" ' +
     'fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+function FRLogoutIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  { Material Symbols logout: porta com seta saindo. }
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<polyline points="16 17 21 12 16 7" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<line x1="21" y1="12" x2="9" y2="12" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
     '</svg>';
 end;
 
@@ -1469,6 +1484,7 @@ begin
     imNotification: Result := FRNotificationIconSVG(AHex,  UseStroke(AStroke, 2.0));
     imMail:         Result := FRMailIconSVG(AHex,          UseStroke(AStroke, 2.0));
     imPhone:        Result := FRPhoneIconSVG(AHex,         UseStroke(AStroke, 2.0));
+    imLogout:       Result := FRLogoutIconSVG(AHex,        UseStroke(AStroke, 2.0));
     imDownload:     Result := FRDownloadIconSVG(AHex,      UseStroke(AStroke, 2.5));
     imUpload:       Result := FRUploadIconSVG(AHex,        UseStroke(AStroke, 2.5));
     imRefresh:      Result := FRRefreshIconSVG(AHex,       UseStroke(AStroke, 2.5));
