@@ -128,17 +128,18 @@ function MCContrastText(ABg: TColor): TColor;
   Normal=0, Compact=-4, Dense=-8, UltraDense=-12. }
 function MD3DensityDelta(ADensity: TFRMDDensity): Integer;
 
-{ Calcula o Font.Size ideal para um campo de entrada com a altura informada.
-  Referência MD3: Height 56 → Font.Size 12 (body-large).
-  Aplica redução proporcional para densidades maiores:
-  Normal=0, Compact=-1, Dense=-2, UltraDense=-3.
-  Resultado clamped entre 8 e 16. }
+{ Font.Size ideal para o body de um campo de entrada. Determinado apenas
+  pela densidade — altura nao influencia, porque escalar fonte por altura
+  colide com o espacamento vertical do TEdit nativo e provoca clipping
+  do texto. Densidade cuida do espaco; font size fica estavel.
+  Normal=11, Compact=10, Dense=10, UltraDense=9. AHeight mantido na
+  assinatura para compat com chamadores existentes. }
 function MD3FontSizeForField(AHeight: Integer; ADensity: TFRMDDensity): Integer;
 
 { Tamanho da fonte para labels flutuantes, helper text, prefixo/sufixo e
   char counter dos inputs MD3. Proporcionalmente menor que o body do field
   (2pt abaixo), seguindo MD3 spec (Label Small / Body Small = ~11sp).
-  Normal=10, Compact/Dense=9, UltraDense=8. Clamp 8-12. }
+  Normal=9, Compact/Dense=8, UltraDense=8. Clamp 8-12. }
 function MD3LabelFontSize(ADensity: TFRMDDensity): Integer;
 
 { Retorna o offset de sombra em pixels para o nível de elevação MD3. }
@@ -217,16 +218,12 @@ end;
 
 function MD3FontSizeForField(AHeight: Integer; ADensity: TFRMDDensity): Integer;
 const
-  { Redução de fonte por nível de densidade (Normal=0, Compact=-1, Dense=-1, UltraDense=-2) }
-  FontDeltas: array[TFRMDDensity] of Integer = (0, -1, -1, -2);
+  { Tabela fixa por densidade. Nao depende de AHeight de proposito:
+    fonte estavel evita clipping no TEdit nativo quando o edit encolhe
+    com densidades menores. Densidade cuida do espacamento. }
+  FontByDensity: array[TFRMDDensity] of Integer = (11, 10, 10, 9);
 begin
-  { Base: proporcional à altura. Ref MD3: Height 56 → Size 12 }
-  Result := AHeight * 12 div 56;
-  { Aplica delta de densidade }
-  Result := Result + FontDeltas[ADensity];
-  { Clamp entre 8 e 16 }
-  if Result < 8 then Result := 8;
-  if Result > 16 then Result := 16;
+  Result := FontByDensity[ADensity];
 end;
 
 function MD3LabelFontSize(ADensity: TFRMDDensity): Integer;
