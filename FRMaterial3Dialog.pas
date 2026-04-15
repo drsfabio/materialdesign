@@ -125,7 +125,7 @@ const
   ANIM_INTERVAL       = 16;  { ~60 fps }
   CORNER_RADIUS       = 28;  { MD3 extra-large shape }
   MAX_CONTENT_DEFAULT = 320; { max content height before scroll }
-  TITLEBAR_H          = 48;  { Altura do TFRMaterialTitleBar no topo do dialog — spec MD3 }
+  TITLEBAR_H          = 40;  { Altura padrão do TFRMaterialTitleBar (const TITLEBAR_HEIGHT) }
 
 type
   { ── Internal scrim + dialog form ── }
@@ -213,7 +213,7 @@ begin
       Cantos arredondados e shadow sao responsabilidade do TFRMaterialForm
       via DWM (Windows). Sem scrim/backdrop — janela modal tradicional. }
     FPaintCache := TBGRABitmap.Create(Width, Height,
-      ColorToBGRA(MD3Colors.SurfaceContainerHigh));
+      ColorToBGRA(MD3Colors.Surface));
 
     if Assigned(FIconBmp) then
       FPaintCache.PutImage(FIconLeft, FIconTop, FIconBmp, dmDrawWithTransparency);
@@ -315,7 +315,7 @@ begin
     sem moldura nativa. Position poScreenCenter centraliza na tela. }
   BorderStyle := bsNone;
   Position := poScreenCenter;
-  Color := MD3Colors.SurfaceContainerHigh;
+  Color := MD3Colors.Surface;
   KeyPreview := True;
   OnShow := @DialogShow;
 
@@ -370,26 +370,33 @@ begin
   if dlgHeight < 180 then dlgHeight := 180;
 
   { Form tem exatamente o tamanho do card + TitleBar — sem scrim fullscreen.
-    TFRMaterialForm ja criou TitleBar no topo automaticamente. }
+    TFRMaterialForm ja criou TitleBar no topo automaticamente (Height=40). }
   Self.ClientWidth  := dlgWidth;
   Self.ClientHeight := dlgHeight + TITLEBAR_H;
 
-  { Dialog content panel — alClient preenche area abaixo da TitleBar do pai }
+  { Caption aparece na TitleBar + Win Taskbar — padrao demo-template }
+  Self.Caption := ATitle;
+
+  { TitleBar MD3 do TFRMaterialForm — apenas botao Close (X).
+    Altura default (40) mantida. Title explicito garante atualizacao
+    mesmo que Caption nao dispare CaptionChanged no setter. }
+  if Assigned(TitleBar) then
+  begin
+    TitleBar.Buttons := [tbbClose];
+    TitleBar.Title   := ATitle;
+    TitleBar.Invalidate;
+  end;
+
+  { Dialog content panel — alClient preenche area abaixo da TitleBar do pai.
+    DialogPanel com cor Surface (mais claro) para distinguir visualmente
+    da TitleBar (SurfaceContainerHigh) — ambos estavam iguais e a TitleBar
+    "fundia" com o conteudo. Agora contraste sutil separa as areas. }
   FDialogPanel := TFRDialogPanel.Create(Self);
   FDialogPanel.Parent := Self;
   FDialogPanel.Align := alClient;
   FDialogPanel.Tag := dlgHeight;
   FDialogPanel.FScrimAlpha := 0;
-  FDialogPanel.Color := MD3Colors.SurfaceContainerHigh;
-
-  { TitleBar MD3 do TFRMaterialForm — apenas botao Close (X).
-    Clique no X chama frm.Close → FResult ja inicializado como drCancel retorna. }
-  if Assigned(TitleBar) then
-  begin
-    TitleBar.Height := TITLEBAR_H;
-    TitleBar.Buttons := [tbbClose];
-    TitleBar.Title := ATitle;
-  end;
+  FDialogPanel.Color := MD3Colors.Surface;
 
   { Icon — rendered directly on the panel's BGRABitmap, abaixo do TitleBar }
   if AIcon <> diNone then
@@ -426,7 +433,7 @@ begin
     FScrollBox.Width := dlgWidth - PADDING * 2;
     FScrollBox.Height := maxContentH;
     FScrollBox.BorderStyle := bsNone;
-    FScrollBox.Color := MD3Colors.SurfaceContainerHigh;
+    FScrollBox.Color := MD3Colors.Surface;
     FScrollBox.HorzScrollBar.Visible := False;
     FScrollBox.VertScrollBar.Smooth := True;
     FScrollBox.VertScrollBar.Tracking := True;
@@ -597,7 +604,7 @@ begin
       { Update panel background }
       if Assigned(frm.FDialogPanel) then
       begin
-        frm.FDialogPanel.Color := MD3Colors.SurfaceContainerHigh;
+        frm.FDialogPanel.Color := MD3Colors.Surface;
         frm.FDialogPanel.InvalidateCache;
         frm.FDialogPanel.Invalidate;
       end;
