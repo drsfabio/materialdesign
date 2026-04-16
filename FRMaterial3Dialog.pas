@@ -123,7 +123,7 @@ const
   DLG_PREF_W          = 420;
   ANIM_DURATION       = 200; { ms }
   ANIM_INTERVAL       = 16;  { ~60 fps }
-  CORNER_RADIUS       = 28;  { MD3 extra-large shape }
+  CORNER_RADIUS       = 12;  { Win11/DWM-aligned — evita comer botoes da TitleBar }
   MAX_CONTENT_DEFAULT = 320; { max content height before scroll }
   TITLEBAR_H          = 40;  { Altura padrão do TFRMaterialTitleBar (const TITLEBAR_HEIGHT) }
 
@@ -498,21 +498,48 @@ end;
 
 procedure TFRDialogForm.DialogShow(Sender: TObject);
 {$IFDEF WINDOWS}
-var R: Integer;
+const
+  DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+  DWMWCP_ROUND                   = 2;
+type
+  TDwmSetWindowAttribute = function(hwnd: HWND; dwAttribute: DWORD;
+    pvAttribute: Pointer; cbAttribute: DWORD): HRESULT; stdcall;
+var
+  pref: DWORD;
+  hDwm: THandle;
+  DwmSetWA: TDwmSetWindowAttribute;
+  DwmRoundedOK: Boolean;
+  R: Integer;
 {$ENDIF}
 begin
   {$IFDEF WINDOWS}
-  { SetWindowRgn com radius CORNER_RADIUS — recorta o form na forma
-    arredondada EXATA do card. Sem isso, o DWM shadow sozinho deixa
-    pixels brancos/cinza visiveis nos cantos externos (diferenca entre
-    a borda retangular do form e os cantos arredondados do card).
-    Pixel-perfect expansion de 1px preserva anti-aliasing BGRA na borda. }
   if HandleAllocated then
   begin
-    R := CORNER_RADIUS;
-    SetWindowRgn(Handle,
-      CreateRoundRectRgn(-1, -1, Width + 2, Height + 2, R * 2 + 2, R * 2 + 2),
-      True);
+    { Tentativa Win 11: cantos arredondados nativos do DWM com AA do
+      sistema. Sem GDI region quebrando o BGRA — cantos perfeitos. }
+    DwmRoundedOK := False;
+    hDwm := LoadLibrary('dwmapi.dll');
+    if hDwm <> 0 then
+    try
+      DwmSetWA := TDwmSetWindowAttribute(GetProcAddress(hDwm, 'DwmSetWindowAttribute'));
+      if Assigned(DwmSetWA) then
+      begin
+        pref := DWMWCP_ROUND;
+        DwmRoundedOK := DwmSetWA(Handle,
+          DWMWA_WINDOW_CORNER_PREFERENCE, @pref, SizeOf(pref)) = S_OK;
+      end;
+    finally
+      FreeLibrary(hDwm);
+    end;
+
+    { Fallback Win 10: SetWindowRgn pixel-perfect com expansao de 1px. }
+    if not DwmRoundedOK then
+    begin
+      R := CORNER_RADIUS;
+      SetWindowRgn(Handle,
+        CreateRoundRectRgn(-1, -1, Width + 2, Height + 2, R * 2 + 2, R * 2 + 2),
+        True);
+    end;
   end;
   {$ENDIF}
   StartAnimation;

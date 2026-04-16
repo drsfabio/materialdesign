@@ -39,7 +39,7 @@ type
     imNightlight, imLightMode, imList, imDashboard,
     imExpandMore, imExpandLess, imFolder, imFolderOpen,
     imWarning, imInfo, imError, imSuccess, imHelp,
-    imLock, imShield,
+    imLock, imShield, imPlace, imBuild,
     { Financeiro }
     imMoney, imCreditCard, imWallet, imReceipt,
     imBarChart, imPieChart, imTrendUp, imTrendDown,
@@ -145,6 +145,8 @@ function FRSuccessIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRHelpIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRLockIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRShieldIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRPlaceIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRBuildIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 { Financeiro }
 function FRMoneyIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRCreditCardIconSVG(const AHex: string; AStroke: Double = 2.0): string;
@@ -1406,6 +1408,32 @@ begin
     '</svg>';
 end;
 
+{ Pin de localizacao MD3 — pingo com circulo interno, usado para enderecos/
+  logradouros. }
+function FRPlaceIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M12 22s7-7.5 7-12a7 7 0 00-14 0c0 4.5 7 12 7 12z" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linejoin="round"/>' +
+    '<circle cx="12" cy="10" r="2.5" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '</svg>';
+end;
+
+{ Chave inglesa MD3 — cabeca em diagonal com haste, usado para manutencao /
+  ferramentas. }
+function FRBuildIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M21 3l-4 4 1 3-3 1-8 8a2 2 0 01-3-3l8-8 1-3 3-1 4-4a5 5 0 01-1 5 5 5 0 01-5 1" ' +
+    'fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
 { Uses AStroke if > 0, otherwise falls back to ADefault.
   Avoids the repetitive 'if AStroke > 0 then ... else ...' pattern. }
 function UseStroke(AStroke, ADefault: Double): Double; inline;
@@ -1506,6 +1534,8 @@ begin
     imHelp:         Result := FRHelpIconSVG(AHex,          UseStroke(AStroke, 2.0));
     imLock:         Result := FRLockIconSVG(AHex,          UseStroke(AStroke, 2.0));
     imShield:       Result := FRShieldIconSVG(AHex,        UseStroke(AStroke, 2.0));
+    imPlace:        Result := FRPlaceIconSVG(AHex,         UseStroke(AStroke, 2.0));
+    imBuild:        Result := FRBuildIconSVG(AHex,         UseStroke(AStroke, 2.0));
     { Financeiro }
     imMoney:        Result := FRMoneyIconSVG(AHex,         UseStroke(AStroke, 2.0));
     imCreditCard:   Result := FRCreditCardIconSVG(AHex,    UseStroke(AStroke, 2.0));

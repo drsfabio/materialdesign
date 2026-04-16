@@ -88,6 +88,13 @@ implementation
 
 uses Math;
 
+{$IFDEF MSWINDOWS}
+function CreateRoundRectRgn(X1, Y1, X2, Y2, W, H: Integer): THandle;
+  stdcall; external 'gdi32.dll' name 'CreateRoundRectRgn';
+function SetWindowRgn(hWnd: THandle; hRgn: THandle; bRedraw: LongBool): Integer;
+  stdcall; external 'user32.dll' name 'SetWindowRgn';
+{$ENDIF}
+
 { Returns the accelerator character from a caption containing '&'.
   E.g. '&Arquivo' → 'A', 'A&rquivo' → 'R'. Returns #0 if none. }
 function ExtractAccelChar(const ACaption: string): Char;
@@ -179,6 +186,9 @@ type
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
+    procedure Resize; override;
+    procedure DoShow; override;
+    procedure ApplyRoundRegion;
   public
     constructor CreateMenu(AItems: TFRMaterialMenuItems; AMinWidth: Integer;
       ARootMenu: TFRMaterialMenu; AParentForm: TMenuForm;
@@ -636,6 +646,37 @@ begin
   finally
     ABmp.Free;
   end;
+end;
+
+{ Clipa a janela do popup num retangulo arredondado para eliminar os cantos
+  retangulares cinzas que vazavam ao redor do fundo MD3FillRoundRect. O raio
+  em pixels (6 ~ radius 4 + 2 compensacao do ellipse do GDI) bate com o
+  desenho do Paint. Chamado em DoShow/Resize pois SetWindowRgn precisa do
+  handle ja alocado. }
+procedure TMenuForm.ApplyRoundRegion;
+{$IFDEF MSWINDOWS}
+var
+  Rgn: HRGN;
+{$ENDIF}
+begin
+  {$IFDEF MSWINDOWS}
+  if not HandleAllocated then Exit;
+  Rgn := CreateRoundRectRgn(0, 0, Width + 1, Height + 1, 8, 8);
+  if Rgn <> 0 then
+    SetWindowRgn(Handle, Rgn, True);
+  {$ENDIF}
+end;
+
+procedure TMenuForm.DoShow;
+begin
+  inherited DoShow;
+  ApplyRoundRegion;
+end;
+
+procedure TMenuForm.Resize;
+begin
+  inherited Resize;
+  ApplyRoundRegion;
 end;
 
 procedure TMenuForm.MouseMove(Shift: TShiftState; X, Y: Integer);

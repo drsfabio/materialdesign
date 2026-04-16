@@ -620,12 +620,10 @@ begin
   snkPanel.Anchors := [akBottom];
   snkPanel.BringToFront;
 
-  { SetWindowRgn for coarse clip + BGRA antialias for smooth edges }
-  {$IFDEF MSWINDOWS}
-  SetWindowRgn(snkPanel.Handle,
-    CreateRoundRectRgn(-1, -1, panelW + 2, panelH + 2,
-      SNACKBAR_RADIUS * 2 + 2, SNACKBAR_RADIUS * 2 + 2), True);
-  {$ENDIF}
+  { Sem SetWindowRgn — o GDI region produz serrilhado nos cantos. O Paint
+    do snackbar ja preenche o fundo com MD3Colors.Surface (mesma cor do
+    parent form, por convencao MD3) antes de desenhar o RoundRect com
+    BGRA AA. Resultado: cantos suaves sobre fundo invisivel. }
 
   FPanel := snkPanel;
   FPanel.FreeNotification(Self);

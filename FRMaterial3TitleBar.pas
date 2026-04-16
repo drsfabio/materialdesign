@@ -629,9 +629,15 @@ begin
           iconBmp, dmDrawWithTransparency);
     end;
 
-  { Title text }
+  { Title text — fonte explicita para nao depender do default minusculo
+    do TBGRABitmap. 12pt bold da presenca em janelas grandes sem virar
+    headline; combina com Win11 (que usa 9-10pt regular) com peso extra. }
   if FTitle <> '' then
   begin
+    ABmp.FontName    := Font.Name;
+    ABmp.FontStyle   := [fsBold];
+    ABmp.FontHeight  := Abs(12 * 96 div 72);
+    ABmp.FontQuality := fqFineAntialiasing;
     r := MkRect(titleLeft, 0, GetTitleAreaRight, Height);
     MD3DrawTextBGRA(ABmp, FTitle, r, MD3Colors.OnSurface, taLeftJustify, True);
   end;
